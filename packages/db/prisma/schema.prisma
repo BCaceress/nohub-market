@@ -1,0 +1,399 @@
+// NoHub Market — Prisma schema (Etapa 1)
+// Multi-tenant: toda entidade de domínio carrega organizationId (RN-02).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────
+
+enum MemberRole {
+  owner
+  admin
+  manager
+  operator
+  viewer
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum DocumentType {
+  CNPJ
+  CPF
+}
+
+enum TaxRegime {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+  MEI
+}
+
+enum BusinessType {
+  UNMANNED_MARKET // mercado autônomo
+  CONVENIENCE // conveniência
+  BEVERAGE // bebidas / adega
+  HYBRID // híbrido
+}
+
+enum LocationType {
+  STORE
+  DC // centro de distribuição
+  HYBRID
+}
+
+enum SalesChannelType {
+  IFOOD
+  WHATSAPP
+  MERCADO_LIVRE
+  RAPPI
+  OWN_ECOMMERCE
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// AUTH (Better Auth)  — User / Session / Account / Verification / 2FA
+// ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  phone         String? // PII — mascarar em logs (RN-12)
+  locale        String   @default("pt-BR")
+  timezone      String   @default("America/Sao_Paulo")
+
+  twoFactorEnabled Boolean @default(false)
+
+  // LGPD (RN-09)
+  consentedAt            DateTime?
+  consentVersion         String?
+  dataExportRequestedAt  DateTime?
+  dataDeletionRequestedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions     Session[]
+  accounts     Account[]
+  twoFactors   TwoFactor[]
+  members      Member[]
+  invitations  Invitation[] @relation("InvitedBy")
+  preferences  UserPreferences?
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+
+  // Mecanismo do scope switcher: tenant ativo na sessão
+  activeOrganizationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model TwoFactor {
+  id          String @id @default(cuid())
+  userId      String
+  secret      String
+  backupCodes String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TENANT — Organization e vínculos
+// ─────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  legalName    String
+  tradeName    String?
+  document     String        @unique // CNPJ — RN-01
+  documentType DocumentType  @default(CNPJ)
+  taxRegime    TaxRegime?
+  businessType BusinessType?
+
+  // Endereço
+  zipCode      String?
+  street       String?
+  number       String?
+  complement   String?
+  district     String?
+  city         String?
+  state        String?
+  cnae         String?
+
+  // Onboarding state (RN-11)
+  onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(1)
+  onboardingData      Json?
+
+  // Soft delete (RN-02 — sem dado órfão; manter histórico)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      Member[]
+  invitations  Invitation[]
+  capabilities OrganizationCapability[]
+  locations    Location[]
+  salesChannels SalesChannel[]
+  suppliers    Supplier[]
+  auditLogs    AuditLog[]
+
+  @@index([document])
+  @@index([deletedAt])
+}
+
+model Member {
+  id             String     @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MemberRole @default(viewer)
+
+  // Escopos opcionais (base p/ scope switcher)
+  locationScopes String[] @default([])
+  channelScopes  String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  role           MemberRole       @default(viewer)
+  status         InvitationStatus @default(pending)
+  invitedById    String?
+  expiresAt      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// MOTOR DE PERSONALIZAÇÃO — capabilities chave-valor flexível
+// ─────────────────────────────────────────────────────────────────────
+
+model OrganizationCapability {
+  id             String  @id @default(cuid())
+  organizationId String
+  key            String // ex: product.age_restriction, operation.unmanned
+  value          String  @default("true")
+  config         Json? // configuração opcional (ex: { minAge: 18 })
+  enabled        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ESTRUTURA FÍSICA E CANAIS
+// ─────────────────────────────────────────────────────────────────────
+
+model Location {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  type           LocationType @default(STORE)
+  isSelfService  Boolean      @default(false)
+  is24h          Boolean      @default(false)
+
+  zipCode    String?
+  street     String?
+  number     String?
+  complement String?
+  district   String?
+  city       String?
+  state      String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelLocations ChannelLocation[]
+
+  @@index([organizationId])
+}
+
+model SalesChannel {
+  id             String           @id @default(cuid())
+  organizationId String
+  type           SalesChannelType
+  name           String
+  config         Json? // credenciais cifradas (preenchido em etapa futura)
+  enabled        Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelLocations ChannelLocation[]
+
+  @@index([organizationId])
+}
+
+model ChannelLocation {
+  id              String @id @default(cuid())
+  organizationId  String
+  salesChannelId  String
+  locationId      String
+  fulfillmentRank Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  salesChannel SalesChannel @relation(fields: [salesChannelId], references: [id], onDelete: Cascade)
+  location     Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([salesChannelId, locationId])
+  @@index([organizationId])
+}
+
+model Supplier {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  document       String? // CNPJ/CPF — PII (RN-12)
+  email          String?
+  phone          String? // PII (RN-12)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PREFERÊNCIAS E AUDITORIA
+// ─────────────────────────────────────────────────────────────────────
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Base do futuro scope switcher
+  activeScopeType String? // organization | location | channel
+  activeScopeId   String?
+
+  theme  String @default("system")
+  locale String @default("pt-BR")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String  @id @default(cuid())
+  organizationId String?
+  actorId        String?
+  action         String // ex: organization.created, capability.enabled
+  resourceType   String
+  resourceId     String?
+  before         Json?
+  after          Json?
+  metadata       Json?
+  ipAddress      String?
+
+  createdAt DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor        User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([actorId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}

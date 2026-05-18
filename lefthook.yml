@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{js,ts,jsx,tsx,json}"
+      run: pnpm biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    tokens:
+      glob: "design-system/*.ts"
+      run: pnpm tokens:check
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
