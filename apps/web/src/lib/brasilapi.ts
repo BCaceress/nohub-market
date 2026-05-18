@@ -52,7 +52,7 @@ export async function lookupCnpj(raw: string): Promise<CnpjData | null> {
 export async function lookupCep(raw: string): Promise<CepData | null> {
   const cep = onlyDigits(raw);
   try {
-    const res = await fetch(`${BRASILAPI_URL}/cep/v2/${cep}`, {
+    const res = await fetch(`${BRASILAPI_URL}/cep/v1/${cep}`, {
       next: { revalidate: 60 * 60 * 24 * 7 }, // cache 7 dias
     });
     if (!res.ok) return null;
