@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".":          "./src/index.ts",
+    "./catalog":  "./src/catalog/index.ts"
   },
   "scripts": {
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "push": "prisma db push",
     "seed": "tsx src/seed.ts",
+    "seed:fiscal": "tsx src/seed-fiscal.ts",
     "studio": "prisma studio",
     "typecheck": "tsc --noEmit"
   },

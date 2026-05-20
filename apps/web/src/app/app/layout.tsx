@@ -1,14 +1,11 @@
+import { NavSidebar } from "@/components/nav-sidebar";
 import { CapabilitiesProvider } from "@/features/app/capabilities-provider";
 import { getSession } from "@/lib/auth-server";
 import { getCapabilities } from "@/lib/capabilities";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/signin?redirect=/app");
   if (!session.user.emailVerified)
@@ -20,24 +17,27 @@ export default async function AppLayout({
     orderBy: { createdAt: "desc" },
   });
 
-  // Gate de onboarding (RN-11): sem org completa volta ao wizard.
   if (!member || !member.organization.onboardingCompleted) {
     redirect("/onboarding");
   }
 
   const caps = await getCapabilities(member.organizationId);
   const capsObject = Object.fromEntries(caps);
+  const orgName = member.organization.tradeName ?? member.organization.legalName;
 
   return (
     <CapabilitiesProvider value={capsObject}>
-      <div className="min-h-screen bg-background">
-        <header className="flex items-center justify-between border-b px-6 py-4">
-          <span className="font-semibold">NoHub Market</span>
-          <span className="text-sm text-muted-foreground">
-            {member.organization.tradeName ?? member.organization.legalName}
-          </span>
-        </header>
-        <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <NavSidebar orgName={orgName} />
+
+        {/* Content area */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-6xl px-8 py-8">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </CapabilitiesProvider>
   );

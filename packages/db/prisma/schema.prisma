@@ -1,5 +1,7 @@
-// NoHub Market — Prisma schema (Etapa 1)
+// NoHub Market — Prisma schema
 // Multi-tenant: toda entidade de domínio carrega organizationId (RN-02).
+// Etapa 1: auth, multi-tenancy, onboarding, capabilities, estoque base
+// Etapa 2: catálogo completo (productType, variantes, kits, preço dimensional, fiscal BR)
 
 generator client {
   provider        = "prisma-client-js"
@@ -13,7 +15,7 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// ENUMS
+// ENUMS — Etapa 1
 // ─────────────────────────────────────────────────────────────────────
 
 enum MemberRole {
@@ -44,15 +46,15 @@ enum TaxRegime {
 }
 
 enum BusinessType {
-  UNMANNED_MARKET // mercado autônomo
-  CONVENIENCE // conveniência
-  BEVERAGE // bebidas / adega
-  HYBRID // híbrido
+  UNMANNED_MARKET
+  CONVENIENCE
+  BEVERAGE
+  HYBRID
 }
 
 enum LocationType {
   STORE
-  DC // centro de distribuição
+  DC
   HYBRID
 }
 
@@ -65,8 +67,107 @@ enum SalesChannelType {
   OTHER
 }
 
+enum ProductUnit {
+  UN
+  KG
+  G
+  L
+  ML
+  CX
+  PCT
+}
+
+enum MovementType {
+  // Etapa 1 (legado — mantidos por compat)
+  IN
+  OUT
+  LOSS
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  // Etapa 3 (novos)
+  INBOUND           // entrada formal (compra / recebimento)
+  OUTBOUND          // saída por venda confirmada
+  RESERVATION       // reserva preventiva (anti-oversell)
+  RESERVATION_RELEASE // liberação de reserva (cancelamento)
+}
+
 // ─────────────────────────────────────────────────────────────────────
-// AUTH (Better Auth)  — User / Session / Account / Verification / 2FA
+// ENUMS — Etapa 3 (Estoque)
+// ─────────────────────────────────────────────────────────────────────
+
+enum MovementReason {
+  PURCHASE        // entrada por compra
+  SALE            // saída por venda
+  INVENTORY_COUNT // acerto de inventário
+  DAMAGE          // dano/quebra
+  EXPIRY          // vencimento
+  THEFT           // furto
+  TRANSFER        // transferência entre locais
+  MANUAL          // ajuste manual com justificativa
+  RETURN          // devolução de cliente
+  INITIAL         // saldo inicial ao configurar
+}
+
+enum ReservationStatus {
+  ACTIVE     // reserva em aberto
+  CONSUMED   // convertida em OUTBOUND (pedido confirmado)
+  RELEASED   // cancelada (pedido cancelado/expirado)
+  EXPIRED    // expirou sem confirmação
+}
+
+enum InventoryCountStatus {
+  DRAFT       // sendo montada, itens ainda não contados
+  IN_PROGRESS // contagem iniciada, operador em campo
+  CLOSED      // fechada — ajustes já gerados
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ENUMS — Etapa 2 (Catálogo)
+// ─────────────────────────────────────────────────────────────────────
+
+enum ProductType {
+  SIMPLE          // produto unitário padrão
+  VARIANT_PARENT  // produto pai de variantes (não vendível diretamente)
+  KIT             // combo — sem estoque próprio, baixa componentes
+  FRACTIONED      // vendido por peso/volume (stockUnit ≠ saleUnit)
+}
+
+enum ProductBarcodeType {
+  EAN13
+  EAN8
+  INTERNAL
+  DUN14
+}
+
+// Origem do produto — tabela SEFAZ (0-8)
+enum TaxOrigin {
+  NACIONAL                      // 0
+  IMPORTADO_DIRETO              // 1
+  IMPORTADO_NACIONAL            // 2
+  NACIONAL_MAIS_40_IMPORTADO    // 3
+  NACIONAL_MENOS_40_IMPORTADO   // 4
+  NACIONAL_SEM_SIMILAR          // 5
+  ESTRANGEIRO_DIRETO            // 6
+  ESTRANGEIRO_NACIONAL          // 7
+  NACIONAL_MENOS_70_IMPORTADO   // 8
+}
+
+enum FiscalSegment {
+  BEVERAGE
+  CONVENIENCE
+  SNACK
+  DAIRY
+  BAKERY
+  MEAT
+  FROZEN
+  CLEANING
+  PERSONAL_HYGIENE
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// AUTH (Better Auth)
 // ─────────────────────────────────────────────────────────────────────
 
 model User {
@@ -75,28 +176,27 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
-  phone         String? // PII — mascarar em logs (RN-12)
+  phone         String?
   locale        String   @default("pt-BR")
   timezone      String   @default("America/Sao_Paulo")
 
   twoFactorEnabled Boolean @default(false)
 
-  // LGPD (RN-09)
-  consentedAt            DateTime?
-  consentVersion         String?
-  dataExportRequestedAt  DateTime?
+  consentedAt             DateTime?
+  consentVersion          String?
+  dataExportRequestedAt   DateTime?
   dataDeletionRequestedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions     Session[]
-  accounts     Account[]
-  twoFactors   TwoFactor[]
-  members      Member[]
-  invitations  Invitation[] @relation("InvitedBy")
-  preferences  UserPreferences?
-  auditLogs    AuditLog[]
+  sessions    Session[]
+  accounts    Account[]
+  twoFactors  TwoFactor[]
+  members     Member[]
+  invitations Invitation[] @relation("InvitedBy")
+  preferences UserPreferences?
+  auditLogs   AuditLog[]
 
   @@index([email])
 }
@@ -109,7 +209,6 @@ model Session {
   ipAddress String?
   userAgent String?
 
-  // Mecanismo do scope switcher: tenant ativo na sessão
   activeOrganizationId String?
 
   createdAt DateTime @default(now())
@@ -166,7 +265,7 @@ model TwoFactor {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// TENANT — Organization e vínculos
+// TENANT
 // ─────────────────────────────────────────────────────────────────────
 
 model Organization {
@@ -174,39 +273,63 @@ model Organization {
   slug         String        @unique
   legalName    String
   tradeName    String?
-  document     String        @unique // CNPJ — RN-01
+  document     String        @unique
   documentType DocumentType  @default(CNPJ)
   taxRegime    TaxRegime?
   businessType BusinessType?
 
-  // Endereço
-  zipCode      String?
-  street       String?
-  number       String?
-  complement   String?
-  district     String?
-  city         String?
-  state        String?
-  cnae         String?
+  zipCode    String?
+  street     String?
+  number     String?
+  complement String?
+  district   String?
+  city       String?
+  state      String?
+  cnae       String?
 
-  // Onboarding state (RN-11)
   onboardingCompleted Boolean @default(false)
   onboardingStep      Int     @default(1)
   onboardingData      Json?
 
-  // Soft delete (RN-02 — sem dado órfão; manter histórico)
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  members      Member[]
-  invitations  Invitation[]
-  capabilities OrganizationCapability[]
-  locations    Location[]
-  salesChannels SalesChannel[]
-  suppliers    Supplier[]
-  auditLogs    AuditLog[]
+  members             Member[]
+  invitations         Invitation[]
+  capabilities        OrganizationCapability[]
+  locations           Location[]
+  salesChannels       SalesChannel[]
+  suppliers           Supplier[]
+  products            Product[]
+  auditLogs           AuditLog[]
+  stockEntries        StockEntry[]
+  stockMovements      StockMovement[]
+  stockTransfers      StockTransfer[]
+  // Etapa 2
+  categories          Category[]
+  productBarcodes     ProductBarcode[]
+  productVariants     ProductVariant[]
+  productPrices       ProductPrice[]
+  productTaxes        ProductTax[]
+  categoryTaxDefaults CategoryTaxDefault[]
+  // Etapa 3
+  stockBalances       StockBalance[]
+  stockLots           StockLot[]
+  stockReservations   StockReservation[]
+  inventoryCounts     InventoryCount[]
+  // Etapa 4
+  customers           Customer[]
+  orders              Order[]
+  cashSessions        CashSession[]
+  channelIntegrations ChannelIntegration[]
+  outboxEvents        OutboxEvent[]
+  inboundEvents       InboundEvent[]
+  // Etapa 5
+  invoices            Invoice[]
+  fiscalCertificate   FiscalCertificate?
+  fiscalConfig        FiscalConfig?
+  invoiceNumberSkips  InvoiceNumberSkip[]
 
   @@index([document])
   @@index([deletedAt])
@@ -218,7 +341,6 @@ model Member {
   organizationId String
   role           MemberRole @default(viewer)
 
-  // Escopos opcionais (base p/ scope switcher)
   locationScopes String[] @default([])
   channelScopes  String[] @default([])
 
@@ -241,6 +363,7 @@ model Invitation {
   status         InvitationStatus @default(pending)
   invitedById    String?
   expiresAt      DateTime
+  token          String           @unique @default(cuid())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -251,18 +374,15 @@ model Invitation {
   @@unique([organizationId, email])
   @@index([organizationId])
   @@index([email])
+  @@index([token])
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// MOTOR DE PERSONALIZAÇÃO — capabilities chave-valor flexível
-// ─────────────────────────────────────────────────────────────────────
 
 model OrganizationCapability {
   id             String  @id @default(cuid())
   organizationId String
-  key            String // ex: product.age_restriction, operation.unmanned
+  key            String
   value          String  @default("true")
-  config         Json? // configuração opcional (ex: { minAge: 18 })
+  config         Json?
   enabled        Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -300,6 +420,21 @@ model Location {
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   channelLocations ChannelLocation[]
+  stockEntries     StockEntry[]      @relation("LocationStock")
+  stockMovements   StockMovement[]   @relation("LocationMovements")
+  outTransfers     StockTransfer[]   @relation("TransferFrom")
+  inTransfers      StockTransfer[]   @relation("TransferTo")
+  // Etapa 2
+  productPrices    ProductPrice[]
+  // Etapa 3
+  stockBalances    StockBalance[]
+  stockReservations StockReservation[]
+  inventoryCounts  InventoryCount[]
+  // Etapa 4
+  orders           Order[]
+  cashSessions     CashSession[]
+  // Etapa 5
+  invoices         Invoice[]
 
   @@index([organizationId])
 }
@@ -309,7 +444,7 @@ model SalesChannel {
   organizationId String
   type           SalesChannelType
   name           String
-  config         Json? // credenciais cifradas (preenchido em etapa futura)
+  config         Json?
   enabled        Boolean          @default(false)
 
   createdAt DateTime @default(now())
@@ -322,10 +457,10 @@ model SalesChannel {
 }
 
 model ChannelLocation {
-  id              String @id @default(cuid())
-  organizationId  String
-  salesChannelId  String
-  locationId      String
+  id             String @id @default(cuid())
+  organizationId String
+  salesChannelId String
+  locationId     String
   fulfillmentRank Int    @default(0)
 
   createdAt DateTime @default(now())
@@ -341,17 +476,574 @@ model Supplier {
   id             String  @id @default(cuid())
   organizationId String
   name           String
-  document       String? // CNPJ/CPF — PII (RN-12)
+  document       String?
   email          String?
-  phone          String? // PII (RN-12)
+  phone          String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
 
   @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// CATÁLOGO — Etapa 2: Categorias
+// ─────────────────────────────────────────────────────────────────────
+
+model Category {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  parentId       String?
+  position       Int    @default(0)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       Category?           @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]          @relation("CategoryTree")
+  products     Product[]
+  taxDefault   CategoryTaxDefault?
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([parentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// CATÁLOGO — Produtos
+// ─────────────────────────────────────────────────────────────────────
+
+model Product {
+  id             String      @id @default(cuid())
+  organizationId String
+  supplierId     String?
+  categoryId     String?     // FK → Category (Etapa 2)
+
+  name        String
+  description String?
+  brand       String?
+
+  // SKU único por org — validado na camada de aplicação (null não computa no unique)
+  sku     String?
+  // Barcode legado (kept for backward compat); canônico em ProductBarcode
+  barcode String?
+  tags    String[] @default([])
+
+  // Discriminador de tipo — imutável após criação (RN-C02)
+  productType ProductType @default(SIMPLE)
+
+  // Unidades: stock = como o estoque conta; sale = como o cliente vê
+  unit             ProductUnit @default(UN) // alias de stockUnit, mantido por compat
+  saleUnit         ProductUnit @default(UN)
+  conversionFactor Decimal     @db.Decimal(10, 6) @default(1)
+
+  // Preço legado — mantido para acesso simples; canonical em ProductPrice
+  price     Decimal  @db.Decimal(10, 2) @default(0)
+  costPrice Decimal? @db.Decimal(10, 2)
+
+  weight   Decimal? @db.Decimal(10, 3) // kg
+  imageUrl String?
+
+  isActive Boolean @default(true)
+  // Legado — mantido para compat com código Etapa 1
+  active   Boolean @default(true)
+
+  hasAgeRestriction Boolean @default(false)
+  minAge            Int?
+  expiryDays        Int?
+  allowFractioned   Boolean @default(false)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relações Etapa 1
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  stockEntries   StockEntry[]
+  stockMovements StockMovement[]
+  stockTransfers StockTransfer[]
+
+  // Relações Etapa 2
+  category        Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  barcodes        ProductBarcode[]
+  variants        ProductVariant[]
+  kitComponents   ProductKitComponent[] @relation("KitProduct")
+  asComponent     ProductKitComponent[] @relation("ComponentProduct")
+  prices          ProductPrice[]
+  taxData         ProductTax[]
+  // Relações Etapa 3
+  stockBalances      StockBalance[]
+  stockLots          StockLot[]
+  stockReservations  StockReservation[]
+  inventoryCountItems InventoryCountItem[]
+
+  @@index([organizationId])
+  @@index([supplierId])
+  @@index([categoryId])
+  @@index([barcode])
+  @@index([organizationId, isActive])
+  @@index([organizationId, productType])
+}
+
+// Múltiplos códigos de barras por produto (caixa, fardo, unidade)
+model ProductBarcode {
+  id             String             @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+  barcode        String
+  type           ProductBarcodeType @default(EAN13)
+  createdAt      DateTime           @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, barcode])
+  @@index([organizationId])
+  @@index([productId])
+}
+
+// Variantes de um VARIANT_PARENT (ex: Coca 350ml, 600ml, 2L)
+model ProductVariant {
+  id             String  @id @default(cuid())
+  organizationId String
+  productId      String
+  name           String  // ex: "350ml", "P", "Morango"
+  sku            String?
+  attributes     Json    @default("{}") // {"volume":"350ml","flavor":"cola"}
+  isActive       Boolean @default(true)
+  position       Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcodes     ProductBarcode[]
+  prices       ProductPrice[]
+  taxData      ProductTax[]
+  asComponent  ProductKitComponent[] @relation("ComponentVariant")
+  // Etapa 3
+  stockMovements    StockMovement[]   @relation("VariantMovements")
+  stockBalances     StockBalance[]
+  stockLots         StockLot[]
+  stockReservations StockReservation[]
+
+  @@index([organizationId])
+  @@index([productId])
+}
+
+// Composição de um KIT — componentes não podem ser KIT (RN-C04)
+model ProductKitComponent {
+  id                 String  @id @default(cuid())
+  kitProductId       String
+  componentProductId String
+  componentVariantId String?
+  quantity           Decimal @db.Decimal(10, 3)
+  position           Int     @default(0)
+  createdAt          DateTime @default(now())
+
+  kitProduct       Product         @relation("KitProduct", fields: [kitProductId], references: [id], onDelete: Cascade)
+  componentProduct Product         @relation("ComponentProduct", fields: [componentProductId], references: [id])
+  componentVariant ProductVariant? @relation("ComponentVariant", fields: [componentVariantId], references: [id])
+
+  @@unique([kitProductId, componentProductId, componentVariantId])
+  @@index([kitProductId])
+  @@index([componentProductId])
+}
+
+// Preço dimensional: produto × variante × location × canal
+// Resolução em cascata: mais específico → menos específico (RN-C08)
+model ProductPrice {
+  id             String            @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+  locationId     String?
+  channel        SalesChannelType?
+
+  price      Decimal  @db.Decimal(10, 2)
+  promoPrice Decimal? @db.Decimal(10, 2)
+  cost       Decimal? @db.Decimal(10, 2)
+
+  // Janela de promoção — promoPrice só vale dentro deste intervalo (RN-C09)
+  validFrom DateTime?
+  validTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  location     Location?       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([productId, variantId])
+  @@index([locationId, channel])
+  @@index([validFrom, validTo])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// FISCAL — NCM / CEST / CFOP / CST / CSOSN
+// CST: regime Normal; CSOSN: Simples Nacional — nunca os dois (RN-C06)
+// Campos CST/CSOSN são String para não exigir enum gigante — validados via Zod
+// ─────────────────────────────────────────────────────────────────────
+
+model ProductTax {
+  id             String    @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+
+  ncm            String    // 8 dígitos (RN-C07)
+  cest           String?   // 7 dígitos (RN-C07)
+  cfopInternal   String?   // operações internas  ex: "5102"
+  cfopInterstate String?   // operações interestaduais ex: "6102"
+
+  origin         TaxOrigin @default(NACIONAL)
+
+  // ICMS — use CST (Normal) OU CSOSN (Simples) conforme taxRegime da org
+  icmsCst    String?        // "00","10","20","30","40","41","50","51","60","70","90"
+  icmsCsosn  String?        // "101","102","103","201","202","203","300","400","500","900"
+  icmsRate   Decimal?       @db.Decimal(5, 2)
+
+  // PIS
+  pisCst     String?        // "01"-"09","49","50","99"
+  pisRate    Decimal?       @db.Decimal(5, 4)
+
+  // COFINS
+  cofinsCst  String?
+  cofinsRate Decimal?       @db.Decimal(5, 4)
+
+  unitTaxable Boolean       @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, variantId])
+  @@index([organizationId])
+  @@index([productId])
+}
+
+// Fiscal padrão por categoria — herança (RN-C13)
+model CategoryTaxDefault {
+  id             String    @id @default(cuid())
+  organizationId String
+  categoryId     String    @unique
+
+  ncm            String?
+  cest           String?
+  cfopInternal   String?
+  cfopInterstate String?
+  origin         TaxOrigin @default(NACIONAL)
+  icmsCst        String?
+  icmsCsosn      String?
+  icmsRate       Decimal?  @db.Decimal(5, 2)
+  pisCst         String?
+  pisRate        Decimal?  @db.Decimal(5, 4)
+  cofinsCst      String?
+  cofinsRate     Decimal?  @db.Decimal(5, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// Templates fiscais globais — pré-populados por segmento (diferencial competitivo)
+// Tabela GLOBAL (não por tenant) — seed em seed-fiscal.ts
+model FiscalTemplate {
+  id           String        @id @default(cuid())
+  segment      FiscalSegment
+  productName  String
+  barcode      String?       // EAN13 canônico para lookup automático
+
+  suggestedNcm          String
+  suggestedCest         String?
+  defaultCfopInternal   String  @default("5102")
+  defaultCfopInterstate String  @default("6102")
+
+  icmsCst    String?
+  icmsCsosn  String?
+  pisCst     String?  @default("01")
+  cofinsCst  String?  @default("01")
+  origin     TaxOrigin @default(NACIONAL)
+
+  description String?  // nome técnico / observação para o operador
+
+  createdAt DateTime @default(now())
+
+  @@index([segment])
+  @@index([barcode])
+  @@index([suggestedNcm])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// GESTÃO DE ESTOQUE (Etapa 1 — sem alterações)
+// ─────────────────────────────────────────────────────────────────────
+
+model StockEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  locationId     String
+  productId      String
+
+  quantity      Decimal   @db.Decimal(10, 3) @default(0)
+  minQuantity   Decimal?  @db.Decimal(10, 3)
+  maxQuantity   Decimal?  @db.Decimal(10, 3)
+  shelfLocation String?
+  expiryDate    DateTime?
+  batchCode     String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location     @relation("LocationStock", fields: [locationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, productId])
+  @@index([organizationId])
+  @@index([locationId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([organizationId, quantity])
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  organizationId String
+  locationId     String
+  productId      String
+
+  type        MovementType
+  quantity    Decimal      @db.Decimal(10, 3)
+  previousQty Decimal      @db.Decimal(10, 3)
+  newQty      Decimal      @db.Decimal(10, 3)
+  transferId  String?      // legado Etapa 1
+  notes       String?      // legado Etapa 1
+  userId      String
+  userName    String?
+
+  // Etapa 3 — campos adicionais (todos nullable para compat)
+  variantId       String?         // FK → ProductVariant
+  lotId           String?         // FK → StockLot
+  unitCost        Decimal?        @db.Decimal(10, 4) // custo unitário nesta entrada
+  reason          MovementReason? // motivo estruturado
+  referenceType   String?         // "ORDER" | "PURCHASE" | "TRANSFER" ...
+  referenceId     String?         // ID da entidade que originou o movimento
+  transferGroupId String?         // par TRANSFER_OUT+IN — mesmo grupo
+  idempotencyKey  String?         // retry-safe (único por org quando presente)
+  note            String?         // alias mais limpo para notes (Etapa 3)
+
+  createdAt DateTime @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location        @relation("LocationMovements", fields: [locationId], references: [id], onDelete: SetNull)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation("VariantMovements", fields: [variantId], references: [id], onDelete: SetNull)
+  lot          StockLot?       @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([locationId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([lotId])
+  @@index([type])
+  @@index([reason])
+  @@index([transferGroupId])
+  @@index([createdAt])
+  @@index([organizationId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model StockTransfer {
+  id             String  @id @default(cuid())
+  organizationId String
+  fromLocationId String
+  toLocationId   String
+  productId      String
+
+  quantity Decimal @db.Decimal(10, 3)
+  notes    String?
+  status   String  @default("completed")
+  userId   String
+  userName String?
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fromLocation Location     @relation("TransferFrom", fields: [fromLocationId], references: [id])
+  toLocation   Location     @relation("TransferTo", fields: [toLocationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([organizationId])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// GESTÃO DE ESTOQUE — Etapa 3 (saldo, lote, reserva, inventário)
+// ─────────────────────────────────────────────────────────────────────
+
+// Lote/validade — só criado quando capability product.expiry_tracking (RN-E05)
+model StockLot {
+  id             String   @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+  code           String   // código do lote (fornecedor ou gerado)
+  expiryDate     DateTime?
+  manufactureDate DateTime?
+  receivedAt     DateTime @default(now())
+  isActive       Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  movements    StockMovement[]
+  balances     StockBalance[]
+  reservations StockReservation[]
+
+  @@unique([organizationId, productId, code])
+  @@index([organizationId])
+  @@index([productId])
+  @@index([expiryDate])
+  @@index([isActive])
+}
+
+// Saldo materializado — projeção reconstruível a partir dos movimentos (RN-E03)
+// Saldo NUNCA é editado diretamente — atualizado apenas via applyMovement (RN-E01)
+model StockBalance {
+  id             String  @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+  locationId     String
+  lotId          String?
+
+  quantityOnHand   Decimal @db.Decimal(10, 3) @default(0) // físico
+  quantityReserved Decimal @db.Decimal(10, 3) @default(0) // reservado
+  // quantityAvailable = quantityOnHand - quantityReserved (calculada na query)
+
+  averageCost Decimal? @db.Decimal(10, 4) // custo médio móvel (RN-E09)
+  minQuantity Decimal? @db.Decimal(10, 3) // limiar de alerta de estoque baixo
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  location     Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  lot          StockLot?       @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, productId, variantId, locationId, lotId])
+  @@index([organizationId])
+  @@index([productId, variantId])
+  @@index([locationId])
+  @@index([lotId])
+  @@index([organizationId, quantityOnHand])
+}
+
+// Reserva ativa — espelha movimentos de RESERVATION (anti-oversell RN-E07)
+model StockReservation {
+  id             String            @id @default(cuid())
+  organizationId String
+  productId      String
+  variantId      String?
+  locationId     String
+  lotId          String?
+
+  quantity      Decimal           @db.Decimal(10, 3)
+  referenceType String            // "ORDER", "CART", etc.
+  referenceId   String            // ID do pedido/carrinho
+  status        ReservationStatus @default(ACTIVE)
+  expiresAt     DateTime?         // null = sem expiração automática
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  location     Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  lot          StockLot?       @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([productId, variantId, locationId])
+  @@index([referenceType, referenceId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Sessão de contagem/inventário físico
+model InventoryCount {
+  id             String               @id @default(cuid())
+  organizationId String
+  locationId     String
+  status         InventoryCountStatus @default(DRAFT)
+  startedBy      String               // userId
+  note           String?
+
+  startedAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location             @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  items        InventoryCountItem[]
+
+  @@index([organizationId])
+  @@index([locationId])
+  @@index([status])
+}
+
+// Item contado em uma sessão de inventário
+model InventoryCountItem {
+  id        String  @id @default(cuid())
+  countId   String
+  productId String
+  variantId String?
+  lotId     String?
+
+  systemQuantity  Decimal  @db.Decimal(10, 3) // saldo no sistema no momento
+  countedQuantity Decimal? @db.Decimal(10, 3) // contado fisicamente (null = não contado)
+  // divergence = countedQuantity - systemQuantity (calculada)
+
+  adjustmentMovementId String? // movimento de acerto gerado ao fechar (RN-E13)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  count   InventoryCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id])
+
+  @@unique([countId, productId, variantId, lotId])
+  @@index([countId])
+  @@index([productId])
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -362,12 +1054,10 @@ model UserPreferences {
   id     String @id @default(cuid())
   userId String @unique
 
-  // Base do futuro scope switcher
-  activeScopeType String? // organization | location | channel
+  activeScopeType String?
   activeScopeId   String?
-
-  theme  String @default("system")
-  locale String @default("pt-BR")
+  theme           String  @default("system")
+  locale          String  @default("pt-BR")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -379,7 +1069,7 @@ model AuditLog {
   id             String  @id @default(cuid())
   organizationId String?
   actorId        String?
-  action         String // ex: organization.created, capability.enabled
+  action         String
   resourceType   String
   resourceId     String?
   before         Json?
@@ -396,4 +1086,597 @@ model AuditLog {
   @@index([actorId])
   @@index([resourceType, resourceId])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// ENUMS — Etapa 4 (Vendas + Canais + Pagamento)
+// ─────────────────────────────────────────────────────────────────────
+
+enum OrderChannel {
+  POS           // PDV operado (caixa)
+  SELF_SERVICE  // autônomo / kiosk
+  IFOOD
+  WHATSAPP
+  MERCADO_LIVRE
+}
+
+enum OrderStatus {
+  DRAFT      // carrinho aberto / comanda
+  CONFIRMED  // confirmado, estoque reservado
+  PAID       // pagamento confirmado
+  FULFILLED  // separado / expedido
+  COMPLETED  // entregue / concluído
+  CANCELED   // cancelado (imutável)
+}
+
+enum PaymentMethod {
+  CASH         // dinheiro
+  PIX_MANUAL   // Pix sem QR (manual)
+  PIX_DYNAMIC  // Pix QR dinâmico (webhook adquirente)
+  CARD_PRESENT // cartão presente (maquininha)
+  CARD_ONLINE  // cartão online (tokenizado)
+  VOUCHER      // vale / crédito interno
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+  FAILED
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  OPEN    // abertura
+  CLOSE   // fechamento
+  BLEED   // sangria
+  SUPPLY  // suprimento
+}
+
+enum ChannelStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+  DEAD
+}
+
+enum MlLogisticMode {
+  FULL     // estoque e entrega ML
+  FLEX     // entrega própria, MarketOS faz fulfillment
+  CLASSIC  // retira ou entrega por conta
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// VENDAS — Etapa 4
+// ─────────────────────────────────────────────────────────────────────
+
+// Cliente identificado (obrigatório em SELF_SERVICE — RN-V14)
+model Customer {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String?
+  document       String? // CPF (PII)
+  phone          String? // (PII)
+  email          String? // (PII)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  invoices     Invoice[]   // Etapa 5
+
+  @@index([organizationId])
+  @@index([organizationId, document])
+  @@index([organizationId, phone])
+}
+
+// Pedido — agregador genérico; canal é adapter (RN-V01)
+model Order {
+  id             String       @id @default(cuid())
+  organizationId String
+  locationId     String
+  channel        OrderChannel
+  status         OrderStatus  @default(DRAFT)
+  customerId     String?
+  cashSessionId  String?
+
+  subtotal      Decimal @db.Decimal(10, 2) @default(0)
+  discountTotal Decimal @db.Decimal(10, 2) @default(0)
+  total         Decimal @db.Decimal(10, 2) @default(0)
+
+  // Idempotência dupla (RN-V09)
+  idempotencyKey String? // interno — @@unique abaixo
+  externalId     String? // id do pedido no canal externo
+
+  // Dados específicos do canal (endereço entrega, etc.)
+  channelMetadata Json?
+
+  canceledReason String?
+  canceledAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location      Location             @relation(fields: [locationId], references: [id])
+  customer      Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cashSession   CashSession?         @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  payments      Payment[]
+  invoice       Invoice?          // Etapa 5
+
+  // NULL values in PG unique constraints are treated as distinct — múltiplos NULLs OK
+  @@unique([organizationId, channel, externalId])
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, channel])
+  @@index([locationId])
+  @@index([customerId])
+  @@index([cashSessionId])
+  @@index([createdAt])
+}
+
+// Item de pedido — SNAPSHOT imutável (RN-V03)
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+
+  // Referência fraca ao produto (para relatórios)
+  productId String?
+  variantId String?
+
+  // SNAPSHOT congelado no momento da venda
+  productNameSnapshot String
+  skuSnapshot         String?
+  unitSnapshot        String?
+  unitPriceSnapshot   Decimal  @db.Decimal(10, 2)
+  costSnapshot        Decimal? @db.Decimal(10, 4)
+  taxSnapshot         Json?    // {ncm, cst, pisCst, cofinsRate, ...}
+  productTypeSnapshot String   @default("SIMPLE")
+
+  quantity       Decimal @db.Decimal(10, 3)
+  discountAmount Decimal @db.Decimal(10, 2) @default(0)
+  lineTotal      Decimal @db.Decimal(10, 2)
+
+  isKit Boolean @default(false) // true = componentes explodidos no estoque (RN-V10)
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// Histórico imutável de transições de estado
+model OrderStatusHistory {
+  id         String       @id @default(cuid())
+  orderId    String
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  actorId    String?
+  source     String       @default("INTERNAL") // INTERNAL/IFOOD/ML/WHATSAPP/PAYMENT
+  reason     String?
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// Pagamento — via adapter de adquirente (RN-V11)
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+
+  method            PaymentMethod
+  provider          String?       // "pagarme" | "stone" | "mercadopago"
+  amount            Decimal       @db.Decimal(10, 2)
+  receivedAmount    Decimal?      @db.Decimal(10, 2) // dinheiro recebido
+  changeAmount      Decimal?      @db.Decimal(10, 2) // troco
+  status            PaymentStatus @default(PENDING)
+  externalPaymentId String?       // id na adquirente
+  pixQrCode         String?       // QR copia-e-cola
+  pixQrCodeUrl      String?       // QR imagem (data URL)
+  pixExpiresAt      DateTime?
+
+  confirmedAt DateTime?
+  failedAt    DateTime?
+  refundedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([externalPaymentId])
+}
+
+// Sessão de caixa (só POS — RN-V14)
+model CashSession {
+  id             String            @id @default(cuid())
+  organizationId String
+  locationId     String
+  operatorId     String            // userId
+  status         CashSessionStatus @default(OPEN)
+
+  openingAmount Decimal  @db.Decimal(10, 2) // fundo de troco
+  closingAmount Decimal? @db.Decimal(10, 2) // informado no fechamento
+  systemAmount  Decimal? @db.Decimal(10, 2) // calculado pelo sistema
+  divergence    Decimal? @db.Decimal(10, 2) // closingAmount - systemAmount
+
+  openedAt DateTime  @default(now())
+  closedAt DateTime?
+  note     String?
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location       @relation(fields: [locationId], references: [id])
+  movements    CashMovement[]
+  orders       Order[]
+
+  @@index([organizationId])
+  @@index([locationId])
+  @@index([status])
+  @@index([operatorId])
+}
+
+// Sangria / suprimento / abertura / fechamento
+model CashMovement {
+  id            String           @id @default(cuid())
+  cashSessionId String
+  type          CashMovementType
+  amount        Decimal          @db.Decimal(10, 2)
+  note          String?
+  actorId       String?
+
+  createdAt DateTime @default(now())
+
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+
+  @@index([cashSessionId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// INTEGRAÇÃO DE CANAIS — Etapa 4
+// ─────────────────────────────────────────────────────────────────────
+
+// Configuração e credenciais de canal por organização
+model ChannelIntegration {
+  id             String        @id @default(cuid())
+  organizationId String
+  channel        OrderChannel  // IFOOD | WHATSAPP | MERCADO_LIVRE
+
+  status       ChannelStatus @default(DISCONNECTED)
+  credentials  Json?         // access_token, refresh_token, expiresAt — cifrado em prod
+  settings     Json?         // {mlLogisticMode, whatsappNumber, ifoodMerchantId, ...}
+  lastSyncAt   DateTime?
+  lastErrorAt  DateTime?
+  lastErrorMsg String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  productMappings ChannelProductMapping[]
+
+  @@unique([organizationId, channel])
+  @@index([organizationId])
+  @@index([status])
+}
+
+// Mapeamento produto MarketOS ↔ id externo por canal
+model ChannelProductMapping {
+  id                   String       @id @default(cuid())
+  channelIntegrationId String
+  organizationId       String
+  productId            String
+  variantId            String?
+  channel              OrderChannel
+  externalId           String       // id no iFood/ML/WhatsApp
+  externalSku          String?
+  syncedAt             DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channelIntegration ChannelIntegration @relation(fields: [channelIntegrationId], references: [id], onDelete: Cascade)
+
+  @@unique([channelIntegrationId, productId, variantId])
+  @@unique([channelIntegrationId, externalId])
+  @@index([organizationId])
+  @@index([channel, externalId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// OUTBOX — Etapa 4 (resiliência a terceiro fora do ar — RN-V06)
+// ─────────────────────────────────────────────────────────────────────
+
+// Eventos a enviar para canais externos — processados com retry
+model OutboxEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  aggregateType  String       // "Order" | "Payment" | "ChannelIntegration"
+  aggregateId    String       // id do agregado
+  eventType      String       // "ORDER_CONFIRMED" | "PUSH_STATUS_IFOOD" | "SYNC_CATALOG"
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  priority       Int          @default(0) // maior = mais prioritário; 10 = SLA iFood (RN-V07)
+  attempts       Int          @default(0)
+  maxAttempts    Int          @default(5)
+  nextRetryAt    DateTime?
+  processedAt    DateTime?
+  lastError      String?
+  idempotencyKey String       @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status, nextRetryAt])
+  @@index([status, priority])
+  @@index([aggregateType, aggregateId])
+  @@index([createdAt])
+}
+
+// Eventos recebidos de canais (webhook/polling) — idempotência
+model InboundEvent {
+  id              String       @id @default(cuid())
+  organizationId  String
+  channel         OrderChannel
+  externalEventId String       // id único no canal externo
+  eventType       String?
+  payload         Json
+  processedAt     DateTime?
+  errorMsg        String?
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([channel, externalEventId])
+  @@index([organizationId])
+  @@index([channel])
+  @@index([processedAt])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// FISCAL — Etapa 5 (NFCe via BaaS — RN-F01)
+// ─────────────────────────────────────────────────────────────────────
+
+enum InvoiceType {
+  NFCE // Nota Fiscal de Consumidor Eletrônica
+  // NFE // futura etapa (B2B)
+}
+
+enum InvoiceStatus {
+  PENDING          // aguardando worker
+  SENDING          // enviado ao BaaS/SEFAZ, aguardando resposta
+  IN_CONTINGENCY   // SEFAZ fora; cupom emitido localmente (EPEC/SVC)
+  AUTHORIZED       // autorizada pela SEFAZ
+  REJECTED         // rejeitada pela SEFAZ (reemitível após correção)
+  DENIED           // denegada pela SEFAZ (não reemitível com mesmos dados)
+  CANCELED         // cancelada dentro do prazo (terminal)
+}
+
+enum InvoiceEventType {
+  SUBMITTED               // enviada ao BaaS
+  AUTHORIZED              // autorizada pela SEFAZ
+  REJECTED                // rejeitada
+  DENIED                  // denegada
+  CONTINGENCY_ENTERED     // entrou em contingência
+  CONTINGENCY_TRANSMITTED // transmitida após SEFAZ voltar
+  CANCEL_REQUESTED        // cancelamento solicitado
+  CANCELED                // cancelada
+  INUTILIZED              // número inutilizado (InvoiceNumberSkip)
+  RETRY_SCHEDULED         // retry agendado
+}
+
+enum InvoiceEventSource {
+  INTERNAL         // ação da lib interna
+  WORKER           // disparado pelo worker do Outbox
+  PROVIDER_WEBHOOK // webhook do BaaS (Focus/TecnoSpeed)
+  MANUAL           // ação manual de admin
+}
+
+enum FiscalEnvironment {
+  HOMOLOGATION // sandbox do BaaS — notas sem validade fiscal
+  PRODUCTION   // produção real — notas com validade fiscal
+}
+
+enum FiscalProviderEnum {
+  FOCUS_NFE   // Focus NFe (Acras Tecnologia)
+  TECNOSPEED  // TecnoSpeed
+}
+
+enum ContingencyMode {
+  EPEC // Emissão em Contingência via EPEC
+  SVC  // Sefaz Virtual de Contingência
+}
+
+enum NumberSkipStatus {
+  REQUESTED  // solicitação criada
+  INUTILIZED // inutilizada com sucesso
+  REJECTED   // rejeitada pelo BaaS/SEFAZ
+}
+
+// Nota fiscal eletrônica (NFCe) — uma por pedido (RN-F03)
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  locationId     String
+  orderId        String        @unique // uma nota por pedido — idempotência (RN-F03)
+  customerId     String?
+
+  type   InvoiceType   @default(NFCE)
+  status InvoiceStatus @default(PENDING)
+
+  // Numeração SEFAZ (atribuída na autorização)
+  series  Int     @default(1)
+  number  Int?    // número sequencial do BaaS/SEFAZ
+
+  // Chaves de autorização
+  accessKey String?  // chave 44 dígitos
+  protocol  String?  // protocolo de autorização SEFAZ
+
+  // Timestamps de lifecycle
+  issuedAt     DateTime?
+  authorizedAt DateTime?
+  canceledAt   DateTime?
+
+  // Valores fiscais
+  totalAmount Decimal @db.Decimal(10, 2) @default(0)
+  totalTax    Decimal @db.Decimal(10, 2) @default(0)
+
+  // BaaS
+  provider          FiscalProviderEnum
+  providerInvoiceId String?    // id no BaaS — único por provider+org
+  xmlIssued         String?    @db.Text // XML autorizado (≤ 512KB)
+  xmlCanceled       String?    @db.Text // XML de cancelamento
+  qrCode            String?    // URL/payload do QR Code
+  danfeUrl          String?    // URL do DANFE/PDF
+
+  // Rejeição
+  rejectionReason String?
+  rejectionCode   String?    // código SEFAZ (ex: "539", "999")
+
+  // Cancelamento
+  cancelReason   String?
+  cancelDeadline DateTime?  // prazo para cancelar (calculado de authorizedAt)
+
+  // Contingência
+  contingencyMode ContingencyMode?
+
+  // Idempotência + retry
+  idempotencyKey  String   @unique // geralmente orderId
+  attemptCount    Int      @default(0)
+  lastAttemptAt   DateTime?
+  nextRetryAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location      @relation(fields: [locationId], references: [id])
+  order        Order         @relation(fields: [orderId], references: [id])
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  events       InvoiceEvent[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, accessKey])
+  @@index([organizationId, number])
+  @@index([provider, providerInvoiceId])
+  @@index([createdAt])
+}
+
+// Trilha imutável de eventos — evidência legal (RN-F16)
+model InvoiceEvent {
+  id        String             @id @default(cuid())
+  invoiceId String
+  eventType InvoiceEventType
+  fromStatus InvoiceStatus?
+  toStatus   InvoiceStatus
+  actorId    String?           // null = sistema/webhook
+  source     InvoiceEventSource @default(INTERNAL)
+  providerResponse Json?       // payload bruto do BaaS (auditoria, nunca expor na UI padrão)
+  note       String?
+
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([createdAt])
+}
+
+// Certificado A1 do cliente — cifrado (RN-F08)
+model FiscalCertificate {
+  id             String  @id @default(cuid())
+  organizationId String  @unique // um certificado ativo por org
+
+  subject           String    // CNPJ do titular do certificado
+  validFrom         DateTime
+  validTo           DateTime
+  encryptedPfx      Bytes     // .pfx cifrado (AES-256-GCM)
+  encryptedPassword Bytes     // senha cifrada
+  iv                Bytes     // IV da cifra (salvo junto)
+
+  isActive   Boolean   @default(true)
+  uploadedBy String    // userId de quem fez upload
+  uploadedAt DateTime  @default(now())
+  revokedAt  DateTime?
+  revokedBy  String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// Configuração fiscal por organização
+model FiscalConfig {
+  id             String @id @default(cuid())
+  organizationId String @unique
+
+  environment  FiscalEnvironment  @default(HOMOLOGATION)
+  provider     FiscalProviderEnum @default(FOCUS_NFE)
+
+  // NFCe
+  nfceSeries   Int     @default(1)
+  nfceCscId    String? // ID do CSC (Código de Segurança do Contribuinte)
+  nfceCscToken Bytes?  // CSC cifrado
+
+  // Credenciais do BaaS — cifradas
+  providerCredentials Bytes? // JSON cifrado {token, cnpj, ...}
+
+  // Estado da configuração
+  homologationTestedAt DateTime? // quando emitiu com sucesso em homologação
+  promotedAt           DateTime? // quando promoveu para produção
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// Inutilização de numeração — compliance SEFAZ (RN-F15)
+model InvoiceNumberSkip {
+  id             String           @id @default(cuid())
+  organizationId String
+  series         Int
+  numberStart    Int
+  numberEnd      Int
+  reason         String
+  status         NumberSkipStatus @default(REQUESTED)
+  requestedBy    String           // userId
+  requestedAt    DateTime         @default(now())
+  processedAt    DateTime?
+  providerResponse Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, series])
 }

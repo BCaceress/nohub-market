@@ -1,19 +1,18 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SignInForm } from "@/features/auth/signin-form";
 import { Suspense } from "react";
 
 export default function SignInPage() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Entrar</CardTitle>
-        <CardDescription>Acesse sua conta NoHub Market.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Suspense>
-          <SignInForm />
-        </Suspense>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-7">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Bem‑vindo de volta</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Entre na sua conta para continuar
+        </p>
+      </div>
+      <Suspense>
+        <SignInForm />
+      </Suspense>
+    </div>
   );
 }
