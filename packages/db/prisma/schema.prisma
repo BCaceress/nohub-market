@@ -2197,6 +2197,11 @@ model NfeImport {
 
 // ── Tags de produto — biblioteca por organização (RN-T01) ────────────────
 
+enum TagScope {
+  SUBCATEGORY  // tag contextual — caracteriza uma subcategoria (gelado, vegano, artesanal)
+  PRODUCT      // atributo de SKU — específico do produto (350ml, lata, long-neck)
+}
+
 model Tag {
   id             String   @id @default(cuid())
   organizationId String
@@ -2205,6 +2210,7 @@ model Tag {
   group          String   @default("geral")
   color          String?
   description    String?
+  scope          TagScope @default(PRODUCT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

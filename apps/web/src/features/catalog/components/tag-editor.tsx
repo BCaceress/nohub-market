@@ -28,28 +28,33 @@ import {
 
 /* ── Grupos ──────────────────────────────────────────────────── */
 
-export const TAG_GROUPS: { id: string; label: string; color: string }[] = [
-  { id: "tipo", label: "Tipo de produto", color: "#3b82f6" },
-  { id: "volume", label: "Tamanho / Volume", color: "#8b5cf6" },
-  { id: "temperatura", label: "Temperatura", color: "#06b6d4" },
-  { id: "dieta", label: "Dieta / Alimentação", color: "#10b981" },
-  { id: "publico", label: "Público", color: "#f59e0b" },
-  { id: "ocasiao", label: "Ocasião", color: "#ec4899" },
-  { id: "comercial", label: "Comercial", color: "#ef4444" },
-  { id: "operacional", label: "Operacional", color: "#64748b" },
-  { id: "bebidas-alcoolicas", label: "Bebidas Alcoólicas", color: "#f97316" },
-  { id: "energeticos", label: "Energéticos / Suplementos", color: "#84cc16" },
-  { id: "ia", label: "IA / Recomendação", color: "#a855f7" },
-  { id: "sazonalidade", label: "Sazonalidade", color: "#0ea5e9" },
-  { id: "localizacao", label: "Localização Interna", color: "#78716c" },
-  { id: "marketplace", label: "Marketplace / App", color: "#14b8a6" },
-  { id: "geral", label: "Geral", color: "#94a3b8" },
+export const TAG_GROUPS: {
+  id: string;
+  label: string;
+  color: string;
+  scope: "SUBCATEGORY" | "PRODUCT";
+}[] = [
+  { id: "tipo", label: "Embalagem / Formato", color: "#3b82f6", scope: "PRODUCT" },
+  { id: "volume", label: "Tamanho / Volume", color: "#8b5cf6", scope: "PRODUCT" },
+  { id: "temperatura", label: "Temperatura", color: "#06b6d4", scope: "SUBCATEGORY" },
+  { id: "dieta", label: "Dieta / Alimentação", color: "#10b981", scope: "SUBCATEGORY" },
+  { id: "publico", label: "Público", color: "#f59e0b", scope: "SUBCATEGORY" },
+  { id: "ocasiao", label: "Ocasião", color: "#ec4899", scope: "SUBCATEGORY" },
+  { id: "comercial", label: "Comercial", color: "#ef4444", scope: "PRODUCT" },
+  { id: "operacional", label: "Operacional", color: "#64748b", scope: "PRODUCT" },
+  { id: "bebidas-alcoolicas", label: "Bebidas Alcoólicas", color: "#f97316", scope: "SUBCATEGORY" },
+  { id: "energeticos", label: "Energéticos / Suplementos", color: "#84cc16", scope: "SUBCATEGORY" },
+  { id: "ia", label: "IA / Recomendação", color: "#a855f7", scope: "SUBCATEGORY" },
+  { id: "sazonalidade", label: "Sazonalidade", color: "#0ea5e9", scope: "SUBCATEGORY" },
+  { id: "localizacao", label: "Localização Interna", color: "#78716c", scope: "PRODUCT" },
+  { id: "marketplace", label: "Marketplace / App", color: "#14b8a6", scope: "PRODUCT" },
+  { id: "geral", label: "Geral", color: "#94a3b8", scope: "PRODUCT" },
 ];
 
 /* ── Sugestões pré-definidas ─────────────────────────────────── */
 
 const TAG_SUGGESTIONS: { name: string; group: string }[] = [
-  // Tipo de produto
+  // Embalagem / Formato
   { name: "lata", group: "tipo" },
   { name: "garrafa", group: "tipo" },
   { name: "pet", group: "tipo" },
@@ -172,8 +177,11 @@ type TagItem = {
   group: string;
   color: string | null;
   description: string | null;
+  scope: "SUBCATEGORY" | "PRODUCT";
   _count: { products: number };
 };
+
+type ScopeFilter = "ALL" | "SUBCATEGORY" | "PRODUCT";
 
 interface Props {
   organizationId: string;
@@ -190,6 +198,22 @@ function groupLabel(groupId: string) {
   return TAG_GROUPS.find((g) => g.id === groupId)?.label ?? groupId;
 }
 
+function groupScope(groupId: string): "SUBCATEGORY" | "PRODUCT" {
+  return TAG_GROUPS.find((g) => g.id === groupId)?.scope ?? "PRODUCT";
+}
+
+function ScopeBadge({ scope }: { scope: "SUBCATEGORY" | "PRODUCT" }) {
+  return scope === "SUBCATEGORY" ? (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+      Subcategoria
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+      Produto
+    </span>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────────── */
 
 export function TagEditor({ organizationId, tags: initial }: Props) {
@@ -197,12 +221,19 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
   const [tags, setTags] = useState<TagItem[]>(initial);
   const [search, setSearch] = useState("");
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("ALL");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // Tag dialog
   const [tagDialog, setTagDialog] = useState(false);
   const [editingTag, setEditingTag] = useState<TagItem | null>(null);
-  const [tagForm, setTagForm] = useState({ name: "", group: "geral", color: "", description: "" });
+  const [tagForm, setTagForm] = useState<{
+    name: string;
+    group: string;
+    color: string;
+    description: string;
+    scope: "SUBCATEGORY" | "PRODUCT";
+  }>({ name: "", group: "geral", color: "", description: "", scope: "PRODUCT" });
 
   // Suggestions dialog
   const [suggestDialog, setSuggestDialog] = useState(false);
@@ -219,9 +250,10 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
         t.name.toLowerCase().includes(search.toLowerCase()) ||
         t.group.toLowerCase().includes(search.toLowerCase());
       const matchesGroup = !activeGroup || t.group === activeGroup;
-      return matchesSearch && matchesGroup;
+      const matchesScope = scopeFilter === "ALL" || t.scope === scopeFilter;
+      return matchesSearch && matchesGroup && matchesScope;
     });
-  }, [tags, search, activeGroup]);
+  }, [tags, search, activeGroup, scopeFilter]);
 
   const tagsByGroup = useMemo(() => {
     const grouped = new Map<string, TagItem[]>();
@@ -241,11 +273,18 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
     return counts;
   }, [tags]);
 
+  const scopeCounts = useMemo(() => {
+    const sub = tags.filter((t) => t.scope === "SUBCATEGORY").length;
+    const prod = tags.filter((t) => t.scope === "PRODUCT").length;
+    return { SUBCATEGORY: sub, PRODUCT: prod };
+  }, [tags]);
+
   /* ── Tag CRUD ──────────────────────────────────────────────── */
 
   function openNew() {
     setEditingTag(null);
-    setTagForm({ name: "", group: activeGroup ?? "geral", color: "", description: "" });
+    const grp = activeGroup ?? "geral";
+    setTagForm({ name: "", group: grp, color: "", description: "", scope: groupScope(grp) });
     setTagDialog(true);
   }
 
@@ -256,6 +295,7 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
       group: tag.group,
       color: tag.color ?? "",
       description: tag.description ?? "",
+      scope: tag.scope,
     });
     setTagDialog(true);
   }
@@ -268,6 +308,7 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
         group: tagForm.group,
         color: tagForm.color || undefined,
         description: tagForm.description || undefined,
+        scope: tagForm.scope,
       };
 
       const result = editingTag
@@ -411,9 +452,35 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
       </div>
 
       {/* Layout 2 colunas */}
-      <div className="grid gap-4 lg:grid-cols-[200px_1fr]">
-        {/* Sidebar: grupos */}
+      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+        {/* Sidebar: grupos + scope filter */}
         <div className="flex flex-col gap-1">
+          {/* Scope filter */}
+          <div className="flex rounded-lg border border-border overflow-hidden mb-2 text-xs font-medium">
+            {(["ALL", "SUBCATEGORY", "PRODUCT"] as ScopeFilter[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setScopeFilter(s)}
+                className={`flex-1 py-1.5 transition-colors ${
+                  scopeFilter === s
+                    ? s === "SUBCATEGORY"
+                      ? "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400"
+                      : s === "PRODUCT"
+                        ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                        : "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {s === "ALL"
+                  ? `Todos (${totalCount})`
+                  : s === "SUBCATEGORY"
+                    ? `Subcat. (${scopeCounts.SUBCATEGORY})`
+                    : `Produto (${scopeCounts.PRODUCT})`}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
             onClick={() => setActiveGroup(null)}
@@ -423,12 +490,7 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
                 : "hover:bg-muted text-muted-foreground"
             }`}
           >
-            <span>Todos</span>
-            <span
-              className={`text-xs rounded-full px-1.5 py-0.5 ${activeGroup === null ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-            >
-              {totalCount}
-            </span>
+            <span>Todos os grupos</span>
           </button>
           {TAG_GROUPS.filter((g) => groupsWithCounts.has(g.id)).map((g) => (
             <button
@@ -444,17 +506,26 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
                   : undefined
               }
             >
-              <span className="truncate">{g.label}</span>
-              <span
-                className="text-xs rounded-full px-1.5 py-0.5 bg-muted shrink-0 ml-1"
-                style={
-                  activeGroup === g.id
-                    ? { backgroundColor: `${g.color}30`, color: g.color }
-                    : undefined
-                }
-              >
-                {groupsWithCounts.get(g.id) ?? 0}
-              </span>
+              <span className="truncate flex-1 text-left">{g.label}</span>
+              <div className="flex items-center gap-1 shrink-0 ml-1">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{
+                    backgroundColor: g.scope === "SUBCATEGORY" ? "#06b6d4" : "#a855f7",
+                  }}
+                  title={g.scope === "SUBCATEGORY" ? "Subcategoria" : "Produto"}
+                />
+                <span
+                  className="text-xs rounded-full px-1.5 py-0.5 bg-muted"
+                  style={
+                    activeGroup === g.id
+                      ? { backgroundColor: `${g.color}30`, color: g.color }
+                      : undefined
+                  }
+                >
+                  {groupsWithCounts.get(g.id) ?? 0}
+                </span>
+              </div>
             </button>
           ))}
         </div>
@@ -515,6 +586,7 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
             <div className="rounded-xl border border-border overflow-hidden bg-card">
               {Array.from(tagsByGroup.entries()).map(([groupId, groupTags]) => {
                 const gColor = groupColor(groupId);
+                const gScope = groupScope(groupId);
                 const isCollapsed = collapsedGroups.has(groupId);
 
                 return (
@@ -537,7 +609,8 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">
                         {groupLabel(groupId)}
                       </span>
-                      <span className="text-xs text-muted-foreground">{groupTags.length}</span>
+                      <ScopeBadge scope={gScope} />
+                      <span className="text-xs text-muted-foreground ml-1">{groupTags.length}</span>
                     </button>
 
                     {/* Tags */}
@@ -628,7 +701,10 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
               <Label>Grupo</Label>
               <select
                 value={tagForm.group}
-                onChange={(e) => setTagForm((f) => ({ ...f, group: e.target.value }))}
+                onChange={(e) => {
+                  const grp = e.target.value;
+                  setTagForm((f) => ({ ...f, group: grp, scope: groupScope(grp) }));
+                }}
                 className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
                 {TAG_GROUPS.map((g) => (
@@ -637,6 +713,43 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Scope toggle */}
+            <div className="flex flex-col gap-1.5">
+              <Label>
+                Escopo{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (derivado do grupo, pode ajustar)
+                </span>
+              </Label>
+              <div className="flex rounded-lg border border-input overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setTagForm((f) => ({ ...f, scope: "SUBCATEGORY" }))}
+                  className={`flex-1 py-2 px-3 transition-colors text-left ${
+                    tagForm.scope === "SUBCATEGORY"
+                      ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 font-medium"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <span className="block text-xs font-semibold">Subcategoria</span>
+                  <span className="block text-[10px] opacity-70">Contextual (gelado, vegano)</span>
+                </button>
+                <div className="w-px bg-border" />
+                <button
+                  type="button"
+                  onClick={() => setTagForm((f) => ({ ...f, scope: "PRODUCT" }))}
+                  className={`flex-1 py-2 px-3 transition-colors text-left ${
+                    tagForm.scope === "PRODUCT"
+                      ? "bg-violet-500/15 text-violet-700 dark:text-violet-400 font-medium"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <span className="block text-xs font-semibold">Produto</span>
+                  <span className="block text-[10px] opacity-70">Atributo SKU (350ml, lata)</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -755,6 +868,7 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
             ) : (
               Array.from(suggestionsByGroup.entries()).map(([groupId, groupSuggestions]) => {
                 const gColor = groupColor(groupId);
+                const gScope = groupScope(groupId);
                 return (
                   <div key={groupId} className="border-b border-border last:border-0">
                     <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 sticky top-0">
@@ -762,10 +876,11 @@ export function TagEditor({ organizationId, tags: initial }: Props) {
                         className="h-2 w-2 rounded-full shrink-0"
                         style={{ backgroundColor: gColor }}
                       />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">
                         {groupLabel(groupId)}
                       </span>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <ScopeBadge scope={gScope} />
+                      <span className="text-xs text-muted-foreground ml-1">
                         {groupSuggestions.length}
                       </span>
                     </div>

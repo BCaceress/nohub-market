@@ -40,7 +40,13 @@ export default async function NewProductPage() {
         organizationId={member.organizationId}
         categories={categories as never}
         suppliers={suppliers}
-        allTags={allTags.map((t) => ({ id: t.id, name: t.name, group: t.group, color: t.color }))}
+        allTags={allTags.map((t) => ({
+          id: t.id,
+          name: t.name,
+          group: t.group,
+          color: t.color,
+          scope: t.scope as "SUBCATEGORY" | "PRODUCT",
+        }))}
         taxRegime={org?.taxRegime ?? null}
       />
     </div>

@@ -161,7 +161,13 @@ type TaxDefault = {
   unitTaxable: boolean;
 } | null;
 
-export type TagOption = { id: string; name: string; group: string; color: string | null };
+export type TagOption = {
+  id: string;
+  name: string;
+  group: string;
+  color: string | null;
+  scope: "SUBCATEGORY" | "PRODUCT";
+};
 
 type Category = {
   id: string;
@@ -823,12 +829,14 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
               </div>
             )}
 
-            {/* Tags padrão */}
-            {allTags.length > 0 && (
+            {/* Tags padrão — apenas tags de escopo SUBCATEGORY */}
+            {allTags.filter((t) => t.scope === "SUBCATEGORY").length > 0 && (
               <div className="flex flex-col gap-2">
                 <Label>Tags padrão</Label>
                 <p className="text-xs text-muted-foreground -mt-1">
-                  Produtos desta categoria recebem essas tags automaticamente ao ser criados.
+                  Tags contextuais (temperatura, dieta, público…) associadas automaticamente aos
+                  produtos desta categoria. Tags de SKU (embalagem, volume) são definidas por
+                  produto.
                 </p>
 
                 {/* Tags selecionadas */}
@@ -886,6 +894,7 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
                     {allTags
                       .filter(
                         (t) =>
+                          t.scope === "SUBCATEGORY" &&
                           !catForm.tagIds.includes(t.id) &&
                           (tagSearch === "" ||
                             t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
@@ -918,15 +927,17 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
                       ))}
                     {allTags.filter(
                       (t) =>
+                        t.scope === "SUBCATEGORY" &&
                         !catForm.tagIds.includes(t.id) &&
                         (tagSearch === "" ||
                           t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
                           t.group.toLowerCase().includes(tagSearch.toLowerCase())),
                     ).length === 0 && (
                       <p className="text-xs text-muted-foreground px-1 py-1">
-                        {catForm.tagIds.length === allTags.length
-                          ? "Todas as tags já foram adicionadas."
-                          : "Nenhuma tag encontrada."}
+                        {catForm.tagIds.length >=
+                        allTags.filter((t) => t.scope === "SUBCATEGORY").length
+                          ? "Todas as tags contextuais já foram adicionadas."
+                          : "Nenhuma tag contextual encontrada."}
                       </p>
                     )}
                   </div>

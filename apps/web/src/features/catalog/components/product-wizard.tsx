@@ -32,7 +32,13 @@ import type { ProductInput } from "../schemas";
 
 /* ── Constants ──────────────────────────────────────────────── */
 
-type TagData = { id: string; name: string; group: string; color: string | null };
+type TagData = {
+  id: string;
+  name: string;
+  group: string;
+  color: string | null;
+  scope?: "SUBCATEGORY" | "PRODUCT";
+};
 type TagEntry = {
   tagId: string;
   source: "category" | "manual";

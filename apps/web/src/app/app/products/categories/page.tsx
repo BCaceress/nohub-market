@@ -86,6 +86,7 @@ export default async function CategoriesPage() {
               name: t.name,
               group: t.group,
               color: t.color,
+              scope: t.scope as "SUBCATEGORY" | "PRODUCT",
             }))}
             taxRegime={org?.taxRegime ?? null}
           />

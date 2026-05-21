@@ -58,6 +58,7 @@ export default async function TagsPage() {
             group: string;
             color: string | null;
             description: string | null;
+            scope: "SUBCATEGORY" | "PRODUCT";
             _count: { products: number };
           }[]
         }

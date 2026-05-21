@@ -30,11 +30,34 @@ function generateSlug(name: string): string {
 
 /* ── Schemas ─────────────────────────────────────────────────── */
 
+/* ── Scope map — derivado do grupo ──────────────────────────── */
+
+const SCOPE_BY_GROUP: Record<string, "SUBCATEGORY" | "PRODUCT"> = {
+  tipo: "PRODUCT",
+  volume: "PRODUCT",
+  temperatura: "SUBCATEGORY",
+  dieta: "SUBCATEGORY",
+  publico: "SUBCATEGORY",
+  ocasiao: "SUBCATEGORY",
+  comercial: "PRODUCT",
+  operacional: "PRODUCT",
+  "bebidas-alcoolicas": "SUBCATEGORY",
+  energeticos: "SUBCATEGORY",
+  ia: "SUBCATEGORY",
+  sazonalidade: "SUBCATEGORY",
+  localizacao: "PRODUCT",
+  marketplace: "PRODUCT",
+  geral: "PRODUCT",
+};
+
+/* ── Schemas ─────────────────────────────────────────────────── */
+
 const tagSchema = z.object({
   name: z.string().min(1).max(60),
   group: z.string().min(1).max(50).default("geral"),
   color: z.string().optional(),
   description: z.string().optional(),
+  scope: z.enum(["SUBCATEGORY", "PRODUCT"]).optional(),
 });
 
 const bulkTagSchema = z.object({
@@ -74,7 +97,7 @@ export async function createTagAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, group, color, description } = parsed.data;
+  const { name, group, color, description, scope } = parsed.data;
   const baseSlug = generateSlug(name);
 
   const exists = await prisma.tag.findFirst({ where: { organizationId, slug: baseSlug } });
@@ -88,6 +111,7 @@ export async function createTagAction(
       group,
       color: color || null,
       description: description || null,
+      scope: scope ?? SCOPE_BY_GROUP[group] ?? "PRODUCT",
     },
   });
 
@@ -136,9 +160,21 @@ export async function bulkCreateTagsAction(
       const slug = generateSlug(t.name);
       if (existingSlugs.has(slug)) return null;
       existingSlugs.add(slug);
-      return { organizationId, name: t.name, slug, group: t.group };
+      return {
+        organizationId,
+        name: t.name,
+        slug,
+        group: t.group,
+        scope: SCOPE_BY_GROUP[t.group] ?? ("PRODUCT" as const),
+      };
     })
-    .filter(Boolean) as { organizationId: string; name: string; slug: string; group: string }[];
+    .filter(Boolean) as {
+    organizationId: string;
+    name: string;
+    slug: string;
+    group: string;
+    scope: "SUBCATEGORY" | "PRODUCT";
+  }[];
 
   if (toCreate.length === 0) return { success: true, data: { count: 0 } };
 
@@ -167,11 +203,17 @@ export async function updateTagAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, group, color, description } = parsed.data;
+  const { name, group, color, description, scope } = parsed.data;
 
   await prisma.tag.updateMany({
     where: { id: tagId, organizationId },
-    data: { name, group, color: color || null, description: description || null },
+    data: {
+      name,
+      group,
+      color: color || null,
+      description: description || null,
+      scope: scope ?? SCOPE_BY_GROUP[group] ?? "PRODUCT",
+    },
   });
 
   revalidatePath("/app/products/tags");

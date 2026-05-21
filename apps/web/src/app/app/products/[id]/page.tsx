@@ -99,6 +99,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               name: t.name,
               group: t.group,
               color: t.color,
+              scope: t.scope as "SUBCATEGORY" | "PRODUCT",
             }))}
             taxRegime={org?.taxRegime ?? null}
             product={product as never}
