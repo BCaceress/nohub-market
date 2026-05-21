@@ -83,6 +83,9 @@ export async function getProductAction(id: string, organizationId: string) {
       },
       prices: { orderBy: { createdAt: "asc" } },
       taxData: true,
+      productTags: {
+        include: { tag: { select: { id: true, name: true, group: true, color: true } } },
+      },
     },
   });
 }
@@ -307,7 +310,16 @@ export async function archiveProductAction(
 export async function getProductCategoriesAction(organizationId: string) {
   return prisma.category.findMany({
     where: { organizationId, deletedAt: null },
-    select: { id: true, name: true, icon: true, parentId: true, slug: true },
+    select: {
+      id: true,
+      name: true,
+      icon: true,
+      parentId: true,
+      slug: true,
+      defaultTags: {
+        include: { tag: { select: { id: true, name: true, group: true, color: true } } },
+      },
+    },
     orderBy: [{ position: "asc" }, { name: "asc" }],
   });
 }

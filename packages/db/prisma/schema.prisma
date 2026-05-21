@@ -542,6 +542,7 @@ model Category {
   children     Category[]          @relation("CategoryTree")
   products     Product[]
   taxDefault   CategoryTaxDefault?
+  defaultTags  CategoryTag[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -2210,6 +2211,7 @@ model Tag {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   products     ProductTag[]
+  categories   CategoryTag[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -2226,5 +2228,17 @@ model ProductTag {
 
   @@id([productId, tagId])
   @@index([productId])
+  @@index([tagId])
+}
+
+model CategoryTag {
+  categoryId String
+  tagId      String
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId],      references: [id], onDelete: Cascade)
+
+  @@id([categoryId, tagId])
+  @@index([categoryId])
   @@index([tagId])
 }

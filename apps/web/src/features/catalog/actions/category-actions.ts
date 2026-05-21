@@ -39,10 +39,21 @@ export async function getCategoriesAction(organizationId: string) {
         orderBy: [{ position: "asc" }, { name: "asc" }],
       },
       taxDefault: true,
+      defaultTags: {
+        include: { tag: { select: { id: true, name: true, group: true, color: true } } },
+      },
       _count: { select: { products: true } },
     },
     orderBy: [{ position: "asc" }, { name: "asc" }],
   });
+}
+
+export async function getCategoryDefaultTagsAction(categoryId: string) {
+  const rows = await prisma.categoryTag.findMany({
+    where: { categoryId },
+    include: { tag: { select: { id: true, name: true, group: true, color: true } } },
+  });
+  return rows.map((r) => r.tag);
 }
 
 export async function getCategoryAction(id: string, organizationId: string) {
@@ -235,6 +246,33 @@ export async function setCategoryTaxDefaultAction(
     resourceId: categoryId,
     after: { ncm, cest },
   });
+
+  revalidatePath("/app/products/categories");
+  return { success: true, data: null };
+}
+
+/* ── Category default tags ───────────────────────────────────── */
+
+export async function setCategoryTagsAction(
+  organizationId: string,
+  categoryId: string,
+  tagIds: string[],
+): Promise<Result<null>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
+    return { success: false, error: "Sem permissão" };
+  }
+
+  await prisma.$transaction([
+    prisma.categoryTag.deleteMany({ where: { categoryId } }),
+    prisma.categoryTag.createMany({
+      data: tagIds.map((tagId) => ({ categoryId, tagId })),
+      skipDuplicates: true,
+    }),
+  ]);
 
   revalidatePath("/app/products/categories");
   return { success: true, data: null };

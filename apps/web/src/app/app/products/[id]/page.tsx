@@ -1,16 +1,20 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
+import {
+  getProductAction,
+  getProductCategoriesAction,
+} from "@/features/catalog/actions/product-actions";
+import { getTagsAction } from "@/features/catalog/actions/tag-actions";
+import { KitEditor } from "@/features/catalog/components/kit-editor";
+import { ProductWizard } from "@/features/catalog/components/product-wizard";
+import { TaxEditor } from "@/features/catalog/components/tax-editor";
+import { VariantEditor } from "@/features/catalog/components/variant-editor";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getProductAction, getProductCategoriesAction } from "@/features/catalog/actions/product-actions";
-import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
-import { ProductWizard } from "@/features/catalog/components/product-wizard";
-import { VariantEditor } from "@/features/catalog/components/variant-editor";
-import { KitEditor } from "@/features/catalog/components/kit-editor";
-import { TaxEditor } from "@/features/catalog/components/tax-editor";
 import { ProductTabs } from "./product-tabs";
-import { Badge } from "@/components/ui/badge";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,10 +27,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   });
   if (!member) redirect("/onboarding");
 
-  const [product, categories, suppliers, org, allProducts] = await Promise.all([
+  const [product, categories, suppliers, allTags, org, allProducts] = await Promise.all([
     getProductAction(id, member.organizationId),
     getProductCategoriesAction(member.organizationId),
     getSuppliersAction(member.organizationId),
+    getTagsAction(member.organizationId),
     prisma.organization.findUnique({
       where: { id: member.organizationId },
       select: { taxRegime: true },
@@ -75,9 +80,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             {product.isActive ? "Ativo" : "Inativo"}
           </Badge>
         </div>
-        {product.sku && (
-          <p className="mt-1 text-sm text-muted-foreground">SKU: {product.sku}</p>
-        )}
+        {product.sku && <p className="mt-1 text-sm text-muted-foreground">SKU: {product.sku}</p>}
       </div>
 
       <ProductTabs
@@ -89,42 +92,58 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         dadosContent={
           <ProductWizard
             organizationId={member.organizationId}
-            categories={categories}
+            categories={categories as never}
             suppliers={suppliers}
+            allTags={allTags.map((t) => ({
+              id: t.id,
+              name: t.name,
+              group: t.group,
+              color: t.color,
+            }))}
             taxRegime={org?.taxRegime ?? null}
             product={product as never}
           />
         }
-        variantesContent={isVariant ? (
-          <VariantEditor
-            organizationId={member.organizationId}
-            productId={product.id}
-            variants={product.variants as never}
-          />
-        ) : undefined}
-        kitContent={isKit ? (
-          <KitEditor
-            organizationId={member.organizationId}
-            kitProductId={product.id}
-            components={product.kitComponents as never}
-            availableProducts={allProducts}
-          />
-        ) : undefined}
+        variantesContent={
+          isVariant ? (
+            <VariantEditor
+              organizationId={member.organizationId}
+              productId={product.id}
+              variants={product.variants as never}
+            />
+          ) : undefined
+        }
+        kitContent={
+          isKit ? (
+            <KitEditor
+              organizationId={member.organizationId}
+              kitProductId={product.id}
+              components={product.kitComponents as never}
+              availableProducts={allProducts}
+            />
+          ) : undefined
+        }
         fiscalContent={
           <div>
             <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
               <span>Fonte atual:</span>
-              <Badge variant={product.taxData.length > 0 ? "success" : product.category ? "info" : "warning"}>
+              <Badge
+                variant={
+                  product.taxData.length > 0 ? "success" : product.category ? "info" : "warning"
+                }
+              >
                 {taxSource}
               </Badge>
               {product.taxData.length === 0 && product.category && (
-                <span className="text-xs">(herdado de &quot;{product.category.name}&quot; — clique para sobrescrever)</span>
+                <span className="text-xs">
+                  (herdado de &quot;{product.category.name}&quot; — clique para sobrescrever)
+                </span>
               )}
             </div>
             <TaxEditor
               organizationId={member.organizationId}
               productId={product.id}
-              taxData={product.taxData[0] as never ?? null}
+              taxData={(product.taxData[0] as never) ?? null}
               taxRegime={org?.taxRegime ?? null}
             />
           </div>

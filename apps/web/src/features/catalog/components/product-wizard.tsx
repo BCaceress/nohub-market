@@ -11,7 +11,9 @@ import {
   Image as ImageIcon,
   Package,
   PencilLine,
+  Plus,
   RefreshCw,
+  Search,
   Sparkles,
   ToggleLeft,
   ToggleRight,
@@ -25,11 +27,26 @@ import {
   generateSkuAction,
   updateProductAction,
 } from "../actions/product-actions";
+import { setProductTagsAction } from "../actions/tag-actions";
 import type { ProductInput } from "../schemas";
 
 /* ── Constants ──────────────────────────────────────────────── */
 
-type Category = { id: string; name: string; icon: string | null; parentId: string | null };
+type TagData = { id: string; name: string; group: string; color: string | null };
+type TagEntry = {
+  tagId: string;
+  source: "category" | "manual";
+  name: string;
+  group: string;
+  color: string | null;
+};
+type Category = {
+  id: string;
+  name: string;
+  icon: string | null;
+  parentId: string | null;
+  defaultTags?: { tag: TagData }[];
+};
 type Supplier = { id: string; name: string };
 
 const PRODUCT_TYPES = [
@@ -315,12 +332,14 @@ type ExistingProduct = {
   hasAgeRestriction: boolean;
   minAge: number | null;
   expiryDays: number | null;
+  productTags?: { tag: TagData }[];
 };
 
 interface Props {
   organizationId: string;
   categories: Category[];
   suppliers: Supplier[];
+  allTags?: TagData[];
   taxRegime: string | null;
   product?: ExistingProduct;
 }
@@ -354,6 +373,7 @@ export function ProductWizard({
   organizationId,
   categories,
   suppliers,
+  allTags = [],
   taxRegime,
   product,
 }: Props) {
@@ -363,6 +383,19 @@ export function ProductWizard({
   const [formKey, setFormKey] = useState(0);
   const [skuLoading, setSkuLoading] = useState(false);
   const isEdit = !!product;
+
+  // Smart tags state
+  const [tagSearch, setTagSearch] = useState("");
+  const [productTags, setProductTags] = useState<TagEntry[]>(() => {
+    if (!product?.productTags) return [];
+    return product.productTags.map((pt) => ({
+      tagId: pt.tag.id,
+      source: "manual" as const,
+      name: pt.tag.name,
+      group: pt.tag.group,
+      color: pt.tag.color,
+    }));
+  });
 
   const [form, setForm] = useState<FormState>({
     name: product?.name ?? "",
@@ -394,6 +427,24 @@ export function ProductWizard({
   /* ── SKU auto-generation when category changes ─────────────── */
   async function handleCategoryChange(categoryId: string) {
     set({ categoryId });
+
+    // Load category default tags (replace old category tags, keep manual)
+    const cat = categories.find((c) => c.id === categoryId);
+    const catTags: TagEntry[] = (cat?.defaultTags ?? []).map((dt) => ({
+      tagId: dt.tag.id,
+      source: "category" as const,
+      name: dt.tag.name,
+      group: dt.tag.group,
+      color: dt.tag.color,
+    }));
+    setProductTags((prev) => {
+      const manual = prev.filter((t) => t.source === "manual");
+      // avoid duplicates between category tags and manual tags
+      const manualIds = new Set(manual.map((t) => t.tagId));
+      const newCatTags = catTags.filter((t) => !manualIds.has(t.tagId));
+      return [...newCatTags, ...manual];
+    });
+
     // Only auto-generate if SKU is still blank and creating a new product
     if (!isEdit && !form.sku && categoryId) {
       setSkuLoading(true);
@@ -450,12 +501,24 @@ export function ProductWizard({
         ? await updateProductAction(organizationId, product?.id ?? "", input)
         : await createProductAction(organizationId, input);
 
-      if (result.success) {
-        toast.success(isEdit ? "Produto atualizado!" : "Produto criado!");
-        if (!isEdit && result.data) router.push(`/app/products/${result.data.id}`);
-      } else {
+      if (!result.success) {
         toast.error(result.error);
+        return;
       }
+
+      const productId = isEdit
+        ? (product?.id ?? "")
+        : (result as { success: true; data: { id: string } }).data.id;
+      if (productId) {
+        await setProductTagsAction(
+          organizationId,
+          productId,
+          productTags.map((t) => t.tagId),
+        );
+      }
+
+      toast.success(isEdit ? "Produto atualizado!" : "Produto criado!");
+      if (!isEdit && productId) router.push(`/app/products/${productId}`);
     });
   }
 
@@ -627,6 +690,132 @@ export function ProductWizard({
                 className="flex w-full rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 resize-none"
               />
             </div>
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-col gap-2">
+            <Label>Tags do produto</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Tags da categoria são carregadas automaticamente. Você pode adicionar ou remover
+              qualquer tag.
+            </p>
+
+            {/* Chips de tags ativas */}
+            {productTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {productTags.map((t) => (
+                  <span
+                    key={t.tagId}
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border"
+                    style={
+                      t.color
+                        ? {
+                            backgroundColor: `${t.color}20`,
+                            borderColor: `${t.color}50`,
+                            color: t.color,
+                          }
+                        : {
+                            backgroundColor: "hsl(var(--muted))",
+                            borderColor: "hsl(var(--border))",
+                            color: "hsl(var(--foreground))",
+                          }
+                    }
+                  >
+                    {t.source === "category" && (
+                      <span className="opacity-50 text-[9px] uppercase tracking-wider mr-0.5">
+                        auto
+                      </span>
+                    )}
+                    {t.name}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProductTags((prev) => prev.filter((x) => x.tagId !== t.tagId))
+                      }
+                      className="opacity-50 hover:opacity-100 transition-opacity ml-0.5"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Busca + adicionar tags */}
+            {allTags.length > 0 && (
+              <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/20 p-2">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
+                  <input
+                    type="text"
+                    value={tagSearch}
+                    onChange={(e) => setTagSearch(e.target.value)}
+                    placeholder="Buscar e adicionar tags…"
+                    className="w-full rounded-md border border-input bg-card pl-8 pr-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-0.5">
+                  {allTags
+                    .filter(
+                      (t) =>
+                        !productTags.some((pt) => pt.tagId === t.id) &&
+                        (tagSearch === "" ||
+                          t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
+                          t.group.toLowerCase().includes(tagSearch.toLowerCase())),
+                    )
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          setProductTags((prev) => [
+                            ...prev,
+                            {
+                              tagId: tag.id,
+                              source: "manual",
+                              name: tag.name,
+                              group: tag.group,
+                              color: tag.color,
+                            },
+                          ]);
+                          setTagSearch("");
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all hover:opacity-80"
+                        style={
+                          tag.color
+                            ? {
+                                backgroundColor: `${tag.color}15`,
+                                borderColor: `${tag.color}30`,
+                                color: tag.color,
+                              }
+                            : {
+                                backgroundColor: "hsl(var(--muted))",
+                                borderColor: "hsl(var(--border))",
+                              }
+                        }
+                      >
+                        <Plus className="h-2.5 w-2.5 opacity-50" />
+                        {tag.name}
+                      </button>
+                    ))}
+                  {allTags.filter(
+                    (t) =>
+                      !productTags.some((pt) => pt.tagId === t.id) &&
+                      (tagSearch === "" ||
+                        t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
+                        t.group.toLowerCase().includes(tagSearch.toLowerCase())),
+                  ).length === 0 && (
+                    <p className="text-xs text-muted-foreground px-1 py-1">
+                      {productTags.length === allTags.length
+                        ? "Todas as tags já adicionadas."
+                        : "Nenhuma tag encontrada."}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Preço e unidade de estoque */}

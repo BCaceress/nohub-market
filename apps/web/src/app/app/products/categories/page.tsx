@@ -1,4 +1,5 @@
 import { getCategoriesAction } from "@/features/catalog/actions/category-actions";
+import { getTagsAction } from "@/features/catalog/actions/tag-actions";
 import { CategoryEditor } from "@/features/catalog/components/category-editor";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
@@ -18,8 +19,9 @@ export default async function CategoriesPage() {
   });
   if (!member) redirect("/onboarding");
 
-  const [categories, org] = await Promise.all([
+  const [categories, allTags, org] = await Promise.all([
     getCategoriesAction(member.organizationId),
+    getTagsAction(member.organizationId),
     prisma.organization.findUnique({
       where: { id: member.organizationId },
       select: { taxRegime: true },
@@ -79,6 +81,12 @@ export default async function CategoriesPage() {
           <CategoryEditor
             organizationId={member.organizationId}
             categories={categories as never}
+            allTags={allTags.map((t) => ({
+              id: t.id,
+              name: t.name,
+              group: t.group,
+              color: t.color,
+            }))}
             taxRegime={org?.taxRegime ?? null}
           />
         </div>

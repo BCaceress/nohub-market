@@ -1,9 +1,10 @@
+import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
+import { getProductCategoriesAction } from "@/features/catalog/actions/product-actions";
+import { getTagsAction } from "@/features/catalog/actions/tag-actions";
+import { ProductWizard } from "@/features/catalog/components/product-wizard";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
-import { getProductCategoriesAction } from "@/features/catalog/actions/product-actions";
-import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
-import { ProductWizard } from "@/features/catalog/components/product-wizard";
 
 export const metadata = { title: "Novo produto — NoHub Market" };
 
@@ -17,9 +18,10 @@ export default async function NewProductPage() {
   });
   if (!member) redirect("/onboarding");
 
-  const [categories, suppliers, org] = await Promise.all([
+  const [categories, suppliers, allTags, org] = await Promise.all([
     getProductCategoriesAction(member.organizationId),
     getSuppliersAction(member.organizationId),
+    getTagsAction(member.organizationId),
     prisma.organization.findUnique({
       where: { id: member.organizationId },
       select: { taxRegime: true },
@@ -36,8 +38,9 @@ export default async function NewProductPage() {
       </div>
       <ProductWizard
         organizationId={member.organizationId}
-        categories={categories}
+        categories={categories as never}
         suppliers={suppliers}
+        allTags={allTags.map((t) => ({ id: t.id, name: t.name, group: t.group, color: t.color }))}
         taxRegime={org?.taxRegime ?? null}
       />
     </div>

@@ -44,6 +44,7 @@ import {
   Plus,
   Salad,
   Sandwich,
+  Search,
   Shield,
   ShoppingBag,
   ShoppingCart,
@@ -54,6 +55,7 @@ import {
   Utensils,
   Wheat,
   Wine,
+  X,
   Zap,
 } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
@@ -61,6 +63,7 @@ import { toast } from "sonner";
 import {
   createCategoryAction,
   deleteCategoryAction,
+  setCategoryTagsAction,
   setCategoryTaxDefaultAction,
   updateCategoryAction,
 } from "../actions/category-actions";
@@ -158,6 +161,8 @@ type TaxDefault = {
   unitTaxable: boolean;
 } | null;
 
+export type TagOption = { id: string; name: string; group: string; color: string | null };
+
 type Category = {
   id: string;
   name: string;
@@ -167,6 +172,7 @@ type Category = {
   parentId: string | null;
   position: number;
   taxDefault: TaxDefault;
+  defaultTags: { tag: TagOption }[];
   children: Category[];
   _count: { products: number };
 };
@@ -174,6 +180,7 @@ type Category = {
 interface Props {
   organizationId: string;
   categories: Category[];
+  allTags: TagOption[];
   taxRegime: string | null;
 }
 
@@ -542,7 +549,7 @@ function CategoryRow({
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export function CategoryEditor({ organizationId, categories: initial, taxRegime }: Props) {
+export function CategoryEditor({ organizationId, categories: initial, allTags, taxRegime }: Props) {
   const [isPending, startTransition] = useTransition();
   const [categories, setCategories] = useState<Category[]>(initial);
 
@@ -550,7 +557,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   const [catDialog, setCatDialog] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [subparentId, setSubparentId] = useState<string | null>(null);
-  const [catForm, setCatForm] = useState({ name: "", icon: null as IconPickerValue });
+  const [catForm, setCatForm] = useState({
+    name: "",
+    icon: null as IconPickerValue,
+    tagIds: [] as string[],
+  });
+  const [tagSearch, setTagSearch] = useState("");
 
   // Tax dialog
   const [taxDialog, setTaxDialog] = useState(false);
@@ -581,23 +593,27 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   function openNew() {
     setEditingCat(null);
     setSubparentId(null);
-    setCatForm({ name: "", icon: null });
+    setTagSearch("");
+    setCatForm({ name: "", icon: null, tagIds: [] });
     setCatDialog(true);
   }
 
   function openNewSubcategory(parentCat: Category) {
     setEditingCat(null);
     setSubparentId(parentCat.id);
-    setCatForm({ name: "", icon: null });
+    setTagSearch("");
+    setCatForm({ name: "", icon: null, tagIds: [] });
     setCatDialog(true);
   }
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
     setSubparentId(null);
+    setTagSearch("");
     setCatForm({
       name: cat.name,
       icon: cat.icon ? { iconId: cat.icon, color: cat.iconColor || "#f59e0b" } : null,
+      tagIds: (cat.defaultTags ?? []).map((dt) => dt.tag.id),
     });
     setCatDialog(true);
   }
@@ -616,13 +632,17 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
         ? await updateCategoryAction(organizationId, editingCat.id, input)
         : await createCategoryAction(organizationId, input);
 
-      if (result.success) {
-        toast.success(editingCat ? "Categoria atualizada!" : "Categoria criada!");
-        setCatDialog(false);
-        window.location.reload();
-      } else {
+      if (!result.success) {
         toast.error(result.error);
+        return;
       }
+
+      const categoryId = editingCat ? editingCat.id : (result.data?.id ?? "");
+      await setCategoryTagsAction(organizationId, categoryId, catForm.tagIds);
+
+      toast.success(editingCat ? "Categoria atualizada!" : "Categoria criada!");
+      setCatDialog(false);
+      window.location.reload();
     });
   }
 
@@ -807,6 +827,117 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                   value={catForm.icon}
                   onChange={(v) => setCatForm((f) => ({ ...f, icon: v }))}
                 />
+              </div>
+            )}
+
+            {/* Tags padrão */}
+            {allTags.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label>Tags padrão</Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Produtos desta categoria recebem essas tags automaticamente ao ser criados.
+                </p>
+
+                {/* Tags selecionadas */}
+                {catForm.tagIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {catForm.tagIds.map((tid) => {
+                      const tag = allTags.find((t) => t.id === tid);
+                      if (!tag) return null;
+                      return (
+                        <span
+                          key={tid}
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border"
+                          style={
+                            tag.color
+                              ? {
+                                  backgroundColor: `${tag.color}20`,
+                                  borderColor: `${tag.color}40`,
+                                  color: tag.color,
+                                }
+                              : undefined
+                          }
+                        >
+                          {tag.name}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCatForm((f) => ({
+                                ...f,
+                                tagIds: f.tagIds.filter((id) => id !== tid),
+                              }))
+                            }
+                            className="opacity-60 hover:opacity-100 transition-opacity ml-0.5"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Busca + lista de tags disponíveis */}
+                <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/20 p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      value={tagSearch}
+                      onChange={(e) => setTagSearch(e.target.value)}
+                      placeholder="Buscar tags…"
+                      className="w-full rounded-md border border-input bg-card pl-8 pr-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-0.5">
+                    {allTags
+                      .filter(
+                        (t) =>
+                          !catForm.tagIds.includes(t.id) &&
+                          (tagSearch === "" ||
+                            t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
+                            t.group.toLowerCase().includes(tagSearch.toLowerCase())),
+                      )
+                      .map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() =>
+                            setCatForm((f) => ({ ...f, tagIds: [...f.tagIds, tag.id] }))
+                          }
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all hover:opacity-80"
+                          style={
+                            tag.color
+                              ? {
+                                  backgroundColor: `${tag.color}15`,
+                                  borderColor: `${tag.color}30`,
+                                  color: tag.color,
+                                }
+                              : {
+                                  backgroundColor: "hsl(var(--muted))",
+                                  borderColor: "hsl(var(--border))",
+                                }
+                          }
+                        >
+                          <Plus className="h-2.5 w-2.5 opacity-60" />
+                          {tag.name}
+                        </button>
+                      ))}
+                    {allTags.filter(
+                      (t) =>
+                        !catForm.tagIds.includes(t.id) &&
+                        (tagSearch === "" ||
+                          t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
+                          t.group.toLowerCase().includes(tagSearch.toLowerCase())),
+                    ).length === 0 && (
+                      <p className="text-xs text-muted-foreground px-1 py-1">
+                        {catForm.tagIds.length === allTags.length
+                          ? "Todas as tags já foram adicionadas."
+                          : "Nenhuma tag encontrada."}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
