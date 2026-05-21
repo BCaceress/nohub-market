@@ -6,30 +6,57 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Apple,
+  Baby,
+  Banana,
+  Beef,
   Beer,
   Briefcase,
+  Cake,
+  Candy,
+  Car,
+  Carrot,
   ChevronDown,
   ChevronRight,
   Coffee,
+  Cookie,
+  CupSoda,
+  Dumbbell,
+  Egg,
+  Fish,
+  Flame,
+  FlaskConical,
   Folder,
   FolderOpen,
   Gift,
+  GlassWater,
+  Grape,
   Heart,
   Home,
+  IceCream,
   Info,
   Leaf,
+  Milk,
+  Package,
   Palette,
   Pencil,
+  Pizza,
   Plus,
+  Salad,
+  Sandwich,
   Shield,
+  ShoppingBag,
   ShoppingCart,
   Star,
   Tag,
   Trash2,
   TrendingUp,
+  Utensils,
+  Wheat,
+  Wine,
   Zap,
 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createCategoryAction,
@@ -38,7 +65,7 @@ import {
   updateCategoryAction,
 } from "../actions/category-actions";
 
-/* ── Icon palette & colors ──────────────────────────────────── */
+/* ── Icon palette ────────────────────────────────────────────── */
 
 type IconDefinition = {
   id: string;
@@ -47,29 +74,69 @@ type IconDefinition = {
 };
 
 const ICON_OPTIONS: IconDefinition[] = [
-  { id: "beer", label: "Bebidas alcoólicas", Component: Beer },
+  // Bebidas
+  { id: "beer", label: "Cervejas", Component: Beer },
+  { id: "wine", label: "Vinhos", Component: Wine },
   { id: "coffee", label: "Café / quentes", Component: Coffee },
-  { id: "leaf", label: "Hortifruti / natural", Component: Leaf },
-  { id: "heart", label: "Saúde / farmácia", Component: Heart },
+  { id: "milk", label: "Laticínios / leite", Component: Milk },
+  { id: "cup-soda", label: "Refrigerantes / sucos", Component: CupSoda },
+  { id: "glass-water", label: "Água / bebidas", Component: GlassWater },
+  // Frutas e vegetais
+  { id: "apple", label: "Frutas", Component: Apple },
+  { id: "banana", label: "Frutas tropicais", Component: Banana },
+  { id: "grape", label: "Uvas / vitivinícola", Component: Grape },
+  { id: "carrot", label: "Hortifruti", Component: Carrot },
+  { id: "salad", label: "Saladas / naturais", Component: Salad },
+  { id: "leaf", label: "Orgânicos / natural", Component: Leaf },
+  // Proteínas e refeições
+  { id: "beef", label: "Carnes / açougue", Component: Beef },
+  { id: "fish", label: "Pescados", Component: Fish },
+  { id: "egg", label: "Ovos", Component: Egg },
+  { id: "utensils", label: "Gastronomia / restaurante", Component: Utensils },
+  { id: "flame", label: "Grelhados / churrasco", Component: Flame },
+  // Padaria e doces
+  { id: "wheat", label: "Padaria / grãos", Component: Wheat },
+  { id: "sandwich", label: "Lanches / padaria", Component: Sandwich },
+  { id: "pizza", label: "Pizzas / fastfood", Component: Pizza },
+  { id: "cake", label: "Bolos / confeitaria", Component: Cake },
+  { id: "cookie", label: "Biscoitos / snacks", Component: Cookie },
+  { id: "candy", label: "Doces / confeitaria", Component: Candy },
+  { id: "ice-cream", label: "Sorvetes / gelados", Component: IceCream },
+  // Supermercado e loja
   { id: "shopping-cart", label: "Mercearia", Component: ShoppingCart },
-  { id: "gift", label: "Presentes", Component: Gift },
-  { id: "star", label: "Premium / destaque", Component: Star },
-  { id: "zap", label: "Promoção / energéticos", Component: Zap },
+  { id: "shopping-bag", label: "Sacola / geral", Component: ShoppingBag },
+  { id: "package", label: "Estoque / geral", Component: Package },
+  { id: "tag", label: "Promoções / ofertas", Component: Tag },
+  // Casa e saúde
   { id: "home", label: "Casa / limpeza", Component: Home },
+  { id: "flask-conical", label: "Limpeza / químicos", Component: FlaskConical },
+  { id: "heart", label: "Saúde / farmácia", Component: Heart },
+  { id: "baby", label: "Bebê / infantil", Component: Baby },
+  // Estilo de vida
+  { id: "dumbbell", label: "Fitness / esporte", Component: Dumbbell },
+  { id: "car", label: "Automotivo", Component: Car },
+  // Destaques e negócios
+  { id: "star", label: "Premium / destaque", Component: Star },
+  { id: "gift", label: "Presentes", Component: Gift },
+  { id: "zap", label: "Promoção / energéticos", Component: Zap },
+  { id: "trending-up", label: "Eletrônicos / tech", Component: TrendingUp },
   { id: "briefcase", label: "Profissional / negócios", Component: Briefcase },
   { id: "palette", label: "Arte / criatividade", Component: Palette },
-  { id: "trending-up", label: "Crescimento / eletrônicos", Component: TrendingUp },
   { id: "shield", label: "Proteção / segurança", Component: Shield },
 ];
 
+/* ── Color palette ───────────────────────────────────────────── */
+
 const PRESET_COLORS = [
   { name: "Amber", value: "#f59e0b" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Green", value: "#10b981" },
+  { name: "Orange", value: "#f97316" },
   { name: "Red", value: "#ef4444" },
-  { name: "Purple", value: "#a855f7" },
   { name: "Pink", value: "#ec4899" },
+  { name: "Purple", value: "#a855f7" },
+  { name: "Blue", value: "#3b82f6" },
   { name: "Cyan", value: "#06b6d4" },
+  { name: "Green", value: "#10b981" },
+  { name: "Lime", value: "#84cc16" },
   { name: "Slate", value: "#64748b" },
 ];
 
@@ -110,7 +177,7 @@ interface Props {
   taxRegime: string | null;
 }
 
-/* ── Tax origin labels ───────────────────────────────────────── */
+/* ── Tax constants ───────────────────────────────────────────── */
 
 const TAX_ORIGIN_OPTIONS = [
   { value: "NACIONAL", label: "0 — Nacional" },
@@ -153,6 +220,158 @@ const PIS_COFINS_CST_OPTIONS = [
   { value: "99", label: "99 — Outras entradas" },
 ];
 
+/* ── Icon picker ─────────────────────────────────────────────── */
+
+type IconPickerValue = { iconId: string; color: string } | null;
+
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: IconPickerValue;
+  onChange: (v: IconPickerValue) => void;
+}) {
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const selectedColor = value?.color || "#f59e0b";
+
+  function handleIconSelect(iconId: string) {
+    onChange({ iconId, color: selectedColor });
+  }
+
+  function handleColorChange(color: string) {
+    if (value) {
+      onChange({ iconId: value.iconId, color });
+    } else {
+      // Se nenhum ícone escolhido, só atualiza a cor para quando selecionar
+      onChange(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Preview do ícone selecionado */}
+      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+        {value ? (
+          <>
+            {(() => {
+              const iconDef = ICON_OPTIONS.find((o) => o.id === value.iconId);
+              if (!iconDef) return null;
+              return (
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: `${selectedColor}20` }}
+                  >
+                    <iconDef.Component className="h-4 w-4" style={{ color: selectedColor }} />
+                  </span>
+                  <span className="text-sm font-medium">{iconDef.label}</span>
+                </div>
+              );
+            })()}
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => onChange(null)}
+            >
+              Remover
+            </button>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Clique em um ícone abaixo para selecionar</p>
+        )}
+      </div>
+
+      {/* Grade de ícones — 3 linhas com scroll horizontal */}
+      <div className="overflow-x-auto rounded-lg border border-border bg-muted/20 p-2 pb-3">
+        <div className="grid grid-rows-3 grid-flow-col gap-1.5" style={{ gridAutoColumns: "3rem" }}>
+          {ICON_OPTIONS.map((opt) => {
+            const isSelected = value?.iconId === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                title={opt.label}
+                onClick={() => handleIconSelect(opt.id)}
+                className={`flex h-11 w-12 flex-col items-center justify-center rounded-lg transition-all ${
+                  isSelected ? "ring-2 ring-ring ring-offset-1" : "hover:bg-accent/60"
+                }`}
+                style={isSelected ? { backgroundColor: `${selectedColor}25` } : undefined}
+              >
+                <opt.Component
+                  className="h-5 w-5"
+                  style={{ color: isSelected ? selectedColor : undefined }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Cores — sempre visíveis abaixo dos ícones */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs text-muted-foreground">Cor do ícone</Label>
+        <div className="flex items-center gap-2 flex-wrap">
+          {PRESET_COLORS.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              title={preset.name}
+              onClick={() => {
+                if (value) {
+                  onChange({ iconId: value.iconId, color: preset.value });
+                }
+              }}
+              className={`h-7 w-7 rounded-md transition-all shrink-0 ${
+                selectedColor === preset.value && value
+                  ? "ring-2 ring-ring ring-offset-1 scale-110"
+                  : value
+                    ? "hover:scale-105 opacity-90 hover:opacity-100"
+                    : "opacity-40 cursor-not-allowed"
+              }`}
+              style={{ backgroundColor: preset.value }}
+              disabled={!value}
+            />
+          ))}
+
+          {/* Quadrado cor customizada — abre color picker */}
+          <button
+            type="button"
+            title="Cor customizada"
+            onClick={() => value && colorInputRef.current?.click()}
+            disabled={!value}
+            className={`relative h-7 w-7 rounded-md border border-border overflow-hidden transition-all shrink-0 ${
+              value ? "hover:scale-105 cursor-pointer" : "opacity-40 cursor-not-allowed"
+            } ${
+              value && !PRESET_COLORS.some((c) => c.value === selectedColor)
+                ? "ring-2 ring-ring ring-offset-1 scale-110"
+                : ""
+            }`}
+            style={{
+              background:
+                "conic-gradient(#ef4444, #f97316, #f59e0b, #84cc16, #10b981, #06b6d4, #3b82f6, #a855f7, #ec4899, #ef4444)",
+            }}
+          >
+            <input
+              ref={colorInputRef}
+              type="color"
+              className="sr-only"
+              value={selectedColor}
+              onChange={(e) => handleColorChange(e.target.value)}
+            />
+          </button>
+
+          {/* Hex atual se for cor customizada */}
+          {value && !PRESET_COLORS.some((c) => c.value === selectedColor) && (
+            <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-mono">
+              {selectedColor}
+            </code>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Category row ─────────────────────────────────────────────── */
 
 function CategoryRow({
@@ -161,6 +380,8 @@ function CategoryRow({
   organizationId,
   allCategories,
   taxRegime,
+  inheritedIcon,
+  inheritedColor,
   onEdit,
   onDelete,
   onTaxEdit,
@@ -171,6 +392,8 @@ function CategoryRow({
   organizationId: string;
   allCategories: Category[];
   taxRegime: string | null;
+  inheritedIcon?: string | null;
+  inheritedColor?: string | null;
   onEdit: (cat: Category) => void;
   onDelete: (cat: Category) => void;
   onTaxEdit: (cat: Category) => void;
@@ -179,19 +402,24 @@ function CategoryRow({
   const [expanded, setExpanded] = useState(true);
   const hasChildren = (cat.children ?? []).length > 0;
 
-  const iconDef = ICON_OPTIONS.find((opt) => opt.id === cat.icon);
+  // Subcategoria herda ícone do pai
+  const displayIconId = depth > 0 ? inheritedIcon : cat.icon;
+  const displayColor = depth > 0 ? inheritedColor || "#f59e0b" : cat.iconColor || "#f59e0b";
+  const iconDef = ICON_OPTIONS.find((opt) => opt.id === displayIconId);
   const IconComponent = iconDef?.Component;
 
   return (
     <>
       <div
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 group transition-colors"
-        style={{ paddingLeft: `${12 + depth * 20}px` }}
+        className={`flex items-center gap-2.5 py-2.5 pr-3 rounded-lg hover:bg-muted/40 group transition-colors ${
+          depth === 0 ? "border-b border-border/50 last:border-0" : ""
+        }`}
+        style={{ paddingLeft: `${14 + depth * 22}px` }}
       >
         {/* Expand toggle */}
         <button
           type="button"
-          className="h-4 w-4 shrink-0 text-muted-foreground/60"
+          className="h-4 w-4 shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           onClick={() => setExpanded((e) => !e)}
         >
           {hasChildren ? (
@@ -205,78 +433,91 @@ function CategoryRow({
           )}
         </button>
 
-        {/* Icon — lucide with color */}
-        {IconComponent ? (
-          <IconComponent
-            className="h-4 w-4 shrink-0"
-            style={{ color: cat.iconColor || "#f59e0b" }}
-          />
-        ) : hasChildren ? (
-          expanded ? (
-            <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
+        {/* Ícone */}
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+          style={{ backgroundColor: `${displayColor}20` }}
+        >
+          {IconComponent ? (
+            <IconComponent className="h-3.5 w-3.5" style={{ color: displayColor }} />
+          ) : hasChildren ? (
+            expanded ? (
+              <FolderOpen className="h-3.5 w-3.5" style={{ color: displayColor }} />
+            ) : (
+              <Folder className="h-3.5 w-3.5" style={{ color: displayColor }} />
+            )
           ) : (
-            <Folder className="h-4 w-4 text-amber-500 shrink-0" />
-          )
-        ) : (
-          <Tag className="h-4 w-4 text-muted-foreground/60 shrink-0" />
-        )}
+            <Tag className="h-3.5 w-3.5 text-muted-foreground/50" />
+          )}
+        </span>
 
-        {/* Name */}
-        <span className="flex-1 text-sm font-medium truncate">{cat.name}</span>
+        {/* Nome */}
+        <span
+          className={`flex-1 text-sm truncate ${depth === 0 ? "font-semibold" : "font-medium"}`}
+        >
+          {cat.name}
+        </span>
 
-        {/* Product count */}
-        <Badge variant="secondary" className="text-xs opacity-70">
+        {/* Contagem de produtos */}
+        <Badge variant="secondary" className="text-xs shrink-0 opacity-60">
           {cat._count?.products ?? 0} prod.
         </Badge>
 
-        {/* Tax status */}
+        {/* Status fiscal */}
         {cat.taxDefault?.ncm ? (
-          <Badge variant="success" className="text-xs">
-            NCM {cat.taxDefault.ncm}
+          <Badge variant="success" className="text-xs shrink-0 font-mono">
+            {cat.taxDefault.ncm}
           </Badge>
         ) : (
-          <Badge variant="warning" className="text-xs">
-            Sem fiscal
+          <Badge variant="warning" className="text-xs shrink-0">
+            Sem NCM
           </Badge>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {/* Ações */}
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           {!hasChildren && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
               title="Adicionar subcategoria"
               onClick={() => onAddSubcategory(cat)}
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
-            title="Editar fiscal padrão"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            title="Fiscal padrão"
             onClick={() => onTaxEdit(cat)}
           >
-            <Info className="h-3 w-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(cat)}>
-            <Pencil className="h-3 w-3" />
+            <Info className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-destructive hover:text-destructive"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            title="Editar"
+            onClick={() => onEdit(cat)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+            title="Excluir"
             onClick={() => onDelete(cat)}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* Children */}
+      {/* Filhos */}
       {hasChildren &&
         expanded &&
         (cat.children ?? []).map((child) => (
@@ -287,6 +528,8 @@ function CategoryRow({
             organizationId={organizationId}
             allCategories={allCategories}
             taxRegime={taxRegime}
+            inheritedIcon={cat.icon}
+            inheritedColor={cat.iconColor}
             onEdit={onEdit}
             onDelete={onDelete}
             onTaxEdit={onTaxEdit}
@@ -294,115 +537,6 @@ function CategoryRow({
           />
         ))}
     </>
-  );
-}
-
-/* ── Icon picker ─────────────────────────────────────────────── */
-
-type IconPickerValue = { iconId: string; color: string } | null;
-
-function IconPicker({
-  value,
-  onChange,
-}: {
-  value: IconPickerValue;
-  onChange: (v: IconPickerValue) => void;
-}) {
-  const selectedIcon = value ? ICON_OPTIONS.find((opt) => opt.id === value.iconId) : null;
-  const selectedColor = value?.color || "#f59e0b";
-
-  return (
-    <div className="flex flex-col gap-3">
-      {/* Preview */}
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
-        {selectedIcon ? (
-          <>
-            <selectedIcon.Component className="h-6 w-6 shrink-0" style={{ color: selectedColor }} />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{selectedIcon.label}</p>
-              <p className="text-xs text-muted-foreground">{selectedColor}</p>
-            </div>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-              onClick={() => onChange(null)}
-            >
-              Remover
-            </button>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum ícone selecionado</p>
-        )}
-      </div>
-
-      {/* Icon selection */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs">Ícone</Label>
-        <div className="grid grid-cols-4 gap-2 rounded-lg border border-border bg-muted/20 p-2">
-          {ICON_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              title={opt.label}
-              onClick={() => onChange({ iconId: opt.id, color: selectedColor })}
-              className={`flex items-center justify-center h-10 rounded-lg transition-colors ${
-                value?.iconId === opt.id ? "bg-accent ring-2 ring-ring" : "hover:bg-accent/50"
-              }`}
-            >
-              <opt.Component
-                className="h-5 w-5"
-                style={{ color: value?.iconId === opt.id ? selectedColor : "currentColor" }}
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Color selection */}
-      {value && (
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-xs">Cor</Label>
-          <div className="flex flex-col gap-2">
-            {/* Presets */}
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  title={preset.name}
-                  onClick={() => onChange({ iconId: value.iconId, color: preset.value })}
-                  className={`h-8 w-8 rounded-lg transition-all ${
-                    selectedColor === preset.value
-                      ? "ring-2 ring-ring scale-110"
-                      : "hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: preset.value }}
-                />
-              ))}
-            </div>
-
-            {/* Custom color */}
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <Label htmlFor="custom-color" className="text-xs">
-                  Cor customizada
-                </Label>
-                <Input
-                  id="custom-color"
-                  type="color"
-                  value={selectedColor}
-                  onChange={(e) => onChange({ iconId: value.iconId, color: e.target.value })}
-                  className="h-10 cursor-pointer"
-                />
-              </div>
-              <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                {selectedColor}
-              </code>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -416,10 +550,7 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   const [catDialog, setCatDialog] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [subparentId, setSubparentId] = useState<string | null>(null);
-  const [catForm, setCatForm] = useState({
-    name: "",
-    icon: null as IconPickerValue,
-  });
+  const [catForm, setCatForm] = useState({ name: "", icon: null as IconPickerValue });
 
   // Tax dialog
   const [taxDialog, setTaxDialog] = useState(false);
@@ -440,6 +571,10 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
     cofinsCst: "01",
     cofinsRate: "",
   });
+
+  // Subcategoria: sem picker de ícone (herda do pai)
+  const isSubcategory =
+    subparentId !== null || (editingCat !== null && editingCat.parentId !== null);
 
   /* ── Category CRUD ─────────────────────────────────────────── */
 
@@ -472,8 +607,8 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
     startTransition(async () => {
       const input = {
         name: catForm.name,
-        icon: catForm.icon?.iconId || undefined,
-        iconColor: catForm.icon?.color || undefined,
+        icon: isSubcategory ? undefined : catForm.icon?.iconId || undefined,
+        iconColor: isSubcategory ? undefined : catForm.icon?.color || undefined,
         parentId: subparentId || undefined,
         position: 0,
       };
@@ -546,7 +681,7 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
         cofinsRate: taxForm.cofinsRate ? Number(taxForm.cofinsRate) : undefined,
       });
       if (result.success) {
-        toast.success("Fiscal padrão da categoria salvo!");
+        toast.success("Fiscal padrão salvo!");
         setTaxDialog(false);
         window.location.reload();
       } else {
@@ -555,86 +690,131 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
     });
   }
 
-  /* ── Flat list (root-only) ──────────────────────────────────── */
   const rootCategories = categories.filter((c) => !c.parentId);
+  const totalCount = categories.length;
+  const withTaxCount = categories.filter((c) => c.taxDefault?.ncm).length;
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-muted-foreground">
-          {categories.length} categoria{categories.length !== 1 ? "s" : ""}. O fiscal padrão é
-          herdado pelos produtos sem configuração própria (RN-C13).
-        </p>
-        <Button size="sm" onClick={openNew}>
+      {/* Barra de ações */}
+      <div className="flex items-center justify-between gap-4 pb-1">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>
+            <strong className="text-foreground font-semibold">{totalCount}</strong> categoria
+            {totalCount !== 1 ? "s" : ""}
+          </span>
+          <span className="text-border">|</span>
+          <span>
+            <strong className="text-foreground font-semibold">{withTaxCount}</strong> com NCM
+          </span>
+        </div>
+        <Button size="sm" onClick={openNew} className="gap-1.5">
           <Plus className="h-3.5 w-3.5" />
           Nova categoria
         </Button>
       </div>
 
+      {/* Lista de categorias */}
       {categories.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-14 text-center">
-          <Folder className="h-8 w-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm font-medium">Nenhuma categoria</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Crie categorias para organizar e agilizar a configuração fiscal.
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
+            <Folder className="h-7 w-7 text-muted-foreground/40" />
+          </div>
+          <p className="text-sm font-semibold">Nenhuma categoria cadastrada</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+            Categorias organizam o catálogo e permitem configurar dados fiscais padrão para um grupo
+            de produtos.
           </p>
+          <Button size="sm" className="mt-4" onClick={openNew}>
+            <Plus className="h-3.5 w-3.5" />
+            Criar primeira categoria
+          </Button>
         </div>
       ) : (
         <div className="rounded-xl border border-border overflow-hidden bg-card">
-          {rootCategories.map((cat) => (
-            <CategoryRow
-              key={cat.id}
-              cat={cat}
-              depth={0}
-              organizationId={organizationId}
-              allCategories={categories}
-              taxRegime={taxRegime}
-              onEdit={openEdit}
-              onDelete={handleDelete}
-              onTaxEdit={openTaxEdit}
-              onAddSubcategory={openNewSubcategory}
-            />
-          ))}
+          <div className="px-3 py-2">
+            {rootCategories.map((cat) => (
+              <CategoryRow
+                key={cat.id}
+                cat={cat}
+                depth={0}
+                organizationId={organizationId}
+                allCategories={categories}
+                taxRegime={taxRegime}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+                onTaxEdit={openTaxEdit}
+                onAddSubcategory={openNewSubcategory}
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Category dialog */}
+      {/* Dica fiscal */}
+      {categories.length > 0 && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Info className="h-3 w-3 shrink-0" />O fiscal padrão (NCM, ICMS, PIS, COFINS) é herdado
+          pelos produtos sem configuração própria — RN-C13.
+        </p>
+      )}
+
+      {/* ── Dialog: categoria ──────────────────────────────────── */}
       <Dialog open={catDialog} onOpenChange={setCatDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingCat
-                ? "Editar categoria"
-                : subparentId
+                ? isSubcategory
+                  ? "Editar subcategoria"
+                  : "Editar categoria"
+                : isSubcategory
                   ? "Nova subcategoria"
                   : "Nova categoria"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCatSubmit} className="flex flex-col gap-4 mt-2">
+
+          <form onSubmit={handleCatSubmit} className="flex flex-col gap-5 mt-1">
+            {/* Nome */}
             <div className="flex flex-col gap-1.5">
-              <Label>Nome *</Label>
+              <Label>
+                Nome <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={catForm.name}
                 onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: Bebidas, Refrigerantes…"
+                placeholder={
+                  isSubcategory ? "Ex: Refrigerantes, Sucos…" : "Ex: Bebidas, Laticínios…"
+                }
                 required
+                autoFocus
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>Ícone da categoria</Label>
-              <IconPicker
-                value={catForm.icon}
-                onChange={(v) => setCatForm((f) => ({ ...f, icon: v }))}
-              />
-            </div>
+            {/* Ícone — apenas para categorias raiz */}
+            {isSubcategory ? (
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 flex items-center gap-2">
+                <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Subcategorias herdam o ícone e a cor da categoria pai automaticamente.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <Label>Ícone da categoria</Label>
+                <IconPicker
+                  value={catForm.icon}
+                  onChange={(v) => setCatForm((f) => ({ ...f, icon: v }))}
+                />
+              </div>
+            )}
 
-            <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setCatDialog(false)}>
+            <div className="flex gap-2.5 justify-end pt-1 border-t border-border">
+              <Button type="button" variant="outline" size="sm" onClick={() => setCatDialog(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Salvando…" : "Salvar"}
               </Button>
             </div>
@@ -642,24 +822,24 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
         </DialogContent>
       </Dialog>
 
-      {/* Tax default dialog */}
+      {/* ── Dialog: fiscal padrão ─────────────────────────────── */}
       <Dialog open={taxDialog} onOpenChange={setTaxDialog}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {taxCat?.icon && <span className="mr-1.5">{taxCat.icon}</span>}
-              Fiscal padrão — {taxCat?.name}
-            </DialogTitle>
+            <DialogTitle>Fiscal padrão — {taxCat?.name}</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-1 mb-3">
-            Aplicado a todos os produtos desta categoria que não têm configuração própria (RN-C13).
+          <p className="text-xs text-muted-foreground -mt-1 mb-4">
+            Aplicado a todos os produtos desta categoria sem configuração própria (RN-C13).
           </p>
 
           <form onSubmit={handleTaxSubmit} className="flex flex-col gap-4">
             {/* NCM / CEST */}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label>NCM * (8 dígitos)</Label>
+                <Label>
+                  NCM <span className="text-destructive">*</span>{" "}
+                  <span className="text-muted-foreground font-normal">(8 dígitos)</span>
+                </Label>
                 <Input
                   value={taxForm.ncm}
                   onChange={(e) =>
@@ -675,7 +855,10 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>CEST (7 dígitos)</Label>
+                <Label>
+                  CEST{" "}
+                  <span className="text-muted-foreground font-normal">(7 dígitos, opcional)</span>
+                </Label>
                 <Input
                   value={taxForm.cest}
                   onChange={(e) =>
@@ -831,11 +1014,11 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setTaxDialog(false)}>
+            <div className="flex gap-2.5 justify-end pt-1 border-t border-border">
+              <Button type="button" variant="outline" size="sm" onClick={() => setTaxDialog(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Salvando…" : "Salvar fiscal padrão"}
               </Button>
             </div>
