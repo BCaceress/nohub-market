@@ -23,7 +23,7 @@ function generateSlug(name: string): string {
   return name
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{M}/gu, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
@@ -60,14 +60,17 @@ export async function createCategoryAction(
 ): Promise<Result<{ id: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = categorySchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position } = parsed.data;
+  const { name, parentId, position, icon } = parsed.data;
   const slug = parsed.data.slug || generateSlug(name);
 
   // Ensure slug uniqueness within org
@@ -81,6 +84,7 @@ export async function createCategoryAction(
       organizationId,
       name,
       slug: finalSlug,
+      icon: icon || null,
       parentId: parentId || null,
       position,
     },
@@ -108,18 +112,21 @@ export async function updateCategoryAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = categorySchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position } = parsed.data;
+  const { name, parentId, position, icon } = parsed.data;
 
   await prisma.category.updateMany({
     where: { id: categoryId, organizationId },
-    data: { name, parentId: parentId || null, position },
+    data: { name, icon: icon || null, parentId: parentId || null, position },
   });
 
   await writeAudit({
@@ -143,7 +150,9 @@ export async function deleteCategoryAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -164,15 +173,31 @@ export async function setCategoryTaxDefaultAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = categoryTaxDefaultSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { categoryId, ncm, cest, cfopInternal, cfopInterstate, origin,
-    icmsCst, icmsCsosn, icmsRate, pisCst, pisRate, cofinsCst, cofinsRate } = parsed.data;
+  const {
+    categoryId,
+    ncm,
+    cest,
+    cfopInternal,
+    cfopInterstate,
+    origin,
+    icmsCst,
+    icmsCsosn,
+    icmsRate,
+    pisCst,
+    pisRate,
+    cofinsCst,
+    cofinsRate,
+  } = parsed.data;
 
   const taxPayload = {
     ncm: ncm || null,

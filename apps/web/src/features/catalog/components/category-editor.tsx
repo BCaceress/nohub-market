@@ -1,22 +1,64 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  Info,
+  Pencil,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   createCategoryAction,
-  updateCategoryAction,
   deleteCategoryAction,
   setCategoryTaxDefaultAction,
+  updateCategoryAction,
 } from "../actions/category-actions";
-import {
-  Plus, Pencil, Trash2, ChevronRight, ChevronDown,
-  FolderOpen, Folder, Tag, Info,
-} from "lucide-react";
+
+/* ── Icon palette ───────────────────────────────────────────── */
+
+const ICON_OPTIONS = [
+  { emoji: "🍺", label: "Bebidas alcoólicas" },
+  { emoji: "🥤", label: "Refrigerantes" },
+  { emoji: "💧", label: "Água / hidratação" },
+  { emoji: "☕", label: "Café / quentes" },
+  { emoji: "🍔", label: "Lanches" },
+  { emoji: "🍕", label: "Pizzas / salgados" },
+  { emoji: "🍿", label: "Snacks / petiscos" },
+  { emoji: "🍫", label: "Chocolates / doces" },
+  { emoji: "🍭", label: "Balas / gomas" },
+  { emoji: "🧁", label: "Confeitaria" },
+  { emoji: "🥐", label: "Padaria / grãos" },
+  { emoji: "🥩", label: "Carnes / frios" },
+  { emoji: "🧀", label: "Laticínios" },
+  { emoji: "🥦", label: "Hortifruti" },
+  { emoji: "🍳", label: "Ovos / café da manhã" },
+  { emoji: "🧂", label: "Temperos / condimentos" },
+  { emoji: "🛒", label: "Mercearia" },
+  { emoji: "🧹", label: "Limpeza" },
+  { emoji: "🧴", label: "Higiene pessoal" },
+  { emoji: "💊", label: "Farmácia / saúde" },
+  { emoji: "🐾", label: "Pet" },
+  { emoji: "🧸", label: "Bebê / criança" },
+  { emoji: "📦", label: "Descartáveis / embalagens" },
+  { emoji: "⚡", label: "Energéticos" },
+  { emoji: "🫙", label: "Conservas / enlatados" },
+  { emoji: "🍷", label: "Vinhos" },
+  { emoji: "🥃", label: "Destilados" },
+  { emoji: "🫖", label: "Chás / infusões" },
+  { emoji: "🥛", label: "Leites / bebidas vegetais" },
+  { emoji: "🍦", label: "Gelados / sorvetes" },
+];
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -40,6 +82,7 @@ type Category = {
   id: string;
   name: string;
   slug: string;
+  icon: string | null;
   parentId: string | null;
   position: number;
   taxDefault: TaxDefault;
@@ -56,14 +99,14 @@ interface Props {
 /* ── Tax origin labels ───────────────────────────────────────── */
 
 const TAX_ORIGIN_OPTIONS = [
-  { value: "NACIONAL",                    label: "0 — Nacional" },
-  { value: "IMPORTADO_DIRETO",            label: "1 — Importado direto" },
-  { value: "IMPORTADO_NACIONAL",          label: "2 — Importado, nacional" },
-  { value: "NACIONAL_MAIS_40_IMPORTADO",  label: "3 — Nacional, > 40% importado" },
+  { value: "NACIONAL", label: "0 — Nacional" },
+  { value: "IMPORTADO_DIRETO", label: "1 — Importado direto" },
+  { value: "IMPORTADO_NACIONAL", label: "2 — Importado, nacional" },
+  { value: "NACIONAL_MAIS_40_IMPORTADO", label: "3 — Nacional, > 40% importado" },
   { value: "NACIONAL_MENOS_40_IMPORTADO", label: "4 — Nacional, ≤ 40% importado" },
-  { value: "NACIONAL_SEM_SIMILAR",        label: "5 — Nacional, sem similar" },
-  { value: "ESTRANGEIRO_DIRETO",          label: "6 — Estrangeiro direto" },
-  { value: "ESTRANGEIRO_NACIONAL",        label: "7 — Estrangeiro, mercado interno" },
+  { value: "NACIONAL_SEM_SIMILAR", label: "5 — Nacional, sem similar" },
+  { value: "ESTRANGEIRO_DIRETO", label: "6 — Estrangeiro direto" },
+  { value: "ESTRANGEIRO_NACIONAL", label: "7 — Estrangeiro, mercado interno" },
   { value: "NACIONAL_MENOS_70_IMPORTADO", label: "8 — Nacional, > 70% importado" },
 ];
 
@@ -118,12 +161,12 @@ function CategoryRow({
   onTaxEdit: (cat: Category) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const hasChildren = cat.children.length > 0;
+  const hasChildren = (cat.children ?? []).length > 0;
 
   return (
     <>
       <div
-        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 group transition-colors`}
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted/40 group transition-colors"
         style={{ paddingLeft: `${12 + depth * 20}px` }}
       >
         {/* Expand toggle */}
@@ -133,15 +176,25 @@ function CategoryRow({
           onClick={() => setExpanded((e) => !e)}
         >
           {hasChildren ? (
-            expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />
+            expanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )
           ) : (
             <span className="h-3.5 w-3.5 inline-block" />
           )}
         </button>
 
-        {/* Icon */}
-        {hasChildren ? (
-          expanded ? <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" /> : <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+        {/* Icon — emoji se definido, senão Folder/Tag Lucide */}
+        {cat.icon ? (
+          <span className="text-base leading-none shrink-0 w-4 text-center">{cat.icon}</span>
+        ) : hasChildren ? (
+          expanded ? (
+            <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
+          ) : (
+            <Folder className="h-4 w-4 text-amber-500 shrink-0" />
+          )
         ) : (
           <Tag className="h-4 w-4 text-muted-foreground/60 shrink-0" />
         )}
@@ -151,33 +204,38 @@ function CategoryRow({
 
         {/* Product count */}
         <Badge variant="secondary" className="text-xs opacity-70">
-          {cat._count.products} prod.
+          {cat._count?.products ?? 0} prod.
         </Badge>
 
         {/* Tax status */}
         {cat.taxDefault?.ncm ? (
-          <Badge variant="success" className="text-xs">NCM {cat.taxDefault.ncm}</Badge>
+          <Badge variant="success" className="text-xs">
+            NCM {cat.taxDefault.ncm}
+          </Badge>
         ) : (
-          <Badge variant="warning" className="text-xs">Sem fiscal</Badge>
+          <Badge variant="warning" className="text-xs">
+            Sem fiscal
+          </Badge>
         )}
 
         {/* Actions */}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Button
-            variant="ghost" size="icon" className="h-6 w-6"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             title="Editar fiscal padrão"
             onClick={() => onTaxEdit(cat)}
           >
             <Info className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost" size="icon" className="h-6 w-6"
-            onClick={() => onEdit(cat)}
-          >
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(cat)}>
             <Pencil className="h-3 w-3" />
           </Button>
           <Button
-            variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-destructive hover:text-destructive"
             onClick={() => onDelete(cat)}
           >
             <Trash2 className="h-3 w-3" />
@@ -186,8 +244,9 @@ function CategoryRow({
       </div>
 
       {/* Children */}
-      {hasChildren && expanded &&
-        cat.children.map((child) => (
+      {hasChildren &&
+        expanded &&
+        (cat.children ?? []).map((child) => (
           <CategoryRow
             key={child.id}
             cat={child}
@@ -199,9 +258,47 @@ function CategoryRow({
             onDelete={onDelete}
             onTaxEdit={onTaxEdit}
           />
-        ))
-      }
+        ))}
     </>
+  );
+}
+
+/* ── Icon picker ─────────────────────────────────────────────── */
+
+function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl w-8 text-center">{value || "📦"}</span>
+        <span className="text-xs text-muted-foreground">
+          {value ? "Ícone selecionado" : "Nenhum (padrão)"}
+        </span>
+        {value && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground underline"
+            onClick={() => onChange("")}
+          >
+            Remover
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-10 gap-1 rounded-lg border border-border bg-muted/20 p-2">
+        {ICON_OPTIONS.map((opt) => (
+          <button
+            key={opt.emoji}
+            type="button"
+            title={opt.label}
+            onClick={() => onChange(opt.emoji)}
+            className={`text-lg rounded p-1 hover:bg-accent transition-colors ${
+              value === opt.emoji ? "bg-accent ring-1 ring-ring" : ""
+            }`}
+          >
+            {opt.emoji}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -214,7 +311,7 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   // Category dialog
   const [catDialog, setCatDialog] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
-  const [catForm, setCatForm] = useState({ name: "", parentId: "" });
+  const [catForm, setCatForm] = useState({ name: "", icon: "", parentId: "" });
 
   // Tax dialog
   const [taxDialog, setTaxDialog] = useState(false);
@@ -222,29 +319,43 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI";
 
   const [taxForm, setTaxForm] = useState({
-    ncm: "", cest: "", cfopInternal: "5102", cfopInterstate: "6102",
-    origin: "NACIONAL", icmsCst: "", icmsCsosn: "",
-    icmsRate: "", pisCst: "01", pisRate: "", cofinsCst: "01", cofinsRate: "",
+    ncm: "",
+    cest: "",
+    cfopInternal: "5102",
+    cfopInterstate: "6102",
+    origin: "NACIONAL",
+    icmsCst: "",
+    icmsCsosn: "",
+    icmsRate: "",
+    pisCst: "01",
+    pisRate: "",
+    cofinsCst: "01",
+    cofinsRate: "",
   });
 
   /* ── Category CRUD ─────────────────────────────────────────── */
 
   function openNew() {
     setEditingCat(null);
-    setCatForm({ name: "", parentId: "" });
+    setCatForm({ name: "", icon: "", parentId: "" });
     setCatDialog(true);
   }
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
-    setCatForm({ name: cat.name, parentId: cat.parentId ?? "" });
+    setCatForm({ name: cat.name, icon: cat.icon ?? "", parentId: cat.parentId ?? "" });
     setCatDialog(true);
   }
 
   function handleCatSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const input = { name: catForm.name, parentId: catForm.parentId || undefined, position: 0 };
+      const input = {
+        name: catForm.name,
+        icon: catForm.icon || undefined,
+        parentId: catForm.parentId || undefined,
+        position: 0,
+      };
       const result = editingCat
         ? await updateCategoryAction(organizationId, editingCat.id, input)
         : await createCategoryAction(organizationId, input);
@@ -331,7 +442,8 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
-          {categories.length} categoria{categories.length !== 1 ? "s" : ""}. O fiscal padrão é herdado pelos produtos sem configuração própria (RN-C13).
+          {categories.length} categoria{categories.length !== 1 ? "s" : ""}. O fiscal padrão é
+          herdado pelos produtos sem configuração própria (RN-C13).
         </p>
         <Button size="sm" onClick={openNew}>
           <Plus className="h-3.5 w-3.5" />
@@ -343,7 +455,9 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-14 text-center">
           <Folder className="h-8 w-8 text-muted-foreground/40 mb-3" />
           <p className="text-sm font-medium">Nenhuma categoria</p>
-          <p className="text-xs text-muted-foreground mt-1">Crie categorias para organizar e agilizar a configuração fiscal.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Crie categorias para organizar e agilizar a configuração fiscal.
+          </p>
         </div>
       ) : (
         <div className="rounded-xl border border-border overflow-hidden bg-card">
@@ -365,7 +479,7 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
 
       {/* Category dialog */}
       <Dialog open={catDialog} onOpenChange={setCatDialog}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingCat ? "Editar categoria" : "Nova categoria"}</DialogTitle>
           </DialogHeader>
@@ -375,28 +489,50 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
               <Input
                 value={catForm.name}
                 onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Ex: Bebidas, Laticínios…"
+                placeholder="Ex: Bebidas, Refrigerantes…"
                 required
               />
             </div>
+
             <div className="flex flex-col gap-1.5">
-              <Label>Categoria pai (opcional)</Label>
+              <Label>Categoria pai (subcategoria)</Label>
               <select
                 value={catForm.parentId}
                 onChange={(e) => setCatForm((f) => ({ ...f, parentId: e.target.value }))}
                 className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
-                <option value="">Nível raiz</option>
+                <option value="">Nível raiz (categoria principal)</option>
+                {/* Mostrar somente categorias raiz como pai possível */}
                 {categories
-                  .filter((c) => c.id !== editingCat?.id)
+                  .filter((c) => !c.parentId && c.id !== editingCat?.id)
                   .map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.icon ? `${c.icon} ` : ""}
+                      {c.name}
+                    </option>
                   ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                Selecione uma categoria pai para criar uma subcategoria (ex: Bebidas →
+                Refrigerante).
+              </p>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Ícone da categoria</Label>
+              <IconPicker
+                value={catForm.icon}
+                onChange={(v) => setCatForm((f) => ({ ...f, icon: v }))}
+              />
+            </div>
+
             <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setCatDialog(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isPending}>{isPending ? "Salvando…" : "Salvar"}</Button>
+              <Button type="button" variant="outline" onClick={() => setCatDialog(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Salvando…" : "Salvar"}
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -406,7 +542,10 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
       <Dialog open={taxDialog} onOpenChange={setTaxDialog}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fiscal padrão — {taxCat?.name}</DialogTitle>
+            <DialogTitle>
+              {taxCat?.icon && <span className="mr-1.5">{taxCat.icon}</span>}
+              Fiscal padrão — {taxCat?.name}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground -mt-1 mb-3">
             Aplicado a todos os produtos desta categoria que não têm configuração própria (RN-C13).
@@ -419,7 +558,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 <Label>NCM * (8 dígitos)</Label>
                 <Input
                   value={taxForm.ncm}
-                  onChange={(e) => setTaxForm((f) => ({ ...f, ncm: e.target.value.replace(/\D/g, "").slice(0, 8) }))}
+                  onChange={(e) =>
+                    setTaxForm((f) => ({
+                      ...f,
+                      ncm: e.target.value.replace(/\D/g, "").slice(0, 8),
+                    }))
+                  }
                   placeholder="22021000"
                   maxLength={8}
                   pattern="\d{8}"
@@ -430,7 +574,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 <Label>CEST (7 dígitos)</Label>
                 <Input
                   value={taxForm.cest}
-                  onChange={(e) => setTaxForm((f) => ({ ...f, cest: e.target.value.replace(/\D/g, "").slice(0, 7) }))}
+                  onChange={(e) =>
+                    setTaxForm((f) => ({
+                      ...f,
+                      cest: e.target.value.replace(/\D/g, "").slice(0, 7),
+                    }))
+                  }
                   placeholder="0300400"
                   maxLength={7}
                 />
@@ -443,7 +592,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 <Label>CFOP interno</Label>
                 <Input
                   value={taxForm.cfopInternal}
-                  onChange={(e) => setTaxForm((f) => ({ ...f, cfopInternal: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                  onChange={(e) =>
+                    setTaxForm((f) => ({
+                      ...f,
+                      cfopInternal: e.target.value.replace(/\D/g, "").slice(0, 4),
+                    }))
+                  }
                   placeholder="5102"
                   maxLength={4}
                 />
@@ -452,7 +606,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 <Label>CFOP interestadual</Label>
                 <Input
                   value={taxForm.cfopInterstate}
-                  onChange={(e) => setTaxForm((f) => ({ ...f, cfopInterstate: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                  onChange={(e) =>
+                    setTaxForm((f) => ({
+                      ...f,
+                      cfopInterstate: e.target.value.replace(/\D/g, "").slice(0, 4),
+                    }))
+                  }
                   placeholder="6102"
                   maxLength={4}
                 />
@@ -468,7 +627,9 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
                 {TAX_ORIGIN_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -488,14 +649,19 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 >
                   <option value="">Selecionar…</option>
                   {(isSimples ? ICMS_CSOSN_OPTIONS : ICMS_CST_OPTIONS).map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Alíquota ICMS (%)</Label>
                 <Input
-                  type="number" min="0" max="100" step="0.01"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
                   value={taxForm.icmsRate}
                   onChange={(e) => setTaxForm((f) => ({ ...f, icmsRate: e.target.value }))}
                   placeholder="12.00"
@@ -514,14 +680,19 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 >
                   <option value="">Selecionar…</option>
                   {PIS_COFINS_CST_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Alíquota PIS (%)</Label>
                 <Input
-                  type="number" min="0" max="100" step="0.0001"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.0001"
                   value={taxForm.pisRate}
                   onChange={(e) => setTaxForm((f) => ({ ...f, pisRate: e.target.value }))}
                   placeholder="0.65"
@@ -536,14 +707,19 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 >
                   <option value="">Selecionar…</option>
                   {PIS_COFINS_CST_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Alíquota COFINS (%)</Label>
                 <Input
-                  type="number" min="0" max="100" step="0.0001"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.0001"
                   value={taxForm.cofinsRate}
                   onChange={(e) => setTaxForm((f) => ({ ...f, cofinsRate: e.target.value }))}
                   placeholder="3.00"
@@ -552,8 +728,12 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
             </div>
 
             <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setTaxDialog(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isPending}>{isPending ? "Salvando…" : "Salvar fiscal padrão"}</Button>
+              <Button type="button" variant="outline" onClick={() => setTaxDialog(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Salvando…" : "Salvar fiscal padrão"}
+              </Button>
             </div>
           </form>
         </DialogContent>

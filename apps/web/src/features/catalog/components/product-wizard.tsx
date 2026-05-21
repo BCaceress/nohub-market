@@ -1,40 +1,297 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AiProductLookup } from "@/features/catalog/ai-product-lookup";
-import { createProductAction, updateProductAction } from "../actions/product-actions";
-import type { ProductInput } from "../schemas";
 import type { OpenFoodFactsProduct } from "@/features/inventory/actions/ai-product-actions";
 import {
-  Sparkles, PencilLine, Archive, ToggleLeft, ToggleRight
+  Image as ImageIcon,
+  Package,
+  PencilLine,
+  RefreshCw,
+  Sparkles,
+  ToggleLeft,
+  ToggleRight,
+  X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
+import {
+  createProductAction,
+  generateSkuAction,
+  updateProductAction,
+} from "../actions/product-actions";
+import type { ProductInput } from "../schemas";
 
-type Category = { id: string; name: string; parentId: string | null };
+/* ── Constants ──────────────────────────────────────────────── */
+
+type Category = { id: string; name: string; icon: string | null; parentId: string | null };
 type Supplier = { id: string; name: string };
 
 const PRODUCT_TYPES = [
-  { value: "SIMPLE",          label: "Simples",    desc: "Produto unitário padrão" },
-  { value: "VARIANT_PARENT",  label: "Variantes",  desc: "Tem variações (tamanho, sabor…)" },
-  { value: "KIT",             label: "Kit/Combo",  desc: "Conjunto de produtos" },
-  { value: "FRACTIONED",      label: "Fracionado", desc: "Vendido por peso ou volume" },
+  { value: "SIMPLE", label: "Simples", desc: "Produto unitário padrão" },
+  { value: "VARIANT_PARENT", label: "Variantes", desc: "Tem variações (tamanho, sabor…)" },
+  { value: "KIT", label: "Kit/Combo", desc: "Conjunto de produtos" },
+  { value: "FRACTIONED", label: "Fracionado", desc: "Vendido por peso ou volume" },
 ];
 
-const UNITS = [
-  { value: "UN", label: "Unidade" },
+// Unidades base (contagem / peso / volume)
+const BASE_UNITS = [
+  { value: "UN", label: "Unidade (un)" },
   { value: "KG", label: "Quilograma (kg)" },
-  { value: "G",  label: "Grama (g)" },
-  { value: "L",  label: "Litro (l)" },
+  { value: "G", label: "Grama (g)" },
+  { value: "L", label: "Litro (l)" },
   { value: "ML", label: "Mililitro (ml)" },
+];
+
+// Unidades de embalagem / compra
+const PACK_UNITS = [
   { value: "CX", label: "Caixa (cx)" },
   { value: "PCT", label: "Pacote (pct)" },
+  { value: "FARDO", label: "Fardo" },
+  { value: "DZ", label: "Dúzia (dz)" },
+  { value: "BANDEJA", label: "Bandeja" },
+  { value: "CENTO", label: "Cento" },
 ];
+
+const ALL_UNITS = [...BASE_UNITS, ...PACK_UNITS];
+
+/* ── Image preview widget ───────────────────────────────────── */
+
+function ImageField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [inputVal, setInputVal] = useState(value);
+  const [error, setError] = useState(false);
+
+  // sync when value changes externally (e.g. AI fill)
+  useEffect(() => {
+    setInputVal(value);
+    setError(false);
+  }, [value]);
+
+  function commit() {
+    onChange(inputVal.trim());
+    setError(false);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Preview */}
+      {value && !error ? (
+        <div className="relative w-full h-40 rounded-lg border border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value}
+            alt="Preview"
+            className="max-h-full max-w-full object-contain p-2"
+            onError={() => setError(true)}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setInputVal("");
+            }}
+            className="absolute top-2 right-2 rounded-full bg-background/80 p-1 hover:bg-background shadow"
+            title="Remover imagem"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="w-full h-24 rounded-lg border border-dashed border-border bg-muted/20 flex items-center justify-center text-muted-foreground/40">
+          <ImageIcon className="h-8 w-8" />
+        </div>
+      )}
+
+      {/* URL input */}
+      <div className="flex gap-2">
+        <Input
+          type="url"
+          placeholder="https://…/imagem.jpg"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+          }}
+          className="flex-1 text-xs"
+        />
+        {inputVal !== value && (
+          <Button type="button" size="sm" variant="outline" onClick={commit}>
+            OK
+          </Button>
+        )}
+        {value && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 shrink-0"
+            onClick={() => {
+              onChange("");
+              setInputVal("");
+            }}
+            title="Remover"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      {error && (
+        <p className="text-xs text-destructive">
+          Não foi possível carregar a imagem. Verifique a URL.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Category selector (hierárquico) ───────────────────────── */
+
+function CategorySelect({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Category[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const roots = categories.filter((c) => !c.parentId);
+
+  // Build grouped list: pai → filhos
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+    >
+      <option value="">Sem categoria</option>
+      {roots.map((root) => {
+        const children = categories.filter((c) => c.parentId === root.id);
+        const rootLabel = `${root.icon ? `${root.icon} ` : ""}${root.name}`;
+
+        if (children.length === 0) {
+          return (
+            <option key={root.id} value={root.id}>
+              {rootLabel}
+            </option>
+          );
+        }
+
+        return (
+          <optgroup key={root.id} label={rootLabel}>
+            {/* Opção para a categoria raiz em si */}
+            <option value={root.id}>{rootLabel} (geral)</option>
+            {children.map((child) => (
+              <option key={child.id} value={child.id}>
+                {child.icon ? `${child.icon} ` : "↳ "}
+                {child.name}
+              </option>
+            ))}
+          </optgroup>
+        );
+      })}
+    </select>
+  );
+}
+
+/* ── Pack size section ──────────────────────────────────────── */
+
+function PackSizeSection({
+  stockUnit,
+  packUnit,
+  packSize,
+  onChange,
+}: {
+  stockUnit: string;
+  packUnit: string;
+  packSize: string;
+  onChange: (v: { packUnit?: string; packSize?: string }) => void;
+}) {
+  const unitLabel = ALL_UNITS.find((u) => u.value === stockUnit)?.label ?? stockUnit;
+  const enabled = !!packUnit;
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/10 p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Embalagem de compra</span>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            enabled
+              ? onChange({ packUnit: "", packSize: "" })
+              : onChange({ packUnit: "FARDO", packSize: "1" })
+          }
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {enabled ? (
+            <ToggleRight className="h-6 w-6 text-green-500" />
+          ) : (
+            <ToggleLeft className="h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      {enabled && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Define quantas <strong>{unitLabel}</strong> cabem em uma unidade de embalagem maior (ex:
+            1 Fardo = 8 unidades).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label>Unidade de embalagem</Label>
+              <select
+                value={packUnit}
+                onChange={(e) => onChange({ packUnit: e.target.value })}
+                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              >
+                {PACK_UNITS.map((u) => (
+                  <option key={u.value} value={u.value}>
+                    {u.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>
+                Qtd de {unitLabel} por{" "}
+                {PACK_UNITS.find((u) => u.value === packUnit)?.label ?? packUnit}
+              </Label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={packSize}
+                onChange={(e) => onChange({ packSize: e.target.value })}
+                placeholder="Ex: 8"
+              />
+            </div>
+          </div>
+          {packUnit && packSize && Number(packSize) > 0 && (
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+              1 {PACK_UNITS.find((u) => u.value === packUnit)?.label ?? packUnit} = {packSize}{" "}
+              {unitLabel}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Existing product type ──────────────────────────────────── */
 
 type ExistingProduct = {
   id: string;
@@ -47,6 +304,8 @@ type ExistingProduct = {
   unit: string;
   saleUnit: string;
   conversionFactor: { toString(): string };
+  packUnit?: string | null;
+  packSize?: number | null;
   price: { toString(): string };
   costPrice: { toString(): string } | null;
   imageUrl: string | null;
@@ -67,18 +326,42 @@ interface Props {
 }
 
 type FormState = {
-  name: string; description: string; brand: string; sku: string; barcode: string;
-  productType: string; unit: string; saleUnit: string; conversionFactor: string;
-  price: string; costPrice: string; imageUrl: string;
-  categoryId: string; supplierId: string;
-  isActive: boolean; hasAgeRestriction: boolean; minAge: string; expiryDays: string;
+  name: string;
+  description: string;
+  brand: string;
+  sku: string;
+  barcode: string;
+  productType: string;
+  unit: string;
+  saleUnit: string;
+  conversionFactor: string;
+  packUnit: string;
+  packSize: string;
+  price: string;
+  costPrice: string;
+  imageUrl: string;
+  categoryId: string;
+  supplierId: string;
+  isActive: boolean;
+  hasAgeRestriction: boolean;
+  minAge: string;
+  expiryDays: string;
 };
 
-export function ProductWizard({ organizationId, categories, suppliers, taxRegime, product }: Props) {
+/* ── Main component ─────────────────────────────────────────── */
+
+export function ProductWizard({
+  organizationId,
+  categories,
+  suppliers,
+  taxRegime,
+  product,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<string>(product ? "manual" : "ai");
   const [formKey, setFormKey] = useState(0);
+  const [skuLoading, setSkuLoading] = useState(false);
   const isEdit = !!product;
 
   const [form, setForm] = useState<FormState>({
@@ -91,6 +374,8 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
     unit: product?.unit ?? "UN",
     saleUnit: product?.saleUnit ?? "UN",
     conversionFactor: product?.conversionFactor?.toString() ?? "1",
+    packUnit: product?.packUnit ?? "",
+    packSize: product?.packSize?.toString() ?? "",
     price: product?.price?.toString() ?? "",
     costPrice: product?.costPrice?.toString() ?? "",
     imageUrl: product?.imageUrl ?? "",
@@ -104,6 +389,21 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
 
   function set(partial: Partial<FormState>) {
     setForm((f) => ({ ...f, ...partial }));
+  }
+
+  /* ── SKU auto-generation when category changes ─────────────── */
+  async function handleCategoryChange(categoryId: string) {
+    set({ categoryId });
+    // Only auto-generate if SKU is still blank and creating a new product
+    if (!isEdit && !form.sku && categoryId) {
+      setSkuLoading(true);
+      const res = await generateSkuAction(organizationId, categoryId);
+      setSkuLoading(false);
+      if (res.success) {
+        set({ sku: res.sku });
+        toast.info(`SKU sugerido: ${res.sku}`);
+      }
+    }
   }
 
   function handleAiFound(p: OpenFoodFactsProduct) {
@@ -133,6 +433,8 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
         unit: form.unit as ProductInput["unit"],
         saleUnit: form.saleUnit as ProductInput["saleUnit"],
         conversionFactor: Number(form.conversionFactor) || 1,
+        packUnit: (form.packUnit || undefined) as ProductInput["packUnit"],
+        packSize: form.packSize ? Number(form.packSize) : undefined,
         price: Number(form.price) || 0,
         costPrice: form.costPrice ? Number(form.costPrice) : undefined,
         imageUrl: form.imageUrl || undefined,
@@ -140,12 +442,12 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
         supplierId: form.supplierId || undefined,
         isActive: form.isActive,
         hasAgeRestriction: form.hasAgeRestriction,
-        minAge: form.hasAgeRestriction ? (Number(form.minAge) || 18) : undefined,
+        minAge: form.hasAgeRestriction ? Number(form.minAge) || 18 : undefined,
         expiryDays: form.expiryDays ? Number(form.expiryDays) : undefined,
       };
 
       const result = isEdit
-        ? await updateProductAction(organizationId, product!.id, input)
+        ? await updateProductAction(organizationId, product?.id ?? "", input)
         : await createProductAction(organizationId, input);
 
       if (result.success) {
@@ -177,7 +479,8 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
           <div className="rounded-xl border border-border bg-card p-5">
             <p className="text-sm font-medium mb-1">Busca por código de barras</p>
             <p className="text-xs text-muted-foreground mb-4">
-              Digite o EAN do produto. Os dados (nome, marca, categoria) serão preenchidos automaticamente via Open Food Facts.
+              Digite o EAN do produto. Os dados (nome, marca, imagem) serão preenchidos
+              automaticamente.
             </p>
             <AiProductLookup onFound={handleAiFound} />
           </div>
@@ -207,11 +510,14 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
                   </button>
                 ))}
               </div>
-              {isEdit && (
-                <p className="text-xs text-amber-600">Tipo imutável após criação (RN-C02)</p>
-              )}
             </div>
           )}
+
+          {/* Imagem do produto */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Imagem do produto</Label>
+            <ImageField value={form.imageUrl} onChange={(v) => set({ imageUrl: v })} />
+          </div>
 
           {/* Identificação */}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -227,30 +533,71 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-brand">Marca</Label>
-              <Input id="p-brand" value={form.brand} onChange={(e) => set({ brand: e.target.value })} placeholder="Ex: Coca-Cola" />
+              <Input
+                id="p-brand"
+                value={form.brand}
+                onChange={(e) => set({ brand: e.target.value })}
+                placeholder="Ex: Coca-Cola"
+              />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-sku">SKU (código interno)</Label>
-              <Input id="p-sku" value={form.sku} onChange={(e) => set({ sku: e.target.value })} placeholder="REF-001" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-barcode">Código de barras (EAN)</Label>
-              <Input id="p-barcode" value={form.barcode} onChange={(e) => set({ barcode: e.target.value })} inputMode="numeric" placeholder="7894900011517" />
-            </div>
+
+            {/* Categoria — com seletor hierárquico e geração de SKU */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-category">Categoria</Label>
-              <select
-                id="p-category"
+              <CategorySelect
+                categories={categories}
                 value={form.categoryId}
-                onChange={(e) => set({ categoryId: e.target.value })}
-                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <option value="">Sem categoria</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+                onChange={handleCategoryChange}
+              />
             </div>
+
+            {/* SKU com botão de regerar */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="p-sku">SKU (código interno)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="p-sku"
+                  value={skuLoading ? "Gerando…" : form.sku}
+                  onChange={(e) => set({ sku: e.target.value })}
+                  placeholder="Selecione a categoria para gerar automaticamente"
+                  disabled={skuLoading}
+                  className="flex-1"
+                />
+                {form.categoryId && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-10 w-10 shrink-0"
+                    title="Regerar SKU"
+                    disabled={skuLoading}
+                    onClick={async () => {
+                      setSkuLoading(true);
+                      const res = await generateSkuAction(organizationId, form.categoryId);
+                      setSkuLoading(false);
+                      if (res.success) set({ sku: res.sku });
+                    }}
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${skuLoading ? "animate-spin" : ""}`} />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Gerado automaticamente ao escolher a categoria. Pode ser editado.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="p-barcode">Código de barras (EAN)</Label>
+              <Input
+                id="p-barcode"
+                value={form.barcode}
+                onChange={(e) => set({ barcode: e.target.value })}
+                inputMode="numeric"
+                placeholder="7894900011517"
+              />
+            </div>
+
             {suppliers.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="p-supplier">Fornecedor</Label>
@@ -262,7 +609,9 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
                 >
                   <option value="">Nenhum</option>
                   {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -280,15 +629,32 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
             </div>
           </div>
 
-          {/* Preço e unidades */}
+          {/* Preço e unidade de estoque */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-price">Preço de venda (R$) *</Label>
-              <Input id="p-price" type="number" min="0" step="0.01" value={form.price} onChange={(e) => set({ price: e.target.value })} placeholder="0,00" required />
+              <Input
+                id="p-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.price}
+                onChange={(e) => set({ price: e.target.value })}
+                placeholder="0,00"
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-cost">Custo (R$)</Label>
-              <Input id="p-cost" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => set({ costPrice: e.target.value })} placeholder="0,00" />
+              <Input
+                id="p-cost"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.costPrice}
+                onChange={(e) => set({ costPrice: e.target.value })}
+                placeholder="0,00"
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="p-unit">Unidade de estoque</Label>
@@ -298,12 +664,25 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
                 onChange={(e) => set({ unit: e.target.value })}
                 className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
               >
-                {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                <optgroup label="Base">
+                  {BASE_UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Embalagem">
+                  {PACK_UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           </div>
 
-          {/* Fracionado */}
+          {/* Produto fracionado */}
           {isFractioned && (
             <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20 p-4">
               <p className="sm:col-span-2 text-sm font-medium text-amber-700 dark:text-amber-400">
@@ -316,7 +695,11 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
                   onChange={(e) => set({ saleUnit: e.target.value })}
                   className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 >
-                  {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                  {ALL_UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -337,20 +720,32 @@ export function ProductWizard({ organizationId, categories, suppliers, taxRegime
             </div>
           )}
 
+          {/* Embalagem de compra */}
+          <PackSizeSection
+            stockUnit={form.unit}
+            packUnit={form.packUnit}
+            packSize={form.packSize}
+            onChange={(v) => set({ ...v })}
+          />
+
           {/* Status */}
           <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Produto ativo</p>
-              <p className="text-xs text-muted-foreground">Produto inativo não aparece nas vendas</p>
+              <p className="text-xs text-muted-foreground">
+                Produto inativo não aparece nas vendas
+              </p>
             </div>
             <button
               type="button"
               onClick={() => set({ isActive: !form.isActive })}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {form.isActive
-                ? <ToggleRight className="h-6 w-6 text-green-500" />
-                : <ToggleLeft className="h-6 w-6" />}
+              {form.isActive ? (
+                <ToggleRight className="h-6 w-6 text-green-500" />
+              ) : (
+                <ToggleLeft className="h-6 w-6" />
+              )}
             </button>
           </div>
 

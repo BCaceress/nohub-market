@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { productSchema, type ProductInput } from "../schemas";
+import { type ProductInput, productSchema } from "../schemas";
 
 /* ── RBAC ────────────────────────────────────────────────────── */
 
@@ -95,12 +95,15 @@ export async function createProductAction(
 ): Promise<Result<{ id: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = productSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -117,7 +120,8 @@ export async function createProductAction(
     const bcExists = await prisma.product.findFirst({
       where: { organizationId, barcode: d.barcode, deletedAt: null },
     });
-    if (bcExists) return { success: false, error: "Código de barras já cadastrado nesta organização" };
+    if (bcExists)
+      return { success: false, error: "Código de barras já cadastrado nesta organização" };
   }
 
   const product = await prisma.product.create({
@@ -133,6 +137,8 @@ export async function createProductAction(
       unit: d.unit,
       saleUnit: d.saleUnit,
       conversionFactor: d.conversionFactor,
+      packUnit: d.packUnit ?? null,
+      packSize: d.packSize ?? null,
       price: d.price,
       costPrice: d.costPrice ?? null,
       weight: d.weight ?? null,
@@ -149,14 +155,16 @@ export async function createProductAction(
 
   // If barcode provided, also register in ProductBarcode
   if (d.barcode) {
-    await prisma.productBarcode.create({
-      data: {
-        organizationId,
-        productId: product.id,
-        barcode: d.barcode,
-        type: d.barcode.length === 8 ? "EAN8" : "EAN13",
-      },
-    }).catch(() => {}); // ignore if already exists (race)
+    await prisma.productBarcode
+      .create({
+        data: {
+          organizationId,
+          productId: product.id,
+          barcode: d.barcode,
+          type: d.barcode.length === 8 ? "EAN8" : "EAN13",
+        },
+      })
+      .catch(() => {}); // ignore if already exists (race)
   }
 
   // Create base price in ProductPrice if provided
@@ -193,12 +201,15 @@ export async function updateProductAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = productSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -230,6 +241,8 @@ export async function updateProductAction(
       unit: d.unit,
       saleUnit: d.saleUnit,
       conversionFactor: d.conversionFactor,
+      packUnit: d.packUnit ?? null,
+      packSize: d.packSize ?? null,
       price: d.price,
       costPrice: d.costPrice ?? null,
       weight: d.weight ?? null,
@@ -266,7 +279,9 @@ export async function archiveProductAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -292,7 +307,47 @@ export async function archiveProductAction(
 export async function getProductCategoriesAction(organizationId: string) {
   return prisma.category.findMany({
     where: { organizationId, deletedAt: null },
-    select: { id: true, name: true, parentId: true, slug: true },
+    select: { id: true, name: true, icon: true, parentId: true, slug: true },
     orderBy: [{ position: "asc" }, { name: "asc" }],
   });
+}
+
+/* ── SKU generation ──────────────────────────────────────────── */
+
+export async function generateSkuAction(
+  organizationId: string,
+  categoryId: string,
+): Promise<{ success: true; sku: string } | { success: false; error: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, organizationId, deletedAt: null },
+    include: { parent: { select: { name: true } } },
+  });
+  if (!category) return { success: false, error: "Categoria não encontrada" };
+
+  // Prefixo: primeiras 3 letras (uppercase, sem acentos)
+  const normalize = (s: string) =>
+    s
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 3)
+      .padEnd(3, "X");
+
+  const catPrefix = normalize(category.name);
+  const parentPrefix = category.parent ? normalize(category.parent.name) : catPrefix;
+
+  // Prefixo final: PAI-CAT (se houver pai) ou CAT-CAT (se raiz)
+  const prefix = category.parent ? `${parentPrefix}-${catPrefix}` : catPrefix;
+
+  // Conta produtos já existentes nesta categoria para determinar sequência
+  const count = await prisma.product.count({
+    where: { organizationId, categoryId, deletedAt: null },
+  });
+
+  const seq = String(count + 1).padStart(3, "0");
+  return { success: true, sku: `${prefix}-${seq}` };
 }

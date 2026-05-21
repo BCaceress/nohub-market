@@ -4,9 +4,7 @@ import { z } from "zod";
 // Helpers fiscais
 // ─────────────────────────────────────────────────────────────────────
 
-const ncmSchema = z
-  .string()
-  .regex(/^\d{8}$/, "NCM deve ter exatamente 8 dígitos numéricos"); // RN-C07
+const ncmSchema = z.string().regex(/^\d{8}$/, "NCM deve ter exatamente 8 dígitos numéricos"); // RN-C07
 
 const cestSchema = z
   .string()
@@ -20,8 +18,19 @@ const cfopSchema = z
   .optional()
   .or(z.literal(""));
 
-const icmsCstValues = ["00","10","20","30","40","41","50","51","60","70","90"] as const;
-const icmsCsosnValues = ["101","102","103","201","202","203","300","400","500","900"] as const;
+const icmsCstValues = ["00", "10", "20", "30", "40", "41", "50", "51", "60", "70", "90"] as const;
+const icmsCsosnValues = [
+  "101",
+  "102",
+  "103",
+  "201",
+  "202",
+  "203",
+  "300",
+  "400",
+  "500",
+  "900",
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────
 // Categoria
@@ -35,6 +44,7 @@ export const categorySchema = z.object({
     .max(80)
     .regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens")
     .optional(),
+  icon: z.string().max(10).optional().or(z.literal("")),
   parentId: z.string().cuid().optional().or(z.literal("")),
   position: z.coerce.number().int().min(0).default(0),
 });
@@ -52,17 +62,22 @@ export const productSchema = z.object({
   barcode: z.string().max(20).optional().or(z.literal("")),
   tags: z.array(z.string().max(50)).default([]),
 
-  productType: z
-    .enum(["SIMPLE", "VARIANT_PARENT", "KIT", "FRACTIONED"])
-    .default("SIMPLE"),
+  productType: z.enum(["SIMPLE", "VARIANT_PARENT", "KIT", "FRACTIONED"]).default("SIMPLE"),
 
   // Unidades
-  unit: z.enum(["UN", "KG", "G", "L", "ML", "CX", "PCT"]).default("UN"),
-  saleUnit: z.enum(["UN", "KG", "G", "L", "ML", "CX", "PCT"]).default("UN"),
-  conversionFactor: z.coerce
-    .number()
-    .positive("conversionFactor deve ser > 0")
-    .default(1),
+  unit: z
+    .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+    .default("UN"),
+  saleUnit: z
+    .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+    .default("UN"),
+  conversionFactor: z.coerce.number().positive("conversionFactor deve ser > 0").default(1),
+
+  // Embalagem de compra
+  packUnit: z
+    .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+    .optional(),
+  packSize: z.coerce.number().int().positive().optional(),
 
   // Preço base (simples — canônico em ProductPrice)
   price: z.coerce.number().min(0).default(0),
@@ -110,28 +125,30 @@ export type KitComponentInput = z.infer<typeof kitComponentSchema>;
 // Preço dimensional
 // ─────────────────────────────────────────────────────────────────────
 
-export const productPriceSchema = z.object({
-  productId: z.string().cuid(),
-  variantId: z.string().cuid().optional().or(z.literal("")),
-  locationId: z.string().cuid().optional().or(z.literal("")),
-  channel: z
-    .enum(["IFOOD", "WHATSAPP", "MERCADO_LIVRE", "RAPPI", "OWN_ECOMMERCE", "OTHER"])
-    .optional()
-    .or(z.literal("")),
-  price: z.coerce.number().min(0, "Preço inválido"),
-  promoPrice: z.coerce.number().min(0).optional(),
-  cost: z.coerce.number().min(0).optional(),
-  validFrom: z.string().datetime().optional().or(z.literal("")),
-  validTo: z.string().datetime().optional().or(z.literal("")),
-}).refine(
-  (d) => {
-    if (d.promoPrice !== undefined && d.validTo === undefined) {
-      return false; // promoPrice sem janela de validade é erro
-    }
-    return true;
-  },
-  { message: "promoPrice requer validTo", path: ["validTo"] },
-);
+export const productPriceSchema = z
+  .object({
+    productId: z.string().cuid(),
+    variantId: z.string().cuid().optional().or(z.literal("")),
+    locationId: z.string().cuid().optional().or(z.literal("")),
+    channel: z
+      .enum(["IFOOD", "WHATSAPP", "MERCADO_LIVRE", "RAPPI", "OWN_ECOMMERCE", "OTHER"])
+      .optional()
+      .or(z.literal("")),
+    price: z.coerce.number().min(0, "Preço inválido"),
+    promoPrice: z.coerce.number().min(0).optional(),
+    cost: z.coerce.number().min(0).optional(),
+    validFrom: z.string().datetime().optional().or(z.literal("")),
+    validTo: z.string().datetime().optional().or(z.literal("")),
+  })
+  .refine(
+    (d) => {
+      if (d.promoPrice !== undefined && d.validTo === undefined) {
+        return false; // promoPrice sem janela de validade é erro
+      }
+      return true;
+    },
+    { message: "promoPrice requer validTo", path: ["validTo"] },
+  );
 export type ProductPriceInput = z.infer<typeof productPriceSchema>;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -206,7 +223,9 @@ export const importRowSchema = z.object({
   category: z.string().optional(), // nome da categoria (match ou criação)
   price: z.coerce.number().min(0).optional(),
   costPrice: z.coerce.number().min(0).optional(),
-  unit: z.enum(["UN", "KG", "G", "L", "ML", "CX", "PCT"]).default("UN"),
+  unit: z
+    .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+    .default("UN"),
   ncm: z
     .string()
     .regex(/^\d{8}$/)
@@ -215,7 +234,10 @@ export const importRowSchema = z.object({
     .string()
     .regex(/^\d{7}$/)
     .optional(),
-  cfopInternal: z.string().regex(/^\d{4}$/).optional(),
+  cfopInternal: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional(),
   description: z.string().optional(),
 });
 export type ImportRow = z.infer<typeof importRowSchema>;

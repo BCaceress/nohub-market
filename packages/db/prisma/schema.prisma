@@ -68,13 +68,17 @@ enum SalesChannelType {
 }
 
 enum ProductUnit {
-  UN
-  KG
-  G
-  L
-  ML
-  CX
-  PCT
+  UN      // unidade
+  KG      // quilograma
+  G       // grama
+  L       // litro
+  ML      // mililitro
+  CX      // caixa
+  PCT     // pacote
+  FARDO   // fardo
+  DZ      // dúzia
+  BANDEJA // bandeja
+  CENTO   // cento (100 unidades)
 }
 
 enum MovementType {
@@ -519,12 +523,13 @@ model Supplier {
 // ─────────────────────────────────────────────────────────────────────
 
 model Category {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   name           String
   slug           String
+  icon           String? // emoji ou nome de ícone (ex: "🍺", "🧴")
   parentId       String?
-  position       Int    @default(0)
+  position       Int     @default(0)
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -565,9 +570,13 @@ model Product {
   productType ProductType @default(SIMPLE)
 
   // Unidades: stock = como o estoque conta; sale = como o cliente vê
-  unit             ProductUnit @default(UN) // alias de stockUnit, mantido por compat
-  saleUnit         ProductUnit @default(UN)
-  conversionFactor Decimal     @db.Decimal(10, 6) @default(1)
+  unit             ProductUnit  @default(UN) // alias de stockUnit, mantido por compat
+  saleUnit         ProductUnit  @default(UN)
+  conversionFactor Decimal      @db.Decimal(10, 6) @default(1)
+
+  // Unidade de embalagem/compra (ex: FARDO) e quantas unit cabem nela (ex: 8)
+  packUnit         ProductUnit? // unidade maior de compra/embalagem
+  packSize         Int?         // quantas `unit` formam 1 `packUnit`
 
   // Preço legado — mantido para acesso simples; canonical em ProductPrice
   price     Decimal  @db.Decimal(10, 2) @default(0)
