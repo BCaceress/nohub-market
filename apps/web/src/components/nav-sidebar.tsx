@@ -49,9 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Catálogo",
     items: [
       { href: "/app/products", label: "Produtos", icon: ShoppingBag },
-      { href: "/app/products/categories", label: "Categorias", icon: FolderOpen },
       { href: "/app/products/prices", label: "Preços", icon: DollarSign },
-      { href: "/app/products/import", label: "Importar", icon: Download },
     ],
   },
   {

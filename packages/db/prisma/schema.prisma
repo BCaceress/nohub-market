@@ -527,7 +527,8 @@ model Category {
   organizationId String
   name           String
   slug           String
-  icon           String? // emoji ou nome de ícone (ex: "🍺", "🧴")
+  icon           String? // ID do ícone lucide (ex: "beer", "coffee")
+  iconColor      String? @default("#f59e0b") // cor do ícone em hex
   parentId       String?
   position       Int     @default(0)
 

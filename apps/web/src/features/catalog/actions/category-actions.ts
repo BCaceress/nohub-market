@@ -70,7 +70,7 @@ export async function createCategoryAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position, icon } = parsed.data;
+  const { name, parentId, position, icon, iconColor } = parsed.data;
   const slug = parsed.data.slug || generateSlug(name);
 
   // Ensure slug uniqueness within org
@@ -85,6 +85,7 @@ export async function createCategoryAction(
       name,
       slug: finalSlug,
       icon: icon || null,
+      iconColor: iconColor || "#f59e0b",
       parentId: parentId || null,
       position,
     },
@@ -122,11 +123,17 @@ export async function updateCategoryAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position, icon } = parsed.data;
+  const { name, parentId, position, icon, iconColor } = parsed.data;
 
   await prisma.category.updateMany({
     where: { id: categoryId, organizationId },
-    data: { name, icon: icon || null, parentId: parentId || null, position },
+    data: {
+      name,
+      icon: icon || null,
+      iconColor: iconColor || "#f59e0b",
+      parentId: parentId || null,
+      position,
+    },
   });
 
   await writeAudit({

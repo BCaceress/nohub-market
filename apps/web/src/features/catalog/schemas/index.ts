@@ -44,7 +44,12 @@ export const categorySchema = z.object({
     .max(80)
     .regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens")
     .optional(),
-  icon: z.string().max(10).optional().or(z.literal("")),
+  icon: z.string().max(50).optional().or(z.literal("")), // ID do ícone lucide
+  iconColor: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/i, "Cor inválida")
+    .optional()
+    .or(z.literal("")), // cor em hex
   parentId: z.string().cuid().optional().or(z.literal("")),
   position: z.coerce.number().int().min(0).default(0),
 });

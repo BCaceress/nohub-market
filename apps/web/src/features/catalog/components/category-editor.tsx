@@ -6,15 +6,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Beer,
+  Briefcase,
   ChevronDown,
   ChevronRight,
+  Coffee,
   Folder,
   FolderOpen,
+  Gift,
+  Heart,
+  Home,
   Info,
+  Leaf,
+  Palette,
   Pencil,
   Plus,
+  Shield,
+  ShoppingCart,
+  Star,
   Tag,
   Trash2,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -25,39 +38,39 @@ import {
   updateCategoryAction,
 } from "../actions/category-actions";
 
-/* ── Icon palette ───────────────────────────────────────────── */
+/* ── Icon palette & colors ──────────────────────────────────── */
 
-const ICON_OPTIONS = [
-  { emoji: "🍺", label: "Bebidas alcoólicas" },
-  { emoji: "🥤", label: "Refrigerantes" },
-  { emoji: "💧", label: "Água / hidratação" },
-  { emoji: "☕", label: "Café / quentes" },
-  { emoji: "🍔", label: "Lanches" },
-  { emoji: "🍕", label: "Pizzas / salgados" },
-  { emoji: "🍿", label: "Snacks / petiscos" },
-  { emoji: "🍫", label: "Chocolates / doces" },
-  { emoji: "🍭", label: "Balas / gomas" },
-  { emoji: "🧁", label: "Confeitaria" },
-  { emoji: "🥐", label: "Padaria / grãos" },
-  { emoji: "🥩", label: "Carnes / frios" },
-  { emoji: "🧀", label: "Laticínios" },
-  { emoji: "🥦", label: "Hortifruti" },
-  { emoji: "🍳", label: "Ovos / café da manhã" },
-  { emoji: "🧂", label: "Temperos / condimentos" },
-  { emoji: "🛒", label: "Mercearia" },
-  { emoji: "🧹", label: "Limpeza" },
-  { emoji: "🧴", label: "Higiene pessoal" },
-  { emoji: "💊", label: "Farmácia / saúde" },
-  { emoji: "🐾", label: "Pet" },
-  { emoji: "🧸", label: "Bebê / criança" },
-  { emoji: "📦", label: "Descartáveis / embalagens" },
-  { emoji: "⚡", label: "Energéticos" },
-  { emoji: "🫙", label: "Conservas / enlatados" },
-  { emoji: "🍷", label: "Vinhos" },
-  { emoji: "🥃", label: "Destilados" },
-  { emoji: "🫖", label: "Chás / infusões" },
-  { emoji: "🥛", label: "Leites / bebidas vegetais" },
-  { emoji: "🍦", label: "Gelados / sorvetes" },
+type IconDefinition = {
+  id: string;
+  label: string;
+  Component: React.ElementType;
+};
+
+const ICON_OPTIONS: IconDefinition[] = [
+  { id: "beer", label: "Bebidas alcoólicas", Component: Beer },
+  { id: "coffee", label: "Café / quentes", Component: Coffee },
+  { id: "leaf", label: "Hortifruti / natural", Component: Leaf },
+  { id: "heart", label: "Saúde / farmácia", Component: Heart },
+  { id: "shopping-cart", label: "Mercearia", Component: ShoppingCart },
+  { id: "gift", label: "Presentes", Component: Gift },
+  { id: "star", label: "Premium / destaque", Component: Star },
+  { id: "zap", label: "Promoção / energéticos", Component: Zap },
+  { id: "home", label: "Casa / limpeza", Component: Home },
+  { id: "briefcase", label: "Profissional / negócios", Component: Briefcase },
+  { id: "palette", label: "Arte / criatividade", Component: Palette },
+  { id: "trending-up", label: "Crescimento / eletrônicos", Component: TrendingUp },
+  { id: "shield", label: "Proteção / segurança", Component: Shield },
+];
+
+const PRESET_COLORS = [
+  { name: "Amber", value: "#f59e0b" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Green", value: "#10b981" },
+  { name: "Red", value: "#ef4444" },
+  { name: "Purple", value: "#a855f7" },
+  { name: "Pink", value: "#ec4899" },
+  { name: "Cyan", value: "#06b6d4" },
+  { name: "Slate", value: "#64748b" },
 ];
 
 /* ── Types ──────────────────────────────────────────────────── */
@@ -83,6 +96,7 @@ type Category = {
   name: string;
   slug: string;
   icon: string | null;
+  iconColor: string | null;
   parentId: string | null;
   position: number;
   taxDefault: TaxDefault;
@@ -150,6 +164,7 @@ function CategoryRow({
   onEdit,
   onDelete,
   onTaxEdit,
+  onAddSubcategory,
 }: {
   cat: Category;
   depth: number;
@@ -159,9 +174,13 @@ function CategoryRow({
   onEdit: (cat: Category) => void;
   onDelete: (cat: Category) => void;
   onTaxEdit: (cat: Category) => void;
+  onAddSubcategory: (parentCat: Category) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = (cat.children ?? []).length > 0;
+
+  const iconDef = ICON_OPTIONS.find((opt) => opt.id === cat.icon);
+  const IconComponent = iconDef?.Component;
 
   return (
     <>
@@ -186,9 +205,12 @@ function CategoryRow({
           )}
         </button>
 
-        {/* Icon — emoji se definido, senão Folder/Tag Lucide */}
-        {cat.icon ? (
-          <span className="text-base leading-none shrink-0 w-4 text-center">{cat.icon}</span>
+        {/* Icon — lucide with color */}
+        {IconComponent ? (
+          <IconComponent
+            className="h-4 w-4 shrink-0"
+            style={{ color: cat.iconColor || "#f59e0b" }}
+          />
         ) : hasChildren ? (
           expanded ? (
             <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
@@ -220,6 +242,17 @@ function CategoryRow({
 
         {/* Actions */}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          {!hasChildren && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              title="Adicionar subcategoria"
+              onClick={() => onAddSubcategory(cat)}
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -257,6 +290,7 @@ function CategoryRow({
             onEdit={onEdit}
             onDelete={onDelete}
             onTaxEdit={onTaxEdit}
+            onAddSubcategory={onAddSubcategory}
           />
         ))}
     </>
@@ -265,39 +299,109 @@ function CategoryRow({
 
 /* ── Icon picker ─────────────────────────────────────────────── */
 
-function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+type IconPickerValue = { iconId: string; color: string } | null;
+
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: IconPickerValue;
+  onChange: (v: IconPickerValue) => void;
+}) {
+  const selectedIcon = value ? ICON_OPTIONS.find((opt) => opt.id === value.iconId) : null;
+  const selectedColor = value?.color || "#f59e0b";
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-2xl w-8 text-center">{value || "📦"}</span>
-        <span className="text-xs text-muted-foreground">
-          {value ? "Ícone selecionado" : "Nenhum (padrão)"}
-        </span>
-        {value && (
-          <button
-            type="button"
-            className="text-xs text-muted-foreground underline"
-            onClick={() => onChange("")}
-          >
-            Remover
-          </button>
+    <div className="flex flex-col gap-3">
+      {/* Preview */}
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+        {selectedIcon ? (
+          <>
+            <selectedIcon.Component className="h-6 w-6 shrink-0" style={{ color: selectedColor }} />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{selectedIcon.label}</p>
+              <p className="text-xs text-muted-foreground">{selectedColor}</p>
+            </div>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+              onClick={() => onChange(null)}
+            >
+              Remover
+            </button>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhum ícone selecionado</p>
         )}
       </div>
-      <div className="grid grid-cols-10 gap-1 rounded-lg border border-border bg-muted/20 p-2">
-        {ICON_OPTIONS.map((opt) => (
-          <button
-            key={opt.emoji}
-            type="button"
-            title={opt.label}
-            onClick={() => onChange(opt.emoji)}
-            className={`text-lg rounded p-1 hover:bg-accent transition-colors ${
-              value === opt.emoji ? "bg-accent ring-1 ring-ring" : ""
-            }`}
-          >
-            {opt.emoji}
-          </button>
-        ))}
+
+      {/* Icon selection */}
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Ícone</Label>
+        <div className="grid grid-cols-4 gap-2 rounded-lg border border-border bg-muted/20 p-2">
+          {ICON_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              title={opt.label}
+              onClick={() => onChange({ iconId: opt.id, color: selectedColor })}
+              className={`flex items-center justify-center h-10 rounded-lg transition-colors ${
+                value?.iconId === opt.id ? "bg-accent ring-2 ring-ring" : "hover:bg-accent/50"
+              }`}
+            >
+              <opt.Component
+                className="h-5 w-5"
+                style={{ color: value?.iconId === opt.id ? selectedColor : "currentColor" }}
+              />
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Color selection */}
+      {value && (
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs">Cor</Label>
+          <div className="flex flex-col gap-2">
+            {/* Presets */}
+            <div className="flex flex-wrap gap-2">
+              {PRESET_COLORS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  title={preset.name}
+                  onClick={() => onChange({ iconId: value.iconId, color: preset.value })}
+                  className={`h-8 w-8 rounded-lg transition-all ${
+                    selectedColor === preset.value
+                      ? "ring-2 ring-ring scale-110"
+                      : "hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: preset.value }}
+                />
+              ))}
+            </div>
+
+            {/* Custom color */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Label htmlFor="custom-color" className="text-xs">
+                  Cor customizada
+                </Label>
+                <Input
+                  id="custom-color"
+                  type="color"
+                  value={selectedColor}
+                  onChange={(e) => onChange({ iconId: value.iconId, color: e.target.value })}
+                  className="h-10 cursor-pointer"
+                />
+              </div>
+              <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                {selectedColor}
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -311,7 +415,11 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
   // Category dialog
   const [catDialog, setCatDialog] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
-  const [catForm, setCatForm] = useState({ name: "", icon: "", parentId: "" });
+  const [subparentId, setSubparentId] = useState<string | null>(null);
+  const [catForm, setCatForm] = useState({
+    name: "",
+    icon: null as IconPickerValue,
+  });
 
   // Tax dialog
   const [taxDialog, setTaxDialog] = useState(false);
@@ -337,13 +445,25 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
 
   function openNew() {
     setEditingCat(null);
-    setCatForm({ name: "", icon: "", parentId: "" });
+    setSubparentId(null);
+    setCatForm({ name: "", icon: null });
+    setCatDialog(true);
+  }
+
+  function openNewSubcategory(parentCat: Category) {
+    setEditingCat(null);
+    setSubparentId(parentCat.id);
+    setCatForm({ name: "", icon: null });
     setCatDialog(true);
   }
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
-    setCatForm({ name: cat.name, icon: cat.icon ?? "", parentId: cat.parentId ?? "" });
+    setSubparentId(null);
+    setCatForm({
+      name: cat.name,
+      icon: cat.icon ? { iconId: cat.icon, color: cat.iconColor || "#f59e0b" } : null,
+    });
     setCatDialog(true);
   }
 
@@ -352,8 +472,9 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
     startTransition(async () => {
       const input = {
         name: catForm.name,
-        icon: catForm.icon || undefined,
-        parentId: catForm.parentId || undefined,
+        icon: catForm.icon?.iconId || undefined,
+        iconColor: catForm.icon?.color || undefined,
+        parentId: subparentId || undefined,
         position: 0,
       };
       const result = editingCat
@@ -472,6 +593,7 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
               onEdit={openEdit}
               onDelete={handleDelete}
               onTaxEdit={openTaxEdit}
+              onAddSubcategory={openNewSubcategory}
             />
           ))}
         </div>
@@ -481,7 +603,13 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
       <Dialog open={catDialog} onOpenChange={setCatDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingCat ? "Editar categoria" : "Nova categoria"}</DialogTitle>
+            <DialogTitle>
+              {editingCat
+                ? "Editar categoria"
+                : subparentId
+                  ? "Nova subcategoria"
+                  : "Nova categoria"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCatSubmit} className="flex flex-col gap-4 mt-2">
             <div className="flex flex-col gap-1.5">
@@ -492,30 +620,6 @@ export function CategoryEditor({ organizationId, categories: initial, taxRegime 
                 placeholder="Ex: Bebidas, Refrigerantes…"
                 required
               />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>Categoria pai (subcategoria)</Label>
-              <select
-                value={catForm.parentId}
-                onChange={(e) => setCatForm((f) => ({ ...f, parentId: e.target.value }))}
-                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              >
-                <option value="">Nível raiz (categoria principal)</option>
-                {/* Mostrar somente categorias raiz como pai possível */}
-                {categories
-                  .filter((c) => !c.parentId && c.id !== editingCat?.id)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.icon ? `${c.icon} ` : ""}
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Selecione uma categoria pai para criar uma subcategoria (ex: Bebidas →
-                Refrigerante).
-              </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
