@@ -283,7 +283,9 @@ export function ProductListClient({
               />
             ) : (
               products.map((p) => {
-                const cfg = TYPE_CONFIG[p.productType] ?? TYPE_CONFIG.SIMPLE;
+                const cfg =
+                  TYPE_CONFIG[p.productType] ??
+                  (TYPE_CONFIG.SIMPLE as NonNullable<typeof TYPE_CONFIG.SIMPLE>);
                 const hasTax = p._count.taxData > 0;
                 const price = Number(p.price.toString());
 

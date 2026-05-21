@@ -343,6 +343,7 @@ model Organization {
   purchaseSuggestions    PurchaseSuggestion[]
   nfeImports             NfeImport[]
   supplierProductMappings SupplierProductMapping[]
+  tags                    Tag[]
 
   @@index([document])
   @@index([deletedAt])
@@ -625,6 +626,7 @@ model Product {
   supplierProductMappings SupplierProductMapping[]
   quotationItems         QuotationItem[]
   purchaseSuggestionItems PurchaseSuggestionItem[]
+  productTags             ProductTag[]
 
   @@index([organizationId])
   @@index([supplierId])
@@ -2190,4 +2192,39 @@ model NfeImport {
 
   @@index([organizationId])
   @@index([organizationId, status])
+}
+
+// ── Tags de produto — biblioteca por organização (RN-T01) ────────────────
+
+model Tag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  group          String   @default("geral")
+  color          String?
+  description    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     ProductTag[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([organizationId, group])
+}
+
+model ProductTag {
+  productId  String
+  tagId      String
+  assignedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId],     references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([productId])
+  @@index([tagId])
 }

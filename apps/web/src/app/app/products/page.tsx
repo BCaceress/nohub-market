@@ -6,7 +6,7 @@ import {
 } from "@/features/catalog/actions/product-actions";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
-import { Download, FolderOpen, Package, Plus } from "lucide-react";
+import { Download, FolderOpen, Package, Plus, Tag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProductListClient } from "./product-list-client";
@@ -82,6 +82,12 @@ export default async function ProductsPage({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/app/products/tags">
+              <Tag className="h-4 w-4" />
+              Tags
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/app/products/categories">
               <FolderOpen className="h-4 w-4" />
