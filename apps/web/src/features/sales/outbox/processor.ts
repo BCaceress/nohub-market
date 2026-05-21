@@ -8,19 +8,20 @@
  * Max: maxAttempts (padrão: 5) — após isso, status = FAILED (dead letter).
  */
 
+import { processIssuance } from "@/features/fiscal/lib/process-issuance";
 import { prisma } from "@nohub/db";
-import { ifoodAdapter } from "../adapters/ifood-adapter";
-import { whatsappAdapter } from "../adapters/whatsapp-adapter";
-import { mercadolivreAdapter } from "../adapters/mercadolivre-adapter";
 import type { OrderStatus } from "@nohub/db";
+import { ifoodAdapter } from "../adapters/ifood-adapter";
+import { mercadolivreAdapter } from "../adapters/mercadolivre-adapter";
+import { whatsappAdapter } from "../adapters/whatsapp-adapter";
 
 const BATCH_SIZE = 20;
 
 type ProcessResult = {
   processed: number;
   succeeded: number;
-  failed:    number;
-  retrying:  number;
+  failed: number;
+  retrying: number;
 };
 
 /**
@@ -34,15 +35,9 @@ export async function processOutboxBatch(): Promise<ProcessResult> {
   const events = await prisma.outboxEvent.findMany({
     where: {
       status: "PENDING",
-      OR: [
-        { nextRetryAt: null },
-        { nextRetryAt: { lte: new Date() } },
-      ],
+      OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }],
     },
-    orderBy: [
-      { priority:    "desc" },
-      { createdAt:   "asc"  },
-    ],
+    orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
     take: BATCH_SIZE,
     include: {
       organization: {
@@ -58,8 +53,8 @@ export async function processOutboxBatch(): Promise<ProcessResult> {
 
     // Marcar como PROCESSING para evitar processamento duplo
     const claimed = await prisma.outboxEvent.updateMany({
-      where:  { id: event.id, status: "PENDING" },
-      data:   { status: "PROCESSING", processedAt: new Date() },
+      where: { id: event.id, status: "PENDING" },
+      data: { status: "PROCESSING", processedAt: new Date() },
     });
 
     if (claimed.count === 0) continue; // outro worker já pegou
@@ -68,30 +63,30 @@ export async function processOutboxBatch(): Promise<ProcessResult> {
       await dispatchEvent(event);
       await prisma.outboxEvent.update({
         where: { id: event.id },
-        data:  { status: "DONE", processedAt: new Date() },
+        data: { status: "DONE", processedAt: new Date() },
       });
       result.succeeded++;
     } catch (err) {
       const attempts = event.attempts + 1;
-      const isFinal  = attempts >= event.maxAttempts;
+      const isFinal = attempts >= event.maxAttempts;
 
       // Back-off exponencial: 30s, 60s, 120s, 240s, 480s
-      const backoffSeconds = Math.min(Math.pow(2, attempts) * 30, 3600);
-      const nextAttemptAt  = new Date(Date.now() + backoffSeconds * 1000);
+      const backoffSeconds = Math.min(2 ** attempts * 30, 3600);
+      const nextAttemptAt = new Date(Date.now() + backoffSeconds * 1000);
 
       await prisma.outboxEvent.update({
         where: { id: event.id },
         data: {
-          status:       isFinal ? "FAILED" : "PENDING",
+          status: isFinal ? "FAILED" : "PENDING",
           attempts,
-          lastError:    String(err),
-          nextRetryAt:  isFinal ? null : nextAttemptAt,
-          processedAt:  isFinal ? new Date() : null,
+          lastError: String(err),
+          nextRetryAt: isFinal ? null : nextAttemptAt,
+          processedAt: isFinal ? new Date() : null,
         },
       });
 
       if (isFinal) result.failed++;
-      else         result.retrying++;
+      else result.retrying++;
     }
   }
 
@@ -102,12 +97,12 @@ export async function processOutboxBatch(): Promise<ProcessResult> {
 
 async function dispatchEvent(event: {
   eventType: string;
-  payload:   unknown;
+  payload: unknown;
   organization: {
     channelIntegrations: Array<{
-      channel:     string;
+      channel: string;
       credentials: unknown;
-      status:      string;
+      status: string;
     }>;
   };
 }): Promise<void> {
@@ -165,24 +160,24 @@ async function dispatchEvent(event: {
 
     case "CATALOG_SYNC_IFOOD": {
       const credentials = getCredentials("IFOOD");
-      const products    = (payload.products as never[]) ?? [];
-      const result      = await ifoodAdapter.syncCatalog(credentials, products);
+      const products = (payload.products as never[]) ?? [];
+      const result = await ifoodAdapter.syncCatalog(credentials, products);
       if (!result.success) throw new Error(result.error);
       break;
     }
 
     case "CATALOG_SYNC_ML": {
       const credentials = getCredentials("MERCADOLIVRE");
-      const products    = (payload.products as never[]) ?? [];
-      const result      = await mercadolivreAdapter.syncCatalog(credentials, products);
+      const products = (payload.products as never[]) ?? [];
+      const result = await mercadolivreAdapter.syncCatalog(credentials, products);
       if (!result.success) throw new Error(result.error);
       break;
     }
 
     case "CATALOG_SYNC_WHATSAPP": {
       const credentials = getCredentials("WHATSAPP");
-      const products    = (payload.products as never[]) ?? [];
-      const result      = await whatsappAdapter.syncCatalog(credentials, products);
+      const products = (payload.products as never[]) ?? [];
+      const result = await whatsappAdapter.syncCatalog(credentials, products);
       if (!result.success) throw new Error(result.error);
       break;
     }
@@ -191,6 +186,26 @@ async function dispatchEvent(event: {
     case "PIX_CHARGE_CANCEL":
       // TODO: Integrar com payment provider real
       console.warn(`[OutboxProcessor] ${event.eventType} em modo simulado`);
+      break;
+
+    case "FISCAL_ISSUE": {
+      const invoiceId = String(payload.invoiceId ?? "");
+      if (!invoiceId) throw new Error("FISCAL_ISSUE sem invoiceId no payload");
+      const fiscalResult = await processIssuance(invoiceId);
+      if (!fiscalResult.success && !fiscalResult.retryable) {
+        // Falha permanente — não retentar (ex: cert vencido, config faltando)
+        // Lança igual para marcar FAILED e parar retries
+        throw Object.assign(new Error(fiscalResult.error), { permanent: true });
+      }
+      if (!fiscalResult.success) {
+        throw new Error(fiscalResult.error);
+      }
+      break;
+    }
+
+    case "FISCAL_CANCEL":
+      // Cancelamento é disparado sincronamente via requestCancellation — não usa Outbox
+      console.warn("[OutboxProcessor] FISCAL_CANCEL recebido — tratado sincronamente");
       break;
 
     default:

@@ -330,6 +330,15 @@ model Organization {
   fiscalCertificate   FiscalCertificate?
   fiscalConfig        FiscalConfig?
   invoiceNumberSkips  InvoiceNumberSkip[]
+  // Etapa 6
+  purchaseOrders         PurchaseOrder[]
+  goodsReceipts          GoodsReceipt[]
+  supplierReturns        SupplierReturn[]
+  accountPayables        AccountPayable[]
+  quotations             Quotation[]
+  purchaseSuggestions    PurchaseSuggestion[]
+  nfeImports             NfeImport[]
+  supplierProductMappings SupplierProductMapping[]
 
   @@index([document])
   @@index([deletedAt])
@@ -435,6 +444,9 @@ model Location {
   cashSessions     CashSession[]
   // Etapa 5
   invoices         Invoice[]
+  // Etapa 6
+  purchaseOrders      PurchaseOrder[]
+  purchaseSuggestions PurchaseSuggestion[]
 
   @@index([organizationId])
 }
@@ -484,8 +496,20 @@ model Supplier {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Etapa 6 — campos opcionais de compras
+  defaultPaymentTerms Json?
+  defaultLeadTimeDays Int?
+  minOrderAmount      Decimal? @db.Decimal(10, 2)
+  notes               String?
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   products     Product[]
+  // Etapa 6
+  supplierProductMappings SupplierProductMapping[]
+  purchaseOrders          PurchaseOrder[]
+  supplierReturns         SupplierReturn[]
+  accountPayables         AccountPayable[]
+  quotationResponses      QuotationSupplierResponse[]
 
   @@index([organizationId])
 }
@@ -585,6 +609,12 @@ model Product {
   stockLots          StockLot[]
   stockReservations  StockReservation[]
   inventoryCountItems InventoryCountItem[]
+  // Relações Etapa 6
+  purchaseOrderItems     PurchaseOrderItem[]
+  goodsReceiptItems      GoodsReceiptItem[]
+  supplierProductMappings SupplierProductMapping[]
+  quotationItems         QuotationItem[]
+  purchaseSuggestionItems PurchaseSuggestionItem[]
 
   @@index([organizationId])
   @@index([supplierId])
@@ -638,6 +668,12 @@ model ProductVariant {
   stockBalances     StockBalance[]
   stockLots         StockLot[]
   stockReservations StockReservation[]
+  // Etapa 6
+  purchaseOrderItems      PurchaseOrderItem[]
+  goodsReceiptItems       GoodsReceiptItem[]
+  supplierProductMappings SupplierProductMapping[]
+  quotationItems          QuotationItem[]
+  purchaseSuggestionItems PurchaseSuggestionItem[]
 
   @@index([organizationId])
   @@index([productId])
@@ -1679,4 +1715,469 @@ model InvoiceNumberSkip {
 
   @@index([organizationId])
   @@index([organizationId, series])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// COMPRAS — Etapa 6
+// ─────────────────────────────────────────────────────────────────────
+
+enum PurchaseOrderStatus {
+  DRAFT      // rascunho — em elaboração
+  SENT       // enviado ao fornecedor
+  CONFIRMED  // fornecedor confirmou prazo/condições
+  RECEIVING  // recebimento parcial em andamento
+  RECEIVED   // todo o pedido recebido
+  CANCELED   // cancelado
+}
+
+enum GoodsReceiptStatus {
+  DRAFT     // em conferência — operador pode ajustar
+  CONFIRMED // conferência encerrada; estoque atualizado
+  CANCELED
+}
+
+enum SupplierReturnStatus {
+  DRAFT
+  CONFIRMED
+  CANCELED
+}
+
+enum SupplierReturnReason {
+  DEFECT       // defeito / avaria
+  EXPIRY       // vencido / próximo do vencimento
+  WRONG_ITEM   // item errado entregue
+  OVERSTOCK    // excesso de estoque
+  OTHER
+}
+
+enum DivergenceType {
+  NONE     // sem divergência
+  QUANTITY // quantidade diverge do PO
+  COST     // custo diverge do PO
+  QUALITY  // problema de qualidade
+}
+
+enum AccountPayableStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  CANCELED
+}
+
+enum QuotationStatus {
+  OPEN      // aguardando respostas
+  CLOSED    // encerrada sem converter
+  CONVERTED // convertida em PO
+}
+
+enum PurchaseSuggestionStatus {
+  PENDING   // aguardando revisão do usuário
+  CONVERTED // convertida em PO
+  DISMISSED // descartada
+}
+
+enum NfeImportStatus {
+  PENDING   // XML recebido, aguardando parse
+  PARSED    // parser OK, aguardando mapping
+  MAPPED    // todos os itens mapeados
+  CONFIRMED // PO + recebimento criados
+  REJECTED  // falha no parse ou validação
+}
+
+enum PoHistorySource {
+  INTERNAL
+  XML_IMPORT
+  MANUAL
+}
+
+// ── Mapeamento de catálogo fornecedor <-> produto MarketOS (RN-P12) ───
+
+model SupplierProductMapping {
+  id             String @id @default(cuid())
+  organizationId String
+  supplierId     String
+
+  supplierProductCode String
+  supplierProductName String
+
+  productId  String
+  variantId  String?
+
+  defaultPackQuantity Decimal? @db.Decimal(10, 3)
+  lastCost            Decimal? @db.Decimal(10, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier     Supplier        @relation(fields: [supplierId],     references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId],      references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId],      references: [id], onDelete: SetNull)
+
+  @@unique([supplierId, supplierProductCode])
+  @@index([organizationId])
+  @@index([productId])
+}
+
+// ── Pedido de compra — espelha Order (RN-P01) ────────────────────────
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  organizationId String
+  supplierId     String
+  locationId     String
+
+  status        PurchaseOrderStatus @default(DRAFT)
+  number        Int?
+
+  paymentTerms  Json?
+  expectedDate  DateTime?
+  confirmedDate DateTime?
+  notes         String?
+
+  subtotal      Decimal @db.Decimal(10, 2) @default(0)
+  discountTotal Decimal @db.Decimal(10, 2) @default(0)
+  freight       Decimal @db.Decimal(10, 2) @default(0)
+  total         Decimal @db.Decimal(10, 2) @default(0)
+
+  originSuggestionId String?
+  originQuotationId  String?
+  idempotencyKey     String?
+  createdBy          String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization     Organization               @relation(fields: [organizationId],     references: [id], onDelete: Cascade)
+  supplier         Supplier                   @relation(fields: [supplierId],          references: [id])
+  location         Location                   @relation(fields: [locationId],          references: [id])
+  items            PurchaseOrderItem[]
+  history          PurchaseOrderStatusHistory[]
+  receipts         GoodsReceipt[]
+  accountPayables  AccountPayable[]
+  originSuggestion PurchaseSuggestion?        @relation(fields: [originSuggestionId], references: [id], onDelete: SetNull)
+  originQuotation  Quotation?                 @relation(fields: [originQuotationId],  references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  variantId       String?
+
+  productNameSnapshot  String
+  expectedQuantity     Decimal @db.Decimal(10, 3)
+  unitCost             Decimal @db.Decimal(10, 4)
+  lineTotal            Decimal @db.Decimal(10, 2)
+  fiscalDataSnapshot   Json?
+  expectedPackQuantity Decimal? @db.Decimal(10, 3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchaseOrder PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product          @relation(fields: [productId],       references: [id])
+  variant       ProductVariant?  @relation(fields: [variantId],       references: [id], onDelete: SetNull)
+  receiptItems  GoodsReceiptItem[]
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+model PurchaseOrderStatusHistory {
+  id              String               @id @default(cuid())
+  purchaseOrderId String
+  fromStatus      PurchaseOrderStatus?
+  toStatus        PurchaseOrderStatus
+  actorId         String?
+  source          PoHistorySource      @default(INTERNAL)
+  reason          String?
+  createdAt       DateTime             @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+}
+
+// ── Recebimento de mercadoria (RN-P03) ────────────────────────────────
+
+model GoodsReceipt {
+  id              String             @id @default(cuid())
+  organizationId  String
+  purchaseOrderId String
+  receivedAt      DateTime           @default(now())
+  receivedBy      String
+
+  supplierInvoiceNumber    String?
+  supplierInvoiceSeries    String?
+  supplierInvoiceAccessKey String?
+
+  status            GoodsReceiptStatus @default(DRAFT)
+  notes             String?
+  divergenceSummary Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization       @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  items           GoodsReceiptItem[]
+  supplierReturns SupplierReturn[]
+  accountPayables AccountPayable[]
+  nfeImports      NfeImport[]
+
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@index([supplierInvoiceAccessKey])
+}
+
+model GoodsReceiptItem {
+  id                  String @id @default(cuid())
+  goodsReceiptId      String
+  purchaseOrderItemId String?
+
+  productId  String
+  variantId  String?
+  lotCode    String?
+  expiryDate DateTime?
+
+  receivedQuantity Decimal        @db.Decimal(10, 3)
+  unitCost         Decimal        @db.Decimal(10, 4)
+  divergence       DivergenceType @default(NONE)
+  divergenceNote   String?
+
+  stockMovementId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  goodsReceipt      GoodsReceipt      @relation(fields: [goodsReceiptId],       references: [id], onDelete: Cascade)
+  purchaseOrderItem PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  product           Product            @relation(fields: [productId],            references: [id])
+  variant           ProductVariant?    @relation(fields: [variantId],            references: [id], onDelete: SetNull)
+  supplierReturnItems SupplierReturnItem[]
+
+  @@index([goodsReceiptId])
+  @@index([productId])
+}
+
+// ── Devolução ao fornecedor (RN-P09) ──────────────────────────────────
+
+model SupplierReturn {
+  id             String               @id @default(cuid())
+  organizationId String
+  goodsReceiptId String
+  supplierId     String
+
+  reason     SupplierReturnReason
+  status     SupplierReturnStatus @default(DRAFT)
+  returnedAt DateTime?
+  returnedBy String?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goodsReceipt GoodsReceipt        @relation(fields: [goodsReceiptId], references: [id])
+  supplier     Supplier             @relation(fields: [supplierId],    references: [id])
+  items        SupplierReturnItem[]
+
+  @@index([organizationId])
+  @@index([goodsReceiptId])
+}
+
+model SupplierReturnItem {
+  id                 String @id @default(cuid())
+  supplierReturnId   String
+  goodsReceiptItemId String
+
+  quantity Decimal @db.Decimal(10, 3)
+  unitCost Decimal @db.Decimal(10, 4)
+
+  stockMovementId            String?
+  accountPayableAdjustmentId String?
+
+  supplierReturn   SupplierReturn   @relation(fields: [supplierReturnId],    references: [id], onDelete: Cascade)
+  goodsReceiptItem GoodsReceiptItem @relation(fields: [goodsReceiptItemId],  references: [id])
+
+  @@index([supplierReturnId])
+}
+
+// ── Contas a pagar — cabeçalho (RN-P06; Etapa 7 expande) ─────────────
+
+model AccountPayable {
+  id              String               @id @default(cuid())
+  organizationId  String
+  supplierId      String
+  goodsReceiptId  String?
+  purchaseOrderId String?
+
+  amount       Decimal @db.Decimal(10, 2)
+  paidAmount   Decimal @db.Decimal(10, 2) @default(0)
+  dueDate      DateTime
+  status       AccountPayableStatus @default(PENDING)
+
+  description       String
+  installmentNumber Int @default(1)
+  totalInstallments Int @default(1)
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
+  supplier      Supplier        @relation(fields: [supplierId],      references: [id])
+  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId],  references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([dueDate])
+  @@index([supplierId])
+}
+
+// ── Cotação (opcional — RN-P11) ────────────────────────────────────────
+
+model Quotation {
+  id             String          @id @default(cuid())
+  organizationId String
+  description    String
+  status         QuotationStatus @default(OPEN)
+  expectedDeliveryDate DateTime?
+  createdBy      String
+  closedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization      Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items             QuotationItem[]
+  supplierResponses QuotationSupplierResponse[]
+  purchaseOrders    PurchaseOrder[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+model QuotationItem {
+  id          String  @id @default(cuid())
+  quotationId String
+  productId   String
+  variantId   String?
+  quantity    Decimal @db.Decimal(10, 3)
+  notes       String?
+
+  quotation     Quotation               @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product       Product                 @relation(fields: [productId],   references: [id])
+  variant       ProductVariant?         @relation(fields: [variantId],   references: [id], onDelete: SetNull)
+  itemResponses QuotationSupplierItemResponse[]
+
+  @@index([quotationId])
+}
+
+model QuotationSupplierResponse {
+  id          String   @id @default(cuid())
+  quotationId String
+  supplierId  String
+
+  totalPrice   Decimal?  @db.Decimal(10, 2)
+  paymentTerms Json?
+  leadTimeDays Int?
+  notes        String?
+  receivedAt   DateTime?
+  selected     Boolean   @default(false)
+
+  quotation     Quotation                      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  supplier      Supplier                        @relation(fields: [supplierId],  references: [id])
+  itemResponses QuotationSupplierItemResponse[]
+
+  @@index([quotationId])
+}
+
+model QuotationSupplierItemResponse {
+  id                          String  @id @default(cuid())
+  quotationSupplierResponseId String
+  quotationItemId             String
+
+  unitCost  Decimal? @db.Decimal(10, 4)
+  available Boolean  @default(true)
+  notes     String?
+
+  response      QuotationSupplierResponse @relation(fields: [quotationSupplierResponseId], references: [id], onDelete: Cascade)
+  quotationItem QuotationItem             @relation(fields: [quotationItemId],             references: [id], onDelete: Cascade)
+
+  @@index([quotationSupplierResponseId])
+}
+
+// ── Sugestão de compra (RN-P13) ───────────────────────────────────────
+
+model PurchaseSuggestion {
+  id               String                   @id @default(cuid())
+  organizationId   String
+  locationId       String
+  generatedAt      DateTime                 @default(now())
+  status           PurchaseSuggestionStatus @default(PENDING)
+  algorithmVersion String                   @default("v1")
+  reasonSummary    Json?
+
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location       Location                 @relation(fields: [locationId],     references: [id])
+  items          PurchaseSuggestionItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([organizationId])
+  @@index([locationId])
+}
+
+model PurchaseSuggestionItem {
+  id                   String @id @default(cuid())
+  purchaseSuggestionId String
+  productId            String
+  variantId            String?
+
+  suggestedQuantity   Decimal  @db.Decimal(10, 3)
+  currentStock        Decimal  @db.Decimal(10, 3)
+  averageDailySales   Decimal? @db.Decimal(10, 4)
+  daysOfCoverage      Decimal? @db.Decimal(10, 2)
+  suggestedSupplierId String?
+
+  suggestion PurchaseSuggestion @relation(fields: [purchaseSuggestionId], references: [id], onDelete: Cascade)
+  product    Product             @relation(fields: [productId],            references: [id])
+  variant    ProductVariant?     @relation(fields: [variantId],            references: [id], onDelete: SetNull)
+
+  @@index([purchaseSuggestionId])
+}
+
+// ── Importação de NFe de entrada (RN-P10, RN-P11, RN-P15) ────────────
+
+model NfeImport {
+  id             String          @id @default(cuid())
+  organizationId String
+  accessKey      String          @unique
+  xmlContent     String          @db.Text
+  status         NfeImportStatus @default(PENDING)
+  uploadedBy     String
+  uploadedAt     DateTime        @default(now())
+
+  supplierId      String?
+  purchaseOrderId String?
+  goodsReceiptId  String?
+
+  parseErrors    Json?
+  parsedData     Json?
+  mappingPending Json?
+
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goodsReceipt GoodsReceipt? @relation(fields: [goodsReceiptId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
 }

@@ -4,29 +4,27 @@
  * Pedido cancelado nunca é deletado: estado CANCELED + motivo + estorno.
  */
 
+import { applyMovement } from "@/features/inventory/lib/apply-movement";
+import { releaseReservation } from "@/features/inventory/lib/reserve-stock";
+import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
 import type { OrderStatus } from "@nohub/db";
-import { writeAudit } from "@/lib/audit";
-import { releaseReservation } from "@/features/inventory/lib/reserve-stock";
-import { applyMovement } from "@/features/inventory/lib/apply-movement";
 import { canTransition, isTerminal } from "./can-transition";
 
 export type CancelOrderInput = {
   organizationId: string;
-  orderId:        string;
-  reason:         string;
-  actorId:        string;
-  actorName?:     string | null;
-  source?:        string;
+  orderId: string;
+  reason: string;
+  actorId: string;
+  actorName?: string | null;
+  source?: string;
 };
 
 export type CancelOrderResult =
-  | { success: true;  orderId: string }
+  | { success: true; orderId: string }
   | { success: false; error: string; code?: string };
 
-export async function cancelOrder(
-  input: CancelOrderInput,
-): Promise<CancelOrderResult> {
+export async function cancelOrder(input: CancelOrderInput): Promise<CancelOrderResult> {
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
     include: { items: true },
@@ -40,7 +38,7 @@ export async function cancelOrder(
     return {
       success: false,
       error: `Pedido já ${order.status === "COMPLETED" ? "concluído" : "cancelado"} — não pode ser cancelado`,
-      code:  "ALREADY_TERMINAL",
+      code: "ALREADY_TERMINAL",
     };
   }
 
@@ -48,8 +46,27 @@ export async function cancelOrder(
     return {
       success: false,
       error: `Transição inválida: ${order.status} → CANCELED`,
-      code:  "INVALID_TRANSITION",
+      code: "INVALID_TRANSITION",
     };
+  }
+
+  // RN-F12: bloquear cancelamento se há NFCe AUTHORIZED dentro do prazo
+  const activeInvoice = await prisma.invoice.findUnique({
+    where: { orderId: order.id },
+    select: { id: true, status: true, cancelDeadline: true },
+  });
+  if (activeInvoice?.status === "AUTHORIZED") {
+    const withinDeadline =
+      activeInvoice.cancelDeadline && new Date() <= activeInvoice.cancelDeadline;
+    if (withinDeadline) {
+      return {
+        success: false,
+        error:
+          "Existe uma NFCe autorizada para este pedido. Cancele primeiro a nota fiscal antes de cancelar o pedido.",
+        code: "INVOICE_AUTHORIZED",
+      };
+    }
+    // Fora do prazo: nota não pode mais ser cancelada — avisa mas permite
   }
 
   // Liberar reservas ativas (CONFIRMED)
@@ -57,18 +74,16 @@ export async function cancelOrder(
     const reservations = await prisma.stockReservation.findMany({
       where: {
         organizationId: input.organizationId,
-        referenceType:  "ORDER",
-        referenceId:    order.id,
-        status:         "ACTIVE",
+        referenceType: "ORDER",
+        referenceId: order.id,
+        status: "ACTIVE",
       },
     });
 
     for (const reservation of reservations) {
-      await releaseReservation(
-        reservation.id,
-        input.actorId,
-        input.actorName ?? undefined,
-      ).catch(() => {});
+      await releaseReservation(reservation.id, input.actorId, input.actorName ?? undefined).catch(
+        () => {},
+      );
     }
   }
 
@@ -77,27 +92,27 @@ export async function cancelOrder(
     const outboundMovements = await prisma.stockMovement.findMany({
       where: {
         organizationId: input.organizationId,
-        referenceType:  "ORDER",
-        referenceId:    order.id,
-        type:           { in: ["OUTBOUND", "OUT"] },
+        referenceType: "ORDER",
+        referenceId: order.id,
+        type: { in: ["OUTBOUND", "OUT"] },
       },
     });
 
     for (const mv of outboundMovements) {
       await applyMovement({
         organizationId: input.organizationId,
-        locationId:     mv.locationId,
-        productId:      mv.productId,
-        variantId:      mv.variantId,
-        lotId:          mv.lotId,
-        type:           "INBOUND",
-        quantity:       Number(mv.quantity),
-        reason:         "RETURN",
-        referenceType:  "ORDER_CANCEL",
-        referenceId:    order.id,
-        note:           `Estorno por cancelamento do pedido ${order.id}`,
-        actorId:        input.actorId,
-        actorName:      input.actorName,
+        locationId: mv.locationId,
+        productId: mv.productId,
+        variantId: mv.variantId,
+        lotId: mv.lotId,
+        type: "INBOUND",
+        quantity: Number(mv.quantity),
+        reason: "RETURN",
+        referenceType: "ORDER_CANCEL",
+        referenceId: order.id,
+        note: `Estorno por cancelamento do pedido ${order.id}`,
+        actorId: input.actorId,
+        actorName: input.actorName,
       }).catch(() => {});
     }
   }
@@ -106,30 +121,30 @@ export async function cancelOrder(
     prisma.order.update({
       where: { id: order.id },
       data: {
-        status:        "CANCELED",
+        status: "CANCELED",
         canceledReason: input.reason,
-        canceledAt:    new Date(),
-        updatedAt:     new Date(),
+        canceledAt: new Date(),
+        updatedAt: new Date(),
       },
     }),
     prisma.orderStatusHistory.create({
       data: {
-        orderId:    order.id,
+        orderId: order.id,
         fromStatus: order.status as OrderStatus,
-        toStatus:   "CANCELED",
-        actorId:    input.actorId,
-        source:     input.source ?? "INTERNAL",
-        reason:     input.reason,
+        toStatus: "CANCELED",
+        actorId: input.actorId,
+        source: input.source ?? "INTERNAL",
+        reason: input.reason,
       },
     }),
   ]);
 
   await writeAudit({
     organizationId: input.organizationId,
-    actorId:        input.actorId,
-    action:         "order.canceled",
-    resourceType:   "Order",
-    resourceId:     order.id,
+    actorId: input.actorId,
+    action: "order.canceled",
+    resourceType: "Order",
+    resourceId: order.id,
     after: { status: "CANCELED", reason: input.reason },
   });
 

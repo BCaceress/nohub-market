@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeftRight,
   BarChart3,
@@ -10,6 +10,7 @@ import {
   ClipboardList,
   DollarSign,
   Download,
+  FileText,
   FolderOpen,
   History,
   Link2,
@@ -18,16 +19,21 @@ import {
   PackagePlus,
   Radio,
   Receipt,
+  RotateCcw,
+  Settings2,
   ShoppingBag,
   ShoppingCart,
+  SkipForward,
+  Sparkles,
   Trash2,
   TrendingUp,
+  Truck,
   User,
   Users,
   Wallet,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/theme-toggle";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /* ── Data ──────────────────────────────────────────────────── */
 
@@ -37,60 +43,76 @@ type NavGroup = { label: string; items: NavItem[] };
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "Geral",
-    items: [
-      { href: "/app",         label: "Dashboard",    icon: BarChart3 },
-    ],
+    items: [{ href: "/app", label: "Dashboard", icon: BarChart3 }],
   },
   {
     label: "Catálogo",
     items: [
-      { href: "/app/products",            label: "Produtos",     icon: ShoppingBag },
-      { href: "/app/products/categories", label: "Categorias",   icon: FolderOpen  },
-      { href: "/app/products/prices",     label: "Preços",       icon: DollarSign  },
-      { href: "/app/products/import",     label: "Importar",     icon: Download    },
+      { href: "/app/products", label: "Produtos", icon: ShoppingBag },
+      { href: "/app/products/categories", label: "Categorias", icon: FolderOpen },
+      { href: "/app/products/prices", label: "Preços", icon: DollarSign },
+      { href: "/app/products/import", label: "Importar", icon: Download },
     ],
   },
   {
     label: "Estoque",
     items: [
-      { href: "/app/inventory",           label: "Visão geral",   icon: Boxes          },
-      { href: "/app/inventory/movements", label: "Movimentações", icon: TrendingUp     },
-      { href: "/app/inventory/inbound",   label: "Entrada",       icon: PackagePlus    },
-      { href: "/app/inventory/loss",      label: "Perda",         icon: Trash2         },
-      { href: "/app/inventory/transfer",  label: "Transferência", icon: ArrowLeftRight },
-      { href: "/app/inventory/count",     label: "Contagem",      icon: ClipboardList  },
+      { href: "/app/inventory", label: "Visão geral", icon: Boxes },
+      { href: "/app/inventory/movements", label: "Movimentações", icon: TrendingUp },
+      { href: "/app/inventory/inbound", label: "Entrada", icon: PackagePlus },
+      { href: "/app/inventory/loss", label: "Perda", icon: Trash2 },
+      { href: "/app/inventory/transfer", label: "Transferência", icon: ArrowLeftRight },
+      { href: "/app/inventory/count", label: "Contagem", icon: ClipboardList },
     ],
   },
   {
     label: "Vendas",
     items: [
-      { href: "/app/sales/pos",      label: "PDV",        icon: ShoppingCart },
-      { href: "/app/sales/orders",   label: "Pedidos",    icon: Receipt      },
-      { href: "/app/sales/cash",     label: "Caixa",      icon: Wallet       },
-      { href: "/app/sales/channels", label: "Canais",     icon: Link2        },
+      { href: "/app/sales/pos", label: "PDV", icon: ShoppingCart },
+      { href: "/app/sales/orders", label: "Pedidos", icon: Receipt },
+      { href: "/app/sales/cash", label: "Caixa", icon: Wallet },
+      { href: "/app/sales/channels", label: "Canais", icon: Link2 },
+    ],
+  },
+  {
+    label: "Fiscal",
+    items: [
+      { href: "/app/fiscal/invoices", label: "Notas Fiscais", icon: FileText },
+      { href: "/app/fiscal/settings", label: "Configurações", icon: Settings2 },
+      { href: "/app/fiscal/skip-numbers", label: "Inutilização", icon: SkipForward },
+    ],
+  },
+  {
+    label: "Compras",
+    items: [
+      { href: "/app/purchasing/orders", label: "Pedidos", icon: Truck },
+      { href: "/app/purchasing/receive", label: "Recebimento", icon: PackagePlus },
+      { href: "/app/purchasing/returns", label: "Devoluções", icon: RotateCcw },
+      { href: "/app/purchasing/suggestions", label: "Sugestões", icon: Sparkles },
+      { href: "/app/purchasing/quotations", label: "Cotações", icon: ClipboardList },
+      { href: "/app/purchasing/nfe-import", label: "Importar NFe", icon: Download },
+      { href: "/app/purchasing/payables", label: "Contas a Pagar", icon: DollarSign },
     ],
   },
   {
     label: "Operação",
     items: [
-      { href: "/app/locations", label: "Unidades",       icon: MapPin    },
-      { href: "/app/channels",  label: "Canais de venda", icon: Radio     },
-      { href: "/app/suppliers", label: "Fornecedores",    icon: Package   },
+      { href: "/app/locations", label: "Unidades", icon: MapPin },
+      { href: "/app/channels", label: "Canais de venda", icon: Radio },
+      { href: "/app/suppliers", label: "Fornecedores", icon: Package },
     ],
   },
   {
     label: "Gestão",
     items: [
-      { href: "/app/settings",      label: "Organização", icon: Building2    },
-      { href: "/app/settings/team", label: "Time",         icon: Users        },
-      { href: "/app/audit",         label: "Auditoria",    icon: History },
+      { href: "/app/settings", label: "Organização", icon: Building2 },
+      { href: "/app/settings/team", label: "Time", icon: Users },
+      { href: "/app/audit", label: "Auditoria", icon: History },
     ],
   },
   {
     label: "Conta",
-    items: [
-      { href: "/app/account", label: "Minha conta", icon: User },
-    ],
+    items: [{ href: "/app/account", label: "Minha conta", icon: User }],
   },
 ];
 
@@ -113,11 +135,7 @@ function NavLink({ item }: { item: NavItem }) {
           ? "bg-white/10 text-white"
           : "text-[--sidebar-foreground] hover:bg-white/[0.06] hover:text-white",
       )}
-      style={
-        active
-          ? ({ "--sidebar-foreground": "inherit" } as React.CSSProperties)
-          : undefined
-      }
+      style={active ? ({ "--sidebar-foreground": "inherit" } as React.CSSProperties) : undefined}
     >
       {/* Active indicator bar */}
       {active && (
