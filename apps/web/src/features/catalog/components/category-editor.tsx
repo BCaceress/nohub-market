@@ -625,7 +625,7 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
         name: catForm.name,
         icon: isSubcategory ? undefined : catForm.icon?.iconId || undefined,
         iconColor: isSubcategory ? undefined : catForm.icon?.color || undefined,
-        parentId: subparentId || undefined,
+        parentId: subparentId ?? editingCat?.parentId ?? undefined,
         position: 0,
       };
       const result = editingCat
@@ -813,14 +813,7 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
             </div>
 
             {/* Ícone — apenas para categorias raiz */}
-            {isSubcategory ? (
-              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 flex items-center gap-2">
-                <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  Subcategorias herdam o ícone e a cor da categoria pai automaticamente.
-                </p>
-              </div>
-            ) : (
+            {!isSubcategory && (
               <div className="flex flex-col gap-1.5">
                 <Label>Ícone da categoria</Label>
                 <IconPicker

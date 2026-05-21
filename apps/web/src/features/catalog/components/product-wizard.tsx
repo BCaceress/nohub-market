@@ -606,7 +606,9 @@ export function ProductWizard({
 
             {/* Categoria — com seletor hierárquico e geração de SKU */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="p-category">Categoria</Label>
+              <Label htmlFor="p-category">
+                Categoria <span className="text-destructive">*</span>
+              </Label>
               <CategorySelect
                 categories={categories}
                 value={form.categoryId}
@@ -694,7 +696,10 @@ export function ProductWizard({
 
           {/* Tags */}
           <div className="flex flex-col gap-2">
-            <Label>Tags do produto</Label>
+            <Label>
+              Tags do produto{" "}
+              <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+            </Label>
             <p className="text-xs text-muted-foreground -mt-1">
               Tags da categoria são carregadas automaticamente. Você pode adicionar ou remover
               qualquer tag.
