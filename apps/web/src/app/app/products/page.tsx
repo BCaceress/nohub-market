@@ -6,9 +6,10 @@ import {
 } from "@/features/catalog/actions/product-actions";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
-import { Download, FolderOpen, Package, Plus } from "lucide-react";
+import { Download, FolderOpen, Package } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { NewProductDropdown } from "./new-product-dropdown";
 import { ProductListClient } from "./product-list-client";
 
 export const metadata = { title: "Produtos — NoHub Market" };
@@ -94,12 +95,7 @@ export default async function ProductsPage({
               Importar
             </Link>
           </Button>
-          <Button asChild size="sm">
-            <Link href="/app/products/new">
-              <Plus className="h-4 w-4" />
-              Novo produto
-            </Link>
-          </Button>
+          <NewProductDropdown />
         </div>
       </div>
 
