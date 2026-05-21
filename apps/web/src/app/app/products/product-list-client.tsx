@@ -55,14 +55,13 @@ const TYPE_FILTERS = [
   },
 ] as const;
 
-const TYPE_CONFIG: Record<
-  string,
-  {
-    label: string;
-    icon: React.ReactNode;
-    variant: "secondary" | "info" | "warning" | "success";
-  }
-> = {
+type TypeConfigEntry = {
+  label: string;
+  icon: React.ReactNode;
+  variant: "secondary" | "info" | "warning" | "success";
+};
+
+const TYPE_CONFIG = {
   SIMPLE: { label: "Simples", icon: <Package className="h-3 w-3" />, variant: "secondary" },
   VARIANT_PARENT: {
     label: "Variantes",
@@ -75,7 +74,7 @@ const TYPE_CONFIG: Record<
     icon: <Scissors className="h-3 w-3" />,
     variant: "success",
   },
-};
+} satisfies Record<string, TypeConfigEntry>;
 
 type Product = {
   id: string;
@@ -284,8 +283,8 @@ export function ProductListClient({
             ) : (
               products.map((p) => {
                 const cfg =
-                  TYPE_CONFIG[p.productType] ??
-                  (TYPE_CONFIG.SIMPLE as NonNullable<typeof TYPE_CONFIG.SIMPLE>);
+                  (TYPE_CONFIG as Record<string, TypeConfigEntry>)[p.productType] ??
+                  TYPE_CONFIG.SIMPLE;
                 const hasTax = p._count.taxData > 0;
                 const price = Number(p.price.toString());
 

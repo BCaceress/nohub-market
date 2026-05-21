@@ -348,6 +348,7 @@ interface Props {
   allTags?: TagData[];
   taxRegime: string | null;
   product?: ExistingProduct;
+  defaultType?: string;
 }
 
 type FormState = {
@@ -382,6 +383,7 @@ export function ProductWizard({
   allTags = [],
   taxRegime,
   product,
+  defaultType = "SIMPLE",
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -409,7 +411,7 @@ export function ProductWizard({
     brand: product?.brand ?? "",
     sku: product?.sku ?? "",
     barcode: product?.barcode ?? "",
-    productType: product?.productType ?? "SIMPLE",
+    productType: product?.productType ?? defaultType,
     unit: product?.unit ?? "UN",
     saleUnit: product?.saleUnit ?? "UN",
     conversionFactor: product?.conversionFactor?.toString() ?? "1",
