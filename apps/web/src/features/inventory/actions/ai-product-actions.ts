@@ -22,8 +22,23 @@ const OFF_UA = "NoHubMarket/1.0 (https://nohub.com.br; contact@nohub.com.br) Nod
 /** Tenta buscar no Open Food Facts (global). */
 async function fetchFromOpenFoodFacts(barcode: string): Promise<OpenFoodFactsProduct | null> {
   try {
+    const fields = [
+      "product_name",
+      "product_name_pt",
+      "brands",
+      "categories",
+      "categories_tags",
+      "image_front_url",
+      "image_url",
+      "product_quantity",
+      "product_quantity_unit",
+      "quantity",
+      "nutriscore_grade",
+      "packaging",
+    ].join(",");
+
     const res = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,brands,categories_tags,image_front_url,product_quantity,quantity`,
+      `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=${fields}`,
       {
         headers: { "User-Agent": OFF_UA },
         next: { revalidate: 3600 },
@@ -36,36 +51,74 @@ async function fetchFromOpenFoodFacts(barcode: string): Promise<OpenFoodFactsPro
       status: number;
       product?: {
         product_name?: string;
+        product_name_pt?: string;
         brands?: string;
-        categories_tags?: string[];
+        categories?: string; // "Bebidas, Refrigerantes, ..."  (texto legível)
+        categories_tags?: string[]; // ["en:beverages", "pt:porcarias-liquidas"]
         image_front_url?: string;
-        product_quantity?: string;
-        quantity?: string;
+        image_url?: string;
+        product_quantity?: number | string; // pode ser número (350) ou string
+        product_quantity_unit?: string; // "ml", "g", "l", "kg"
+        quantity?: string; // "350ml" (fallback)
+        nutriscore_grade?: string;
+        packaging?: string;
       };
     };
 
     if (json.status !== 1 || !json.product) return null;
 
     const p = json.product;
-    const name = (p.product_name ?? "").trim();
+
+    // Nome: preferir versão PT
+    const name = (p.product_name_pt ?? p.product_name ?? "").trim();
     if (!name) return null;
 
+    // Marca: primeira da lista separada por vírgula
     const brand = (p.brands ?? "").split(",")[0]?.trim() ?? "";
-    const rawCategory = (p.categories_tags ?? [])[0] ?? "";
-    const category = rawCategory.replace(/^[a-z]{2}:/i, "").replace(/-/g, " ");
-    const imageUrl = (p.image_front_url ?? "").trim();
 
-    // Parse weight
+    // Categoria: usar campo texto legível (categories) → pegar última (mais específica)
+    // Ex: "Bebidas, Refrigerantes, Porcarias líquidas" → "Porcarias líquidas"
+    // Filtrar junk ("Porcarias", etc.) se necessário — usar a penúltima como fallback
+    let category = "";
+    if (p.categories) {
+      const parts = p.categories
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      // Pegar a mais específica que não contenha "porcaria" ou "lixo"
+      const clean = parts.filter((s) => !/porcaria|junk|lixo/i.test(s));
+      category = (clean.at(-1) ?? parts.at(-1) ?? "").trim();
+    } else if (p.categories_tags?.length) {
+      // Fallback: usar tags PT preferencialmente, senão última EN sem prefixo
+      const ptTag = p.categories_tags.find((t) => t.startsWith("pt:"));
+      const lastTag = p.categories_tags.at(-1) ?? "";
+      const raw = ptTag ?? lastTag;
+      category = raw.replace(/^[a-z]{2}:/i, "").replace(/-/g, " ");
+    }
+
+    // Imagem
+    const imageUrl = (p.image_front_url ?? p.image_url ?? "").trim();
+
+    // Peso/volume → converter tudo para gramas ou ml (valor numérico)
     let weight: number | undefined;
-    const qtyStr = p.product_quantity ?? p.quantity ?? "";
-    const qtyMatch = qtyStr.match(/(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)/i);
-    if (qtyMatch) {
-      const num = Number.parseFloat(qtyMatch[1]?.replace(",", ".") ?? "");
-      const unit = qtyMatch[2]?.toLowerCase() ?? "";
-      if (unit === "g") weight = num;
-      else if (unit === "kg") weight = num * 1000;
-      else if (unit === "l") weight = num * 1000;
-      else if (unit === "ml") weight = num;
+
+    if (p.product_quantity !== undefined && p.product_quantity_unit) {
+      const qty = Number(p.product_quantity);
+      const unit = p.product_quantity_unit.toLowerCase();
+      if (!Number.isNaN(qty)) {
+        if (unit === "g" || unit === "ml") weight = qty;
+        else if (unit === "kg" || unit === "l") weight = qty * 1000;
+      }
+    } else {
+      // Fallback: parse string "350ml", "1,5l", "500 g"
+      const qtyStr = String(p.product_quantity ?? p.quantity ?? "");
+      const m = qtyStr.match(/(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)/i);
+      if (m) {
+        const num = Number.parseFloat((m[1] ?? "").replace(",", "."));
+        const unit = (m[2] ?? "").toLowerCase();
+        if (unit === "g" || unit === "ml") weight = num;
+        else if (unit === "kg" || unit === "l") weight = num * 1000;
+      }
     }
 
     const filled = [name, brand, imageUrl].filter(Boolean).length;
