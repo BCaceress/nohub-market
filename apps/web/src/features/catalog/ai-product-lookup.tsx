@@ -261,9 +261,17 @@ export function AiProductLookup({ onFound }: Props) {
               )}
 
               {/* Fonte */}
-              <p className="text-[10px] text-muted-foreground/50 mt-auto">
+              <p className="text-[10px] text-muted-foreground/50 mt-auto flex items-center gap-1.5">
                 Código: {result.barcode} ·{" "}
-                {result.source === "cosmos_br" ? "Cosmos BR" : "Open Food Facts"}
+                {result.source === "gemini" ? (
+                  <span className="inline-flex items-center gap-0.5 text-blue-500 font-medium">
+                    ✨ Gemini AI
+                  </span>
+                ) : result.source === "cosmos_br" ? (
+                  "Cosmos BR"
+                ) : (
+                  "Open Food Facts"
+                )}
               </p>
             </div>
           </div>
