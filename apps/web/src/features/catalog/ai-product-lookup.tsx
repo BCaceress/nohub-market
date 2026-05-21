@@ -8,15 +8,63 @@ import {
   type OpenFoodFactsProduct,
   lookupProductByBarcodeAction,
 } from "@/features/inventory/actions/ai-product-actions";
-import { AlertCircle, Barcode, Camera, CheckCircle2, ImageIcon, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  Barcode,
+  Camera,
+  CheckCircle2,
+  Globe,
+  ImageIcon,
+  Loader2,
+  Package,
+} from "lucide-react";
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+
+/* ── Mobile detection ───────────────────────────────────────── */
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
+/* ── Nutriscore badge ───────────────────────────────────────── */
+
+const NUTRISCORE_CONFIG = {
+  a: { bg: "bg-green-500", label: "A" },
+  b: { bg: "bg-lime-400", label: "B" },
+  c: { bg: "bg-yellow-400", label: "C" },
+  d: { bg: "bg-orange-400", label: "D" },
+  e: { bg: "bg-red-500", label: "E" },
+} as const;
+
+function NutriScore({ grade }: { grade: "a" | "b" | "c" | "d" | "e" }) {
+  const cfg = NUTRISCORE_CONFIG[grade];
+  return (
+    <span
+      className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-white text-xs font-bold ${cfg.bg}`}
+      title={`Nutri-Score ${cfg.label}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────── */
 
 interface Props {
   onFound: (product: OpenFoodFactsProduct) => void;
 }
 
 export function AiProductLookup({ onFound }: Props) {
+  const isMobile = useIsMobile();
   const [barcode, setBarcode] = useState("");
   const [result, setResult] = useState<OpenFoodFactsProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +101,7 @@ export function AiProductLookup({ onFound }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Barcode input */}
+      {/* Input row */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -73,34 +121,42 @@ export function AiProductLookup({ onFound }: Props) {
           />
         </div>
 
-        {/* Camera button */}
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-10 w-10 shrink-0"
-          title="Ler com câmera"
-          onClick={() => setScannerOpen(true)}
-        >
-          <Camera className="h-4 w-4" />
-        </Button>
+        {/* Camera — mobile only (isMobile starts false to avoid SSR mismatch) */}
+        {isMobile && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0"
+            title="Ler com câmera"
+            onClick={() => setScannerOpen(true)}
+          >
+            <Camera className="h-4 w-4" />
+          </Button>
+        )}
 
         <Button type="submit" disabled={isPending || !barcode.trim()}>
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
         </Button>
       </form>
 
-      {/* Hint */}
+      {/* Hint — câmera só aparece no mobile */}
       <p className="text-xs text-muted-foreground -mt-2">
-        Digite o EAN ou{" "}
-        <button
-          type="button"
-          className="underline underline-offset-2 hover:text-foreground transition-colors"
-          onClick={() => setScannerOpen(true)}
-        >
-          abra a câmera
-        </button>{" "}
-        para leitura automática.
+        Digite o EAN do produto
+        {isMobile && (
+          <>
+            {" "}
+            ou{" "}
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+              onClick={() => setScannerOpen(true)}
+            >
+              use a câmera
+            </button>
+          </>
+        )}{" "}
+        para busca automática.
       </p>
 
       {/* Camera scanner modal */}
@@ -108,7 +164,7 @@ export function AiProductLookup({ onFound }: Props) {
         <BarcodeScanner onScanned={handleScanned} onClose={() => setScannerOpen(false)} />
       )}
 
-      {/* Loading state */}
+      {/* Loading */}
       {isPending && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -128,8 +184,8 @@ export function AiProductLookup({ onFound }: Props) {
       {result && !isPending && (
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="flex gap-4 p-4">
-            {/* Image */}
-            <div className="relative h-20 w-20 shrink-0 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+            {/* Imagem */}
+            <div className="relative h-24 w-24 shrink-0 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
               {result.imageUrl ? (
                 <Image
                   src={result.imageUrl}
@@ -143,20 +199,37 @@ export function AiProductLookup({ onFound }: Props) {
               )}
             </div>
 
-            {/* Info */}
-            <div className="flex flex-col gap-1 min-w-0">
+            {/* Dados */}
+            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+              {/* Nome + badges */}
               <div className="flex items-start gap-2 flex-wrap">
-                <p className="font-semibold text-sm leading-snug">{result.name}</p>
-                <Badge variant={confidenceConfig[result.confidence].variant} className="shrink-0">
+                <p className="font-semibold text-sm leading-snug flex-1">{result.name}</p>
+                {result.nutriscoreGrade && <NutriScore grade={result.nutriscoreGrade} />}
+                <Badge
+                  variant={confidenceConfig[result.confidence].variant}
+                  className="shrink-0 text-xs"
+                >
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {confidenceConfig[result.confidence].label}
                 </Badge>
               </div>
 
+              {/* Linha de detalhes */}
               <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                 {result.brand && (
                   <span>
                     <span className="font-medium text-foreground/70">Marca:</span> {result.brand}
+                  </span>
+                )}
+                {result.quantity && (
+                  <span>
+                    <span className="font-medium text-foreground/70">Qtd:</span> {result.quantity}
+                  </span>
+                )}
+                {result.packaging && (
+                  <span className="flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    {result.packaging}
                   </span>
                 )}
                 {result.category && (
@@ -165,21 +238,32 @@ export function AiProductLookup({ onFound }: Props) {
                     {result.category}
                   </span>
                 )}
-                {result.weight !== undefined && (
-                  <span>
-                    <span className="font-medium text-foreground/70">Peso:</span>{" "}
-                    {result.weight >= 1000
-                      ? `${(result.weight / 1000).toFixed(2)} kg`
-                      : `${result.weight} g`}
+                {result.isImported && (
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                    <Globe className="h-3 w-3" />
+                    Importado
                   </span>
                 )}
-                <span>
-                  <span className="font-medium text-foreground/70">Código:</span> {result.barcode}
-                </span>
               </div>
 
-              <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                Fonte: {result.source === "cosmos_br" ? "Cosmos BR" : "Open Food Facts"}
+              {/* Tags */}
+              {result.tags && result.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {result.tags.slice(0, 8).map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Fonte */}
+              <p className="text-[10px] text-muted-foreground/50 mt-auto">
+                Código: {result.barcode} ·{" "}
+                {result.source === "cosmos_br" ? "Cosmos BR" : "Open Food Facts"}
               </p>
             </div>
           </div>
