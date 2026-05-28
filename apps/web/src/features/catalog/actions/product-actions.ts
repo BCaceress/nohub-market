@@ -513,7 +513,34 @@ export async function getProductCategoriesAction(organizationId: string) {
   });
 }
 
-/* ── SKU generation ──────────────────────────────────────────── */
+/* ── SKU sequencial (PRD-NNNNNN) ─────────────────────────────── */
+
+/**
+ * Próximo SKU sequencial da organização no padrão PRD-000123.
+ * Usado pelo Cadastro Rápido (gerado no load, somente leitura).
+ * Unicidade final é garantida no create; em colisão, gerar de novo.
+ */
+export async function generateNextSkuAction(
+  organizationId: string,
+): Promise<{ success: true; sku: string } | { success: false; error: string }> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+
+  const rows = await prisma.product.findMany({
+    where: { organizationId, sku: { startsWith: "PRD-" } },
+    select: { sku: true },
+  });
+
+  let max = 0;
+  for (const { sku } of rows) {
+    const n = Number(sku?.slice(4));
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+
+  return { success: true, sku: `PRD-${String(max + 1).padStart(6, "0")}` };
+}
+
+/* ── SKU generation (por categoria) ──────────────────────────── */
 
 export async function generateSkuAction(
   organizationId: string,
