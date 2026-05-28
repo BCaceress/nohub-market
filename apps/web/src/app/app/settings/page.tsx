@@ -1,8 +1,10 @@
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SettingsOrgForm } from "@/features/app/settings-org-form";
 import { getOrgAction } from "@/features/app/actions/org-actions";
+import { SettingsOrgForm } from "@/features/app/settings-org-form";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { Building2 } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Organização — NoHub Market" };
@@ -21,20 +23,18 @@ export default async function SettingsPage() {
   if (!org) redirect("/onboarding");
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Organização</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Dados legais e endereço da empresa.
-        </p>
-      </div>
+    <div className="flex max-w-3xl flex-col gap-6">
+      <PageHeader
+        icon={<Building2 className="h-5 w-5" />}
+        iconTone="primary"
+        title="Organização"
+        description="Dados legais, identidade e endereço da empresa."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Dados da empresa</CardTitle>
-          <CardDescription>
-            O CNPJ não pode ser alterado após o cadastro.
-          </CardDescription>
+          <CardDescription>O CNPJ não pode ser alterado após o cadastro.</CardDescription>
         </CardHeader>
         <CardContent>
           <SettingsOrgForm org={org} />

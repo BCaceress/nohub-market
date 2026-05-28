@@ -1,11 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
+import { listProductPackagesAction } from "@/features/catalog/actions/package-actions";
 import {
   getProductAction,
   getProductCategoriesAction,
 } from "@/features/catalog/actions/product-actions";
-import { getTagsAction } from "@/features/catalog/actions/tag-actions";
 import { KitEditor } from "@/features/catalog/components/kit-editor";
+import { PackagesEditor } from "@/features/catalog/components/packages-editor";
 import { ProductWizard } from "@/features/catalog/components/product-wizard";
 import { TaxEditor } from "@/features/catalog/components/tax-editor";
 import { VariantEditor } from "@/features/catalog/components/variant-editor";
@@ -27,11 +28,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   });
   if (!member) redirect("/onboarding");
 
-  const [product, categories, suppliers, allTags, org, allProducts] = await Promise.all([
+  const [product, categories, suppliers, org, allProducts, packages] = await Promise.all([
     getProductAction(id, member.organizationId),
     getProductCategoriesAction(member.organizationId),
     getSuppliersAction(member.organizationId),
-    getTagsAction(member.organizationId),
     prisma.organization.findUnique({
       where: { id: member.organizationId },
       select: { taxRegime: true },
@@ -49,6 +49,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       orderBy: { name: "asc" },
       take: 300,
     }),
+    listProductPackagesAction(member.organizationId, id),
   ]);
 
   if (!product) notFound();
@@ -88,19 +89,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         isKit={isKit}
         variantCount={product.variants.length}
         kitCount={product.kitComponents.length}
+        packageCount={packages.length}
         hasTaxData={product.taxData.length > 0}
+        packagesContent={
+          <PackagesEditor
+            organizationId={member.organizationId}
+            productId={product.id}
+            initialPackages={packages}
+          />
+        }
         dadosContent={
           <ProductWizard
             organizationId={member.organizationId}
             categories={categories as never}
             suppliers={suppliers}
-            allTags={allTags.map((t) => ({
-              id: t.id,
-              name: t.name,
-              group: t.group,
-              color: t.color,
-              scope: t.scope as "SUBCATEGORY" | "PRODUCT",
-            }))}
             taxRegime={org?.taxRegime ?? null}
             product={product as never}
           />

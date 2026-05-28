@@ -32,11 +32,22 @@ export async function getProductsAction(
     skip?: number;
   } = {},
 ) {
+  // Filtrar por categoria inclui seus produtos diretos + os das subcategorias
+  let categoryFilter: Record<string, unknown> = {};
+  if (opts.categoryId) {
+    const children = await prisma.category.findMany({
+      where: { organizationId, parentId: opts.categoryId, deletedAt: null },
+      select: { id: true },
+    });
+    const ids = [opts.categoryId, ...children.map((c) => c.id)];
+    categoryFilter = { categoryId: { in: ids } };
+  }
+
   const where = {
     organizationId,
     deletedAt: null,
     ...(opts.isActive !== undefined ? { isActive: opts.isActive } : {}),
-    ...(opts.categoryId ? { categoryId: opts.categoryId } : {}),
+    ...categoryFilter,
     ...(opts.productType ? { productType: opts.productType as never } : {}),
     ...(opts.noFiscal ? { taxData: { none: {} } } : {}),
     ...(opts.locationId ? { stockEntries: { some: { locationId: opts.locationId } } } : {}),
@@ -59,6 +70,7 @@ export async function getProductsAction(
       include: {
         category: { select: { id: true, name: true } },
         supplier: { select: { id: true, name: true } },
+        taxData: { select: { ncm: true, cest: true } },
         _count: {
           select: {
             variants: true,
@@ -183,6 +195,7 @@ export async function createProductAction(
       length: d.length ?? null,
       imageUrl: d.imageUrl || null,
       stockMin: d.stockMin ?? null,
+      stockIdeal: d.stockIdeal ?? null,
       location: d.location || null,
       isActive: d.isActive,
       active: d.isActive, // compat field
@@ -306,6 +319,7 @@ export async function updateProductAction(
       length: d.length ?? null,
       imageUrl: d.imageUrl || null,
       stockMin: d.stockMin ?? null,
+      stockIdeal: d.stockIdeal ?? null,
       location: d.location || null,
       isActive: d.isActive,
       active: d.isActive,
@@ -666,4 +680,56 @@ export async function searchProductsForKitAction(
     ...p,
     costPrice: p.costPrice ? Number(p.costPrice) : null,
   }));
+}
+
+/* ── Fornecedores do produto (multi) ─────────────────────────── */
+
+/**
+ * Vincula um ou mais fornecedores a um produto via SupplierProductMapping.
+ * O primeiro da lista vira o supplierId principal do produto.
+ * `code` é usado como supplierProductCode (SKU ou EAN do produto).
+ */
+export async function setProductSuppliersAction(
+  organizationId: string,
+  productId: string,
+  supplierIds: string[],
+  opts: { code: string; name: string },
+): Promise<Result<null>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
+    return { success: false, error: "Sem permissão" };
+  }
+
+  const ids = [...new Set(supplierIds.filter(Boolean))];
+  if (ids.length === 0) return { success: true, data: null };
+
+  const code = opts.code.trim() || productId;
+  const name = opts.name.trim() || code;
+
+  await prisma.product.update({
+    where: { id: productId },
+    data: { supplierId: ids[0] },
+  });
+
+  for (const supplierId of ids) {
+    await prisma.supplierProductMapping
+      .upsert({
+        where: { supplierId_supplierProductCode: { supplierId, supplierProductCode: code } },
+        create: {
+          organizationId,
+          supplierId,
+          supplierProductCode: code,
+          supplierProductName: name,
+          productId,
+        },
+        update: { productId, supplierProductName: name },
+      })
+      .catch(() => {});
+  }
+
+  revalidatePath(`/app/products/${productId}`);
+  return { success: true, data: null };
 }

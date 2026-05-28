@@ -27,6 +27,19 @@ export const UNIT_OPTIONS = [
   { value: "CENTO", label: "Cento" },
 ] as const;
 
+/**
+ * Normaliza nome de marca para Title Case canônico.
+ * "FRUKI" / "fruki" → "Fruki"; "coca-cola" → "Coca-Cola".
+ * Garante dedupe consistente (uma marca = uma grafia).
+ */
+export function normalizeBrandName(s: string): string {
+  return s
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/(^|[\s\-/])(\p{L})/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+}
+
 /** Margem percentual sobre o preço de venda. null quando indefinível. */
 export function calcMargin(cost: number, price: number): number | null {
   if (!(price > 0) || !(cost > 0)) return null;

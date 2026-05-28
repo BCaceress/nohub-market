@@ -1,8 +1,10 @@
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountActions } from "@/features/app/account-actions";
 import { TwoFactorSetup } from "@/features/auth/two-factor-setup";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ShieldCheck, User } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Minha conta — NoHub Market" };
@@ -17,18 +19,20 @@ export default async function AccountPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold">Minha conta</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {user?.name} · {user?.email}
-        </p>
-      </div>
+    <div className="flex max-w-2xl flex-col gap-6">
+      <PageHeader
+        icon={<User className="h-5 w-5" />}
+        iconTone="primary"
+        title="Minha conta"
+        description={`${user?.name ?? "—"} · ${user?.email ?? ""}`}
+      />
 
-      {/* 2FA */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Segurança</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-success" />
+            Segurança
+          </CardTitle>
           <CardDescription>
             Configure autenticação de dois fatores (TOTP) para proteger sua conta.
           </CardDescription>
@@ -38,10 +42,9 @@ export default async function AccountPage() {
         </CardContent>
       </Card>
 
-      {/* LGPD */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Privacidade e dados (LGPD)</CardTitle>
+          <CardTitle>Privacidade e dados (LGPD)</CardTitle>
           <CardDescription>
             Exporte todos os seus dados ou solicite a exclusão da conta a qualquer momento.
           </CardDescription>

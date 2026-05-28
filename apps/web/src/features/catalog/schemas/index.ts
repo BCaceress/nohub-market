@@ -105,6 +105,7 @@ export const productSchema = z.object({
 
   // Estoque
   stockMin: z.coerce.number().min(0).optional(),
+  stockIdeal: z.coerce.number().min(0).optional(),
   location: z.string().max(80).optional().or(z.literal("")),
 
   categoryId: z.string().cuid().optional().or(z.literal("")),

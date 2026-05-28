@@ -204,7 +204,18 @@ export function AiProductLookup({ onFound }: Props) {
               {/* Nome + badges */}
               <div className="flex items-start gap-2 flex-wrap">
                 <p className="font-semibold text-sm leading-snug flex-1">{result.name}</p>
-                {result.nutriscoreGrade && <NutriScore grade={result.nutriscoreGrade} />}
+                {(result as { nutriscoreGrade?: string }).nutriscoreGrade && (
+                  <NutriScore
+                    grade={
+                      (result as { nutriscoreGrade?: string }).nutriscoreGrade as
+                        | "a"
+                        | "b"
+                        | "c"
+                        | "d"
+                        | "e"
+                    }
+                  />
+                )}
                 <Badge
                   variant={confidenceConfig[result.confidence].variant}
                   className="shrink-0 text-xs"

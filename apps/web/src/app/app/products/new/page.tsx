@@ -1,3 +1,4 @@
+import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
 import {
   generateNextSkuAction,
   getProductCategoriesAction,
@@ -19,9 +20,14 @@ export default async function NewProductPage() {
   });
   if (!member) redirect("/onboarding");
 
-  const [categories, skuResult] = await Promise.all([
+  const [categories, skuResult, suppliers, org] = await Promise.all([
     getProductCategoriesAction(member.organizationId),
     generateNextSkuAction(member.organizationId),
+    getSuppliersAction(member.organizationId),
+    prisma.organization.findUnique({
+      where: { id: member.organizationId },
+      select: { taxRegime: true },
+    }),
   ]);
 
   return (
@@ -29,6 +35,8 @@ export default async function NewProductPage() {
       organizationId={member.organizationId}
       categories={categories as never}
       initialSku={skuResult.success ? skuResult.sku : "PRD-000001"}
+      suppliers={suppliers.map((s) => ({ id: s.id, name: s.name }))}
+      taxRegime={org?.taxRegime ?? null}
     />
   );
 }

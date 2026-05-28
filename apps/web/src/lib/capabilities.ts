@@ -3,10 +3,11 @@ import { prisma } from "@nohub/db";
 
 export {
   deriveCapabilities,
-  type BusinessType,
+  OMNICHANNEL_CHANNELS,
+  type SegmentType,
+  type StockStructureType,
   type DerivedCapability,
   type OperationInput,
-  type ProductCategory,
 } from "./capability-rules";
 
 export async function getCapabilities(

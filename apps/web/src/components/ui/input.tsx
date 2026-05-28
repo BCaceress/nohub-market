@@ -1,27 +1,24 @@
 import { cn } from "@/lib/utils";
-import type { InputHTMLAttributes } from "react";
+import { type InputHTMLAttributes, forwardRef } from "react";
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={cn(
-        // Layout
-        "flex h-10 w-full rounded-lg px-3.5 py-2",
-        // Colors
-        "border border-input bg-card text-sm text-foreground",
-        // Placeholder
-        "placeholder:text-muted-foreground/60",
-        // Shadow & transition
-        "shadow-xs transition-[border-color,box-shadow] duration-150",
-        // Focus
-        "focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
-        // Disabled
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        // File input reset
-        "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className, ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        className={cn(
+          "flex h-10 w-full rounded-lg px-3.5 py-2",
+          "border border-input bg-card text-sm text-foreground",
+          "placeholder:text-muted-foreground/60",
+          "shadow-xs transition-[border-color,box-shadow] duration-150",
+          "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-[var(--primary-ring)]",
+          "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-1",
+          "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+          "[&[type=number]]:tabular-nums",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);

@@ -1,17 +1,23 @@
-import Link from "next/link";
-import { Package, Pencil, Plus, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getProductsAction } from "@/features/app/actions/product-actions";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { Package, Pencil, Plus, Search, X } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Catálogo — NoHub Market" };
 
 const UNIT_LABELS: Record<string, string> = {
-  UN: "un", KG: "kg", G: "g", L: "l", ML: "ml", CX: "cx", PCT: "pct",
+  UN: "un",
+  KG: "kg",
+  G: "g",
+  L: "l",
+  ML: "ml",
+  CX: "cx",
+  PCT: "pct",
 };
 
 function formatPrice(v: { toString(): string }) {
@@ -75,8 +81,6 @@ export default async function CatalogPage({
           />
         </div>
 
-
-
         <Button type="submit" variant="secondary" size="sm" className="h-9 gap-1.5">
           <Search className="h-3.5 w-3.5" />
           Filtrar
@@ -117,7 +121,7 @@ export default async function CatalogPage({
         </div>
       ) : (
         /* ── Product grid ────────────────────────────────────── */
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {products.map((p) => (
             <Card
               key={p.id}
@@ -142,9 +146,7 @@ export default async function CatalogPage({
               <CardContent className="flex flex-col gap-3">
                 {/* Price */}
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-bold tracking-tight">
-                    {formatPrice(p.price)}
-                  </span>
+                  <span className="text-xl font-bold tracking-tight">{formatPrice(p.price)}</span>
                   <span className="text-xs text-muted-foreground">
                     / {UNIT_LABELS[p.unit] ?? p.unit}
                   </span>
@@ -152,15 +154,13 @@ export default async function CatalogPage({
 
                 {/* Badges */}
                 <div className="flex flex-wrap gap-1.5">
-                  {p.supplier && (
-                    <Badge variant="outline">{p.supplier.name}</Badge>
-                  )}
+                  {p.supplier && <Badge variant="outline">{p.supplier.name}</Badge>}
                   {!p.active && (
-                    <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Inativo
+                    </Badge>
                   )}
-                  {p.hasAgeRestriction && (
-                    <Badge variant="warning">+{p.minAge}</Badge>
-                  )}
+                  {p.hasAgeRestriction && <Badge variant="warning">+{p.minAge}</Badge>}
                 </div>
 
                 {/* SKU */}

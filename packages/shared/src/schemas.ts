@@ -37,8 +37,11 @@ export const organizationSchema = z.object({
 });
 export type OrganizationInput = z.infer<typeof organizationSchema>;
 
-export const businessTypeSchema = z.enum(["UNMANNED_MARKET", "CONVENIENCE", "BEVERAGE", "HYBRID"]);
-export type BusinessTypeInput = z.infer<typeof businessTypeSchema>;
+export const segmentTypeSchema = z.enum(["BEVERAGE_CONVENIENCE", "SUPERMARKET", "UNMANNED_MARKET"]);
+export type SegmentTypeInput = z.infer<typeof segmentTypeSchema>;
+
+export const stockStructureTypeSchema = z.enum(["LOCAL", "CENTRAL_DC", "HYBRID"]);
+export type StockStructureTypeInput = z.infer<typeof stockStructureTypeSchema>;
 
 export const locationSchema = z.object({
   name: z.string().min(1),

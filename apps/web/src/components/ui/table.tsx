@@ -1,13 +1,17 @@
 import { cn } from "@/lib/utils";
 
-/* Wrapper — adds overflow, border and rounded corners */
 export function Table({
   className,
   containerClassName,
   ...props
 }: React.HTMLAttributes<HTMLTableElement> & { containerClassName?: string }) {
   return (
-    <div className={cn("overflow-hidden rounded-xl border border-border bg-card", containerClassName)}>
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-card shadow-xs",
+        containerClassName,
+      )}
+    >
       <div className="overflow-x-auto">
         <table className={cn("w-full text-sm", className)} {...props} />
       </div>
@@ -19,21 +23,11 @@ export function TableHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
-  return (
-    <thead
-      className={cn("border-b border-border bg-muted/40", className)}
-      {...props}
-    />
-  );
+  return <thead className={cn("bg-surface-1/60", className)} {...props} />;
 }
 
-export function TableBody({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLTableSectionElement>) {
-  return (
-    <tbody className={cn("divide-y divide-border", className)} {...props} />
-  );
+export function TableBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return <tbody className={cn("divide-y divide-border", className)} {...props} />;
 }
 
 export function TableFooter({
@@ -42,20 +36,17 @@ export function TableFooter({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <tfoot
-      className={cn("border-t border-border bg-muted/40 font-medium", className)}
+      className={cn("border-t border-border bg-surface-1/60 font-medium", className)}
       {...props}
     />
   );
 }
 
-export function TableRow({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLTableRowElement>) {
+export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
       className={cn(
-        "transition-colors hover:bg-muted/30 data-[selected=true]:bg-accent/5",
+        "transition-colors hover:bg-surface-1/50 data-[selected=true]:bg-primary-soft",
         className,
       )}
       {...props}
@@ -63,14 +54,12 @@ export function TableRow({
   );
 }
 
-export function TableHead({
-  className,
-  ...props
-}: React.ThHTMLAttributes<HTMLTableCellElement>) {
+export function TableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
       className={cn(
-        "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground",
+        "px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-subtle",
+        "border-b border-border first:pl-5 last:pr-5",
         "[&:has([role=checkbox])]:w-10 [&:has([role=checkbox])]:text-center",
         className,
       )}
@@ -79,14 +68,11 @@ export function TableHead({
   );
 }
 
-export function TableCell({
-  className,
-  ...props
-}: React.TdHTMLAttributes<HTMLTableCellElement>) {
+export function TableCell({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
     <td
       className={cn(
-        "px-4 py-3.5 align-middle text-sm",
+        "px-4 py-3 align-middle text-[13.5px] text-foreground first:pl-5 last:pr-5",
         "[&:has([role=checkbox])]:w-10 [&:has([role=checkbox])]:text-center",
         className,
       )}
@@ -99,12 +85,7 @@ export function TableCaption({
   className,
   ...props
 }: React.HTMLAttributes<HTMLTableCaptionElement>) {
-  return (
-    <caption
-      className={cn("py-4 text-xs text-muted-foreground", className)}
-      {...props}
-    />
-  );
+  return <caption className={cn("py-4 text-xs text-muted-foreground", className)} {...props} />;
 }
 
 export function TableEmpty({
@@ -121,17 +102,19 @@ export function TableEmpty({
   return (
     <tr>
       <td colSpan={99}>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
           {icon && (
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-1 text-muted-foreground ring-1 ring-border">
               {icon}
             </div>
           )}
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {description && (
-            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-1.5 max-w-sm text-xs text-muted-foreground leading-relaxed">
+              {description}
+            </p>
           )}
-          {action && <div className="mt-4">{action}</div>}
+          {action && <div className="mt-5">{action}</div>}
         </div>
       </td>
     </tr>

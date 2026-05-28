@@ -20,18 +20,18 @@ async function assertMember(userId: string, organizationId: string) {
 /* ── Stats ──────────────────────────────────────────────────── */
 
 export async function getInventoryStatsAction(organizationId: string) {
-  const [totalProducts, totalEntries, lowStockEntries, expiringEntries] =
-    await Promise.all([
-      prisma.product.count({ where: { organizationId, deletedAt: null, active: true } }),
+  const [totalProducts, totalEntries, lowStockEntries, expiringEntries] = await Promise.all([
+    prisma.product.count({ where: { organizationId, deletedAt: null, active: true } }),
 
-      prisma.stockEntry.aggregate({
-        where: { organizationId },
-        _sum: { quantity: true },
-        _count: true,
-      }),
+    prisma.stockEntry.aggregate({
+      where: { organizationId },
+      _sum: { quantity: true },
+      _count: true,
+    }),
 
-      // stock below minQuantity
-      prisma.stockEntry.findMany({
+    // stock below minQuantity
+    prisma.stockEntry
+      .findMany({
         where: {
           organizationId,
           minQuantity: { not: null },
@@ -43,28 +43,29 @@ export async function getInventoryStatsAction(organizationId: string) {
           product: { select: { id: true, name: true } },
           location: { select: { id: true, name: true } },
         },
-      }).then((rows) =>
+      })
+      .then((rows) =>
         rows.filter((r) => r.minQuantity !== null && Number(r.quantity) <= Number(r.minQuantity)),
       ),
 
-      // expiring within 30 days
-      prisma.stockEntry.findMany({
-        where: {
-          organizationId,
-          expiryDate: {
-            not: null,
-            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            gte: new Date(),
-          },
+    // expiring within 30 days
+    prisma.stockEntry.findMany({
+      where: {
+        organizationId,
+        expiryDate: {
+          not: null,
+          lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          gte: new Date(),
         },
-        include: {
-          product: { select: { id: true, name: true } },
-          location: { select: { id: true, name: true } },
-        },
-        orderBy: { expiryDate: "asc" },
-        take: 20,
-      }),
-    ]);
+      },
+      include: {
+        product: { select: { id: true, name: true } },
+        location: { select: { id: true, name: true } },
+      },
+      orderBy: { expiryDate: "asc" },
+      take: 20,
+    }),
+  ]);
 
   const recentMovements = await prisma.stockMovement.findMany({
     where: { organizationId },
@@ -218,8 +219,16 @@ export async function receiveStockAction(
     return { success: false, error: parsed.error.errors[0]?.message ?? "Dados inválidos" };
   }
 
-  const { locationId, productId, quantity, costPrice, expiryDate, batchCode, shelfLocation, notes } =
-    parsed.data;
+  const {
+    locationId,
+    productId,
+    quantity,
+    costPrice,
+    expiryDate,
+    batchCode,
+    shelfLocation,
+    notes,
+  } = parsed.data;
 
   const existing = await prisma.stockEntry.findUnique({
     where: { locationId_productId: { locationId, productId } },
@@ -375,16 +384,18 @@ export async function adjustStockAction(
 
 /* ── Transfer between units ─────────────────────────────────── */
 
-const transferSchema = z.object({
-  fromLocationId: z.string().min(1),
-  toLocationId: z.string().min(1),
-  productId: z.string().min(1),
-  quantity: z.coerce.number().positive("Quantidade deve ser positiva"),
-  notes: z.string().optional(),
-}).refine((d) => d.fromLocationId !== d.toLocationId, {
-  message: "Origem e destino devem ser diferentes",
-  path: ["toLocationId"],
-});
+const transferSchema = z
+  .object({
+    fromLocationId: z.string().min(1),
+    toLocationId: z.string().min(1),
+    productId: z.string().min(1),
+    quantity: z.coerce.number().positive("Quantidade deve ser positiva"),
+    notes: z.string().optional(),
+  })
+  .refine((d) => d.fromLocationId !== d.toLocationId, {
+    message: "Origem e destino devem ser diferentes",
+    path: ["toLocationId"],
+  });
 
 export type TransferInput = z.infer<typeof transferSchema>;
 
@@ -504,12 +515,22 @@ export async function createTransferAction(
 
 /* ── Update min/max thresholds ───────────────────────────────── */
 
-const thresholdSchema = z.object({
-  locationId: z.string().min(1),
-  productId: z.string().min(1),
-  minQuantity: z.coerce.number().min(0).optional(),
-  maxQuantity: z.coerce.number().min(0).optional(),
-});
+const thresholdSchema = z
+  .object({
+    locationId: z.string().min(1),
+    productId: z.string().min(1),
+    minQuantity: z.coerce.number().min(0).optional(),
+    maxQuantity: z.coerce.number().min(0).optional(), // legado StockEntry
+    idealQuantity: z.coerce.number().min(0).optional(), // novo StockBalance
+    variantId: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      d.idealQuantity === undefined ||
+      d.minQuantity === undefined ||
+      d.idealQuantity >= d.minQuantity,
+    { message: "Quantidade ideal deve ser ≥ quantidade mínima", path: ["idealQuantity"] },
+  );
 
 export async function updateStockThresholdsAction(
   organizationId: string,
@@ -528,22 +549,65 @@ export async function updateStockThresholdsAction(
     return { success: false, error: parsed.error.errors[0]?.message ?? "Dados inválidos" };
   }
 
-  const { locationId, productId, minQuantity, maxQuantity } = parsed.data;
+  const { locationId, productId, minQuantity, maxQuantity, idealQuantity, variantId } = parsed.data;
 
-  await prisma.stockEntry.upsert({
-    where: { locationId_productId: { locationId, productId } },
-    create: {
+  await prisma.$transaction(async (tx) => {
+    // ── StockEntry (legado — mantido para compat) ─────────────────
+    await tx.stockEntry.upsert({
+      where: { locationId_productId: { locationId, productId } },
+      create: {
+        organizationId,
+        locationId,
+        productId,
+        quantity: 0,
+        minQuantity: minQuantity ?? null,
+        maxQuantity: maxQuantity ?? null,
+      },
+      update: {
+        minQuantity: minQuantity ?? null,
+        maxQuantity: maxQuantity ?? null,
+      },
+    });
+
+    // ── StockBalance (canônico Etapa 3) ───────────────────────────
+    // Atualiza se já existe; não cria — saldo é criado pelo applyMovement
+    const balanceKey = {
       organizationId,
-      locationId,
       productId,
-      quantity: 0,
-      minQuantity: minQuantity ?? null,
-      maxQuantity: maxQuantity ?? null,
-    },
-    update: {
-      minQuantity: minQuantity ?? null,
-      maxQuantity: maxQuantity ?? null,
-    },
+      variantId: variantId ?? null,
+      locationId,
+      lotId: null as string | null,
+    };
+    const existing = await tx.stockBalance.findFirst({ where: balanceKey });
+    if (existing) {
+      await tx.stockBalance.update({
+        where: { id: existing.id },
+        data: {
+          minQuantity: minQuantity !== undefined ? minQuantity : existing.minQuantity,
+          idealQuantity: idealQuantity !== undefined ? idealQuantity : existing.idealQuantity,
+        },
+      });
+    } else if (minQuantity !== undefined || idealQuantity !== undefined) {
+      // Cria registro de saldo zero apenas para guardar os thresholds
+      await tx.stockBalance.create({
+        data: {
+          ...balanceKey,
+          quantityOnHand: 0,
+          quantityReserved: 0,
+          minQuantity: minQuantity ?? null,
+          idealQuantity: idealQuantity ?? null,
+        },
+      });
+    }
+  });
+
+  await writeAudit({
+    organizationId,
+    actorId: session.user.id,
+    action: "stock.thresholds_updated",
+    resourceType: "StockBalance",
+    resourceId: `${locationId}:${productId}`,
+    after: { minQuantity, idealQuantity, locationId, productId },
   });
 
   revalidatePath("/app/inventory");

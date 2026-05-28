@@ -1,9 +1,11 @@
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TeamManager } from "@/features/app/team-manager";
-import { getMembersAction } from "@/features/app/actions/team-actions";
 import { getPendingInvitationsAction } from "@/features/app/actions/invite-actions";
+import { getMembersAction } from "@/features/app/actions/team-actions";
+import { TeamManager } from "@/features/app/team-manager";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { Users } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Time — NoHub Market" };
@@ -24,19 +26,20 @@ export default async function TeamPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold">Time</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Gerencie os membros e papéis da sua organização.
-        </p>
-      </div>
+    <div className="flex max-w-3xl flex-col gap-6">
+      <PageHeader
+        icon={<Users className="h-5 w-5" />}
+        iconTone="primary"
+        title="Time"
+        description="Gerencie os membros e papéis da sua organização."
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Membros</CardTitle>
+          <CardTitle>Membros</CardTitle>
           <CardDescription>
-            Admin e Owner podem adicionar ou remover membros. O papel do Owner não pode ser alterado.
+            Admin e Owner podem adicionar ou remover membros. O papel do Owner não pode ser
+            alterado.
           </CardDescription>
         </CardHeader>
         <CardContent>

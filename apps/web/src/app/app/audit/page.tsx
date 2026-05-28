@@ -1,56 +1,69 @@
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { History } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Auditoria — NoHub Market" };
 
-const ACTION_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  "organization.created": "default",
+const ACTION_VARIANT: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline" | "soft" | "info" | "warning" | "success"
+> = {
+  "organization.created": "soft",
   "organization.updated": "secondary",
-  "member.added": "secondary",
+  "member.added": "info",
   "member.removed": "destructive",
-  "product.created": "default",
+  "product.created": "soft",
   "product.updated": "secondary",
   "product.deleted": "destructive",
-  "location.created": "default",
+  "location.created": "soft",
   "location.deleted": "destructive",
-  "channel.enabled": "default",
+  "channel.enabled": "success",
   "channel.disabled": "outline",
-  "supplier.created": "default",
+  "supplier.created": "soft",
   "supplier.deleted": "destructive",
-  "onboarding.completed": "default",
-  "account.exportRequested": "outline",
+  "onboarding.completed": "success",
+  "account.exportRequested": "warning",
   "account.deletionRequested": "destructive",
 };
 
-function formatAction(action: string) {
-  const map: Record<string, string> = {
-    "organization.created": "Organização criada",
-    "organization.updated": "Organização atualizada",
-    "member.added": "Membro adicionado",
-    "member.removed": "Membro removido",
-    "member.invited": "Convite enviado",
-    "invitation.accepted": "Convite aceito",
-    "product.created": "Produto criado",
-    "product.updated": "Produto atualizado",
-    "product.deleted": "Produto removido",
-    "location.created": "Unidade criada",
-    "location.updated": "Unidade atualizada",
-    "location.deleted": "Unidade removida",
-    "channel.enabled": "Canal ativado",
-    "channel.disabled": "Canal desativado",
-    "channel.configured": "Canal configurado",
-    "supplier.created": "Fornecedor criado",
-    "supplier.updated": "Fornecedor atualizado",
-    "supplier.deleted": "Fornecedor removido",
-    "capabilities.materialized": "Capabilities derivadas",
-    "onboarding.completed": "Onboarding concluído",
-    "account.exportRequested": "Exportação de dados solicitada",
-    "account.deletionRequested": "Exclusão de conta solicitada",
-  };
-  return map[action] ?? action;
-}
+const ACTION_LABEL: Record<string, string> = {
+  "organization.created": "Organização criada",
+  "organization.updated": "Organização atualizada",
+  "member.added": "Membro adicionado",
+  "member.removed": "Membro removido",
+  "member.invited": "Convite enviado",
+  "invitation.accepted": "Convite aceito",
+  "product.created": "Produto criado",
+  "product.updated": "Produto atualizado",
+  "product.deleted": "Produto removido",
+  "location.created": "Unidade criada",
+  "location.updated": "Unidade atualizada",
+  "location.deleted": "Unidade removida",
+  "channel.enabled": "Canal ativado",
+  "channel.disabled": "Canal desativado",
+  "channel.configured": "Canal configurado",
+  "supplier.created": "Fornecedor criado",
+  "supplier.updated": "Fornecedor atualizado",
+  "supplier.deleted": "Fornecedor removido",
+  "capabilities.materialized": "Capabilities derivadas",
+  "onboarding.completed": "Onboarding concluído",
+  "account.exportRequested": "Exportação de dados solicitada",
+  "account.deletionRequested": "Exclusão de conta solicitada",
+};
 
 export default async function AuditPage({
   searchParams,
@@ -67,7 +80,6 @@ export default async function AuditPage({
   });
   if (!member) redirect("/onboarding");
 
-  // Apenas owner/admin vê audit completo
   if (!["owner", "admin"].includes(member.role)) {
     redirect("/app");
   }
@@ -105,109 +117,98 @@ export default async function AuditPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Auditoria</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {total} evento(s) registrado(s) na organização.
-        </p>
-      </div>
+      <PageHeader
+        icon={<History className="h-5 w-5" />}
+        iconTone="primary"
+        title="Auditoria"
+        description={`${total} evento${total !== 1 ? "s" : ""} registrado${total !== 1 ? "s" : ""} na organização.`}
+      />
 
-      {/* Filtro por tipo */}
-      <form className="flex gap-2 flex-wrap">
-        <select
-          name="type"
-          defaultValue={sp.type ?? ""}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">Todos os recursos</option>
-          {resourceTypes.map((r) => (
-            <option key={r.resourceType} value={r.resourceType}>
-              {r.resourceType}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm hover:bg-muted transition-colors"
-        >
+      {/* Filter form */}
+      <form className="flex flex-wrap items-center gap-2">
+        <div className="w-full max-w-xs">
+          <Select name="type" defaultValue={sp.type ?? ""}>
+            <option value="">Todos os recursos</option>
+            {resourceTypes.map((r) => (
+              <option key={r.resourceType} value={r.resourceType}>
+                {r.resourceType}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="submit" variant="outline" size="sm">
           Filtrar
-        </button>
+        </Button>
       </form>
 
-      {/* Tabela */}
-      <div className="rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Data/hora</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Ação</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Recurso</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Ator</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    Nenhum evento encontrado.
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log, i) => (
-                  <tr key={log.id} className={i % 2 === 0 ? "" : "bg-muted/20"}>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap font-mono">
-                      {log.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant={ACTION_VARIANT[log.action] ?? "outline"} className="whitespace-nowrap">
-                        {formatAction(log.action)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                      {log.resourceType}
-                      {log.resourceId && (
-                        <span className="ml-1 font-mono opacity-60">
-                          {log.resourceId.slice(-6)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-xs">
-                      {log.actor ? (
-                        <span>{log.actor.name}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Sistema</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[180px]">Data/hora</TableHead>
+            <TableHead>Ação</TableHead>
+            <TableHead>Recurso</TableHead>
+            <TableHead>Ator</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {logs.length === 0 ? (
+            <TableEmpty
+              icon={<History className="h-5 w-5" />}
+              title="Nenhum evento encontrado"
+              description="Ações na organização aparecem aqui em ordem cronológica."
+            />
+          ) : (
+            logs.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground tabular-nums whitespace-nowrap">
+                  {log.createdAt.toLocaleString("pt-BR", {
+                    timeZone: "America/Sao_Paulo",
+                  })}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={ACTION_VARIANT[log.action] ?? "outline"}
+                    className="whitespace-nowrap"
+                  >
+                    {ACTION_LABEL[log.action] ?? log.action}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-[12.5px] text-muted-foreground">
+                  {log.resourceType}
+                  {log.resourceId && (
+                    <span className="ml-1.5 font-mono text-[11px] opacity-60">
+                      {log.resourceId.slice(-6)}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-[12.5px]">
+                  {log.actor ? (
+                    <span className="font-medium">{log.actor.name}</span>
+                  ) : (
+                    <span className="text-muted-foreground italic">Sistema</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
 
-      {/* Paginação */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-2 justify-end text-sm">
+        <div className="flex items-center justify-end gap-2 text-[12.5px]">
           <span className="text-muted-foreground">
-            Página {page} de {totalPages}
+            Página <span className="font-semibold text-foreground tabular-nums">{page}</span> de{" "}
+            <span className="font-semibold text-foreground tabular-nums">{totalPages}</span>
           </span>
           {page > 1 && (
-            <a
-              href={`?page=${page - 1}${sp.type ? `&type=${sp.type}` : ""}`}
-              className="rounded-md border px-3 py-1.5 hover:bg-muted transition-colors"
-            >
-              Anterior
-            </a>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`?page=${page - 1}${sp.type ? `&type=${sp.type}` : ""}`}>Anterior</a>
+            </Button>
           )}
           {page < totalPages && (
-            <a
-              href={`?page=${page + 1}${sp.type ? `&type=${sp.type}` : ""}`}
-              className="rounded-md border px-3 py-1.5 hover:bg-muted transition-colors"
-            >
-              Próxima
-            </a>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`?page=${page + 1}${sp.type ? `&type=${sp.type}` : ""}`}>Próxima</a>
+            </Button>
           )}
         </div>
       )}

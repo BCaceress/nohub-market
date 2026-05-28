@@ -1,110 +1,381 @@
 "use server";
 
 import { getSession } from "@/lib/auth-server";
+import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
+
+/* ─────────────────────────────────────────────────────────────────────
+   Public interface — returned to client
+───────────────────────────────────────────────────────────────────── */
 
 export interface OpenFoodFactsProduct {
   name: string;
   brand?: string;
-  category?: string;
+  category?: string; // display name
+  categoryId?: string; // matched existing category ID
   description?: string;
   imageUrl?: string;
-  weight?: number;
+  weight?: number; // grams
   quantity?: string;
   packaging?: string;
+  /** display-only tag names */
   tags?: string[];
+  /** IDs of existing org tags to apply */
+  suggestedTagIds?: string[];
+  /** new tag names+groups to create */
+  suggestedNewTags?: { name: string; group: string }[];
   isImported?: boolean;
-  nutriscoreGrade?: "a" | "b" | "c" | "d" | "e";
   barcode: string;
   confidence: "high" | "medium" | "low";
-  source: "open_food_facts" | "cosmos_br" | "gemini";
+  source: "cosmos_br" | "gemini";
+  // unit suggestions
+  suggestedUnit?: string; // UN | KG | G | L | ML | CX | PCT | FARDO | DZ | BANDEJA
+  suggestedPackUnit?: string; // fardo / caixa unit
+  suggestedPackSize?: number; // quantity per pack
+  // fiscal
+  ncm?: string; // 8 digits
+  ncmDescription?: string;
+  cest?: string; // 7 digits
+  cfopInternal?: string;
+  cfopInterstate?: string;
+  origin?: string;
+  icmsCst?: string;
+  icmsCsosn?: string;
+  pisCst?: string;
+  cofinsCst?: string;
 }
 
-const OFF_UA = "NoHubMarket/1.0 (https://nohub.com.br; contact@nohub.com.br) Node.js";
+/* ─────────────────────────────────────────────────────────────────────
+   Internal types
+───────────────────────────────────────────────────────────────────── */
 
-/* ── EAN Pictures ───────────────────────────────────────────── */
-
-async function fetchEanPictureUrl(barcode: string): Promise<string | null> {
-  try {
-    const res = await fetch(`http://www.eanpictures.com.br:9000/api/gtin/${barcode}`, {
-      signal: AbortSignal.timeout(4000),
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") ?? "";
-    if (ct.includes("application/json") || ct.includes("text/json")) {
-      const json = (await res.json()) as Record<string, unknown>;
-      const url =
-        json.url ?? json.image_url ?? json.image ?? json.thumbnail ?? json.picture ?? json.foto;
-      if (typeof url === "string" && url.startsWith("http")) return url;
-      return null;
-    }
-    if (ct.startsWith("image/")) {
-      return `http://www.eanpictures.com.br:9000/api/gtin/${barcode}`;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+interface CosmosGtin {
+  gtin: string;
+  typePackaging?: string; // UN FD CX PCT BD DZ KG
+  quantityPackaging?: number;
+  ballast?: number;
+  layer?: number;
 }
 
-/* ── Raw OFF fetch ──────────────────────────────────────────── */
-
-const OFF_FIELDS = [
-  "code",
-  "product_name",
-  "product_name_pt",
-  "brands",
-  "quantity",
-  "product_quantity",
-  "product_quantity_unit",
-  "image_front_url",
-  "image_url",
-  "packaging",
-  "categories",
-  "categories_tags",
-  "_keywords",
-  "nutrient_levels",
-  "countries",
-  "countries_tags",
-  "nutriscore_grade",
-  "ingredients_text_pt",
-  "ingredients_text",
-].join(",");
-
-async function fetchRawFromOFF(barcode: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=${OFF_FIELDS}`,
-      { headers: { "User-Agent": OFF_UA }, next: { revalidate: 3600 } },
-    );
-    if (!res.ok) return null;
-    const json = (await res.json()) as { status: number; product?: Record<string, unknown> };
-    if (json.status !== 1 || !json.product) return null;
-    return json.product;
-  } catch {
-    return null;
-  }
-}
-
-/* ── Gemini enrichment ──────────────────────────────────────── */
-
-interface GeminiExtracted {
+interface CosmosResult {
   name: string;
+  barcode: string;
   brand?: string;
   category?: string;
-  quantity?: string;
-  packaging?: string;
-  tags?: string[];
-  isImported?: boolean;
-  nutriscoreGrade?: string;
-  description?: string;
+  imageUrl?: string;
+  ncmCode?: string; // 8 digits
+  ncmDescription?: string;
+  cestCode?: string; // 7 digits
+  weight?: number; // net weight grams
+  grossWeight?: number;
+  avgPrice?: number;
+  gtins: CosmosGtin[];
 }
 
-async function enrichWithGemini(
-  rawProduct: Record<string, unknown>,
-  barcode: string,
-): Promise<OpenFoodFactsProduct | null> {
+interface ContextCategory {
+  id: string;
+  name: string;
+  parentName?: string;
+}
+
+interface ContextTag {
+  id: string;
+  name: string;
+  group: string;
+}
+
+interface GeminiFullResult {
+  name: string;
+  brand?: string;
+  description?: string;
+  category?: string;
+  categoryId?: string;
+  quantity?: string;
+  packaging?: string;
+  isImported?: boolean;
+  suggestedTagIds?: string[];
+  suggestedNewTags?: { name: string; group: string }[];
+  unit?: string;
+  packUnit?: string;
+  packSize?: number;
+  // fiscal
+  ncm?: string;
+  cest?: string;
+  cfopInternal?: string;
+  cfopInterstate?: string;
+  origin?: string;
+  icmsCst?: string;
+  icmsCsosn?: string;
+  pisCst?: string;
+  cofinsCst?: string;
+}
+
+const UA = "NoHubMarket/1.0 (https://nohub.com.br; contact@nohub.com.br) Node.js";
+
+/* ─────────────────────────────────────────────────────────────────────
+   Cosmos Bluesoft
+───────────────────────────────────────────────────────────────────── */
+
+// Map Cosmos packaging type codes to system unit enum
+const COSMOS_PKG_MAP: Record<string, string> = {
+  UN: "UN",
+  FD: "FARDO",
+  CX: "CX",
+  PCT: "PCT",
+  BD: "BANDEJA",
+  DZ: "DZ",
+  KG: "KG",
+  LT: "L",
+  ML: "ML",
+};
+
+async function fetchFromCosmosBr(barcode: string): Promise<CosmosResult | null> {
+  const token = process.env.COSMOS_API_TOKEN;
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${barcode}.json`, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json",
+        "X-Cosmos-Token": token,
+      },
+      signal: AbortSignal.timeout(6000),
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as {
+      description?: string;
+      gtin?: string | number;
+      thumbnail?: string;
+      brand?: { name?: string };
+      category?: { description?: string };
+      // ncm/cest may be an object {code,description} or a flat string
+      ncm?: { code?: string; description?: string } | string;
+      cest?: { code?: string } | string;
+      net_weight?: number | string;
+      gross_weight?: number | string;
+      avg_price?: number | string;
+      gtins?: Array<{
+        gtin?: string | number;
+        type_packaging?: string;
+        quantity_packaging?: number | string;
+        ballast?: number | string;
+        layer?: number | string;
+      }>;
+    };
+
+    const name = String(json.description ?? "").trim();
+    if (!name) return null;
+
+    // NCM — accept object {code,description} or flat string
+    const ncmRaw = typeof json.ncm === "string" ? json.ncm : (json.ncm?.code ?? "");
+    const ncmCode = String(ncmRaw).replace(/\D/g, "").slice(0, 8) || undefined;
+    const ncmDescription =
+      typeof json.ncm === "object"
+        ? String(json.ncm?.description ?? "").trim() || undefined
+        : undefined;
+
+    // CEST — accept object {code} or flat string; must be 7 digits
+    const cestRaw = typeof json.cest === "string" ? json.cest : (json.cest?.code ?? "");
+    const cleanCest = String(cestRaw).replace(/\D/g, "");
+    const cestCode = cleanCest.length === 7 ? cleanCest : undefined;
+
+    // Packaging variants
+    const gtins: CosmosGtin[] = (json.gtins ?? []).map((g) => ({
+      gtin: String(g.gtin ?? ""),
+      typePackaging:
+        (COSMOS_PKG_MAP[String(g.type_packaging ?? "").toUpperCase()] ??
+          String(g.type_packaging ?? "")) ||
+        undefined,
+      quantityPackaging: Number(g.quantity_packaging ?? 0) || undefined,
+      ballast: Number(g.ballast ?? 0) || undefined,
+      layer: Number(g.layer ?? 0) || undefined,
+    }));
+
+    return {
+      name,
+      barcode: String(json.gtin ?? barcode),
+      brand: String(json.brand?.name ?? "").trim() || undefined,
+      category: String(json.category?.description ?? "").trim() || undefined,
+      imageUrl: String(json.thumbnail ?? "").trim() || undefined,
+      ncmCode,
+      ncmDescription,
+      cestCode,
+      weight: Number(json.net_weight ?? 0) || undefined,
+      grossWeight: Number(json.gross_weight ?? 0) || undefined,
+      avgPrice: Number(json.avg_price ?? 0) || undefined,
+      gtins,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Convert CosmosResult → product without Gemini enrichment */
+function cosmosToProduct(cosmos: CosmosResult): OpenFoodFactsProduct {
+  // Infer base unit from packaging variants
+  const unitGtin = cosmos.gtins.find((g) => g.typePackaging === "UN" || g.quantityPackaging === 1);
+  const suggestedUnit = unitGtin?.typePackaging === "UN" ? "UN" : undefined;
+
+  // Infer pack option from non-unit GTINs
+  const packGtin = cosmos.gtins.find(
+    (g) => g.typePackaging && g.typePackaging !== "UN" && (g.quantityPackaging ?? 0) > 1,
+  );
+
+  return {
+    barcode: cosmos.barcode,
+    name: cosmos.name,
+    brand: cosmos.brand,
+    category: cosmos.category,
+    imageUrl: cosmos.imageUrl,
+    weight: cosmos.weight,
+    ncm: cosmos.ncmCode,
+    ncmDescription: cosmos.ncmDescription,
+    cest: cosmos.cestCode,
+    suggestedUnit,
+    suggestedPackUnit: packGtin?.typePackaging,
+    suggestedPackSize: packGtin?.quantityPackaging,
+    confidence: "high",
+    source: "cosmos_br",
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Gemini — full enrichment with Cosmos data + org context
+───────────────────────────────────────────────────────────────────── */
+
+async function enrichWithGeminiContext(params: {
+  barcode: string;
+  cosmosData: CosmosResult;
+  categories: ContextCategory[];
+  tags: ContextTag[];
+  taxRegime?: string | null;
+}): Promise<GeminiFullResult | null> {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const { barcode, cosmosData, categories, tags, taxRegime } = params;
+  const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
+
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
+
+    const catList = categories
+      .slice(0, 80)
+      .map((c) =>
+        c.parentName
+          ? `{"id":"${c.id}","name":"${c.parentName} > ${c.name}"}`
+          : `{"id":"${c.id}","name":"${c.name}"}`,
+      )
+      .join(",\n");
+
+    const tagList = tags
+      .slice(0, 120)
+      .map((t) => `{"id":"${t.id}","name":"${t.name}","group":"${t.group}"}`)
+      .join(",\n");
+
+    // Packaging variants summary
+    const gtinsSummary = cosmosData.gtins.length
+      ? cosmosData.gtins
+          .map((g) => `  ${g.typePackaging ?? "?"} × ${g.quantityPackaging ?? 1} — EAN ${g.gtin}`)
+          .join("\n")
+      : "  (sem variantes de embalagem)";
+
+    const prompt = `Você é especialista fiscal e de varejo brasileiro.
+Analise os dados do produto abaixo e retorne um JSON completo em PT-BR para cadastro em sistema de varejo.
+
+## Dados do produto (Cosmos Bluesoft — fonte confiável BR)
+- EAN: ${barcode}
+- Nome bruto: ${cosmosData.name}
+- Marca: ${cosmosData.brand ?? "desconhecida"}
+- Categoria Cosmos: ${cosmosData.category ?? "não informada"}
+- NCM: ${cosmosData.ncmCode ?? "desconhecido"} — ${cosmosData.ncmDescription ?? ""}
+- CEST: ${cosmosData.cestCode ?? "não informado"}
+- Peso líquido: ${cosmosData.weight ? `${cosmosData.weight}g` : "não informado"}
+- Peso bruto: ${cosmosData.grossWeight ? `${cosmosData.grossWeight}g` : "não informado"}
+- Preço médio mercado: ${cosmosData.avgPrice ? `R$ ${cosmosData.avgPrice.toFixed(2)}` : "não informado"}
+
+## Variantes de embalagem
+${gtinsSummary}
+
+## Categorias disponíveis no sistema
+[${catList}]
+
+## Tags disponíveis no sistema
+[${tagList}]
+
+## Regime tributário
+${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst deve ser null" : "Regime Normal (Lucro Real/Presumido) → usar CST (2 dígitos), campo icmsCsosn deve ser null"}
+
+## Retorne APENAS este JSON válido, sem markdown, sem comentários:
+{
+  "name": "nome comercial limpo em PT-BR (capitalize, ex: Fanta Laranja 2L, Chiclets Adams Hortelã 36g)",
+  "brand": "marca capitalizada (ex: Fanta, Adams)",
+  "description": "frase descritiva curta em PT-BR (1 linha, opcional)",
+  "quantity": "quantidade com unidade legível (ex: 2 L, 350 ml, 36 g)",
+  "packaging": "tipo de embalagem em PT-BR (ex: Garrafa PET, Lata, Caixa, Sachê)",
+  "isImported": false,
+  "unit": "unidade de estoque: UN | KG | G | L | ML (baseado no tipo de produto — líquidos→L/ML, peso→KG/G, unitário→UN)",
+  "packUnit": "unidade da embalagem de compra se houver fardo/caixa: CX | FARDO | PCT | DZ ou null",
+  "packSize": número de unidades no fardo/caixa ou null,
+  "categoryId": "ID exato da categoria da lista acima que melhor se encaixa, ou null",
+  "category": "nome da categoria escolhida ou null",
+  "suggestedTagIds": ["IDs de tags existentes relevantes (0–8)"],
+  "suggestedNewTags": [{"name":"nome PT-BR","group":"geral|tipo|volume|temperatura|dieta|comercial|operacional"}],
+  "ncm": "${cosmosData.ncmCode ?? "NCM de 8 dígitos"}",
+  "cest": "${cosmosData.cestCode ?? "7 dígitos ou null"}",
+  "cfopInternal": "${isSimples ? "5405" : "5102"} — ajuste se necessário",
+  "cfopInterstate": "${isSimples ? "6404" : "6102"} — ajuste se necessário",
+  "origin": "NACIONAL ou IMPORTADO_DIRETO ou IMPORTADO_NACIONAL",
+  ${
+    isSimples
+      ? `"icmsCsosn": "CSOSN 3 dígitos (400 para não ST, 500 para ST, 102 para sem tributação Simples)",
+  "icmsCst": null,`
+      : `"icmsCst": "CST 2 dígitos (00 tributado normal, 40 isento, 60 ST retido)",
+  "icmsCsosn": null,`
+  }
+  "pisCst": "${isSimples ? "07" : "01"}",
+  "cofinsCst": "${isSimples ? "07" : "01"}"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+
+    const text = (response.text ?? "").trim();
+    if (!text) return null;
+
+    const data = JSON.parse(text) as GeminiFullResult & { unknown?: boolean };
+    if (data.unknown || !data.name) return null;
+
+    // Validate categoryId belongs to our list
+    const validCatIds = new Set(categories.map((c) => c.id));
+    if (data.categoryId && !validCatIds.has(data.categoryId)) {
+      data.categoryId = undefined;
+    }
+
+    // Validate tagIds belong to our list
+    const validTagIds = new Set(tags.map((t) => t.id));
+    if (data.suggestedTagIds) {
+      data.suggestedTagIds = data.suggestedTagIds.filter((id) => validTagIds.has(id));
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Gemini — barcode-only last resort (no external data)
+───────────────────────────────────────────────────────────────────── */
+
+async function lookupWithGeminiBarcode(barcode: string): Promise<OpenFoodFactsProduct | null> {
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
   if (!apiKey) return null;
 
@@ -112,48 +383,45 @@ async function enrichWithGemini(
     const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = `Você é um extrator de dados de produtos para um sistema de varejo brasileiro.
-Analise os dados brutos do OpenFoodFacts abaixo e retorne um JSON limpo em português brasileiro.
+    const prompt = `Você é especialista em produtos de varejo brasileiro.
+Com base no código EAN ${barcode}, identifique o produto.
+Se não conhecer, retorne: {"unknown": true}
 
-Regras:
-- "name": nome comercial em PT-BR (traduza se necessário, formato limpo sem código ou barcode)
-- "brand": nome da marca (mantenha original)
-- "category": categoria principal em PT-BR (ex: "Refrigerante", "Biscoito", "Leite integral")
-- "quantity": quantidade com unidade (ex: "350 ml", "1 kg", "6 unidades")
-- "packaging": embalagem em PT-BR (ex: "Lata", "Garrafa PET", "Caixa", "Sachê", "Tetra Pak")
-- "tags": array de 3 a 8 tags relevantes em PT-BR (ex: ["Sem glúten", "Light", "Carbonatado"])
-  Inclua também os níveis nutricionais traduzidos (Gordura baixa, Açúcar alto, etc.)
-- "isImported": true se NÃO for produto brasileiro, false se for
-- "nutriscoreGrade": "a", "b", "c", "d" ou "e" (só se houver dado confiável, senão null)
-- "description": frase curta descritiva do produto em PT-BR (opcional)
+Retorne JSON:
+{
+  "name": "nome comercial em PT-BR",
+  "brand": "marca",
+  "category": "categoria principal",
+  "quantity": "quantidade com unidade",
+  "packaging": "embalagem em PT-BR",
+  "tags": ["tags relevantes"],
+  "isImported": false,
+  "description": "frase curta descritiva"
+}
 
-Dados brutos (código ${barcode}):
-${JSON.stringify(rawProduct, null, 2).slice(0, 6000)}
-
-Retorne APENAS JSON válido, sem markdown, sem explicação.`;
+Retorne APENAS JSON válido, sem markdown.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: { responseMimeType: "application/json" },
     });
 
-    const text = response.text ?? "";
-    const data = JSON.parse(text) as GeminiExtracted;
+    const text = (response.text ?? "").trim();
+    if (!text) return null;
 
-    if (!data.name) return null;
-
-    const grade = (data.nutriscoreGrade ?? "").toLowerCase();
-    const nutriscoreGrade =
-      grade === "a" || grade === "b" || grade === "c" || grade === "d" || grade === "e"
-        ? (grade as "a" | "b" | "c" | "d" | "e")
-        : undefined;
-
-    const imageUrl = String(
-      (rawProduct.image_front_url as string | undefined) ??
-        (rawProduct.image_url as string | undefined) ??
-        "",
-    ).trim();
+    const data = JSON.parse(text) as {
+      name?: string;
+      brand?: string;
+      category?: string;
+      quantity?: string;
+      packaging?: string;
+      tags?: string[];
+      isImported?: boolean;
+      description?: string;
+      unknown?: boolean;
+    };
+    if (data.unknown || !data.name) return null;
 
     return {
       barcode,
@@ -164,10 +432,8 @@ Retorne APENAS JSON válido, sem markdown, sem explicação.`;
       packaging: data.packaging || undefined,
       tags: data.tags?.length ? data.tags : undefined,
       isImported: data.isImported ?? false,
-      nutriscoreGrade,
       description: data.description || undefined,
-      imageUrl: imageUrl || undefined,
-      confidence: "high",
+      confidence: "medium",
       source: "gemini",
     };
   } catch {
@@ -175,164 +441,13 @@ Retorne APENAS JSON válido, sem markdown, sem explicação.`;
   }
 }
 
-/* ── Manual OFF parse (fallback sem Gemini) ─────────────────── */
-
-const NUTRIENT_PT: Record<string, Record<string, string>> = {
-  fat: { low: "Gordura baixa", moderate: "Gordura moderada", high: "Gordura alta" },
-  saturated_fat: { low: "G.sat. baixa", moderate: "G.sat. moderada", high: "G.sat. alta" },
-  sugars: { low: "Açúcar baixo", moderate: "Açúcar moderado", high: "Açúcar alto" },
-  salt: { low: "Sal baixo", moderate: "Sal moderado", high: "Sal alto" },
-};
-
-const KW_BLOCK = new Set([
-  "de",
-  "a",
-  "o",
-  "e",
-  "em",
-  "com",
-  "sem",
-  "por",
-  "porcaria",
-  "junk",
-  "lixo",
-  "horrivel",
-  "base",
-  "planta",
-  "alimento",
-  "liquida",
-  "liquido",
-  "produto",
-  "food",
-  "item",
-]);
-
-function parseOffManual(p: Record<string, unknown>, barcode: string): OpenFoodFactsProduct | null {
-  const name = String(p.product_name_pt ?? p.product_name ?? "").trim();
-  if (!name) return null;
-
-  const brand =
-    String(p.brands ?? "")
-      .split(",")[0]
-      ?.trim() ?? "";
-  const quantity = String(p.quantity ?? "").trim() || undefined;
-  const packaging = String(p.packaging ?? "").trim() || undefined;
-
-  let weight: number | undefined;
-  if (p.product_quantity !== undefined && p.product_quantity_unit) {
-    const qty = Number(p.product_quantity);
-    const unit = String(p.product_quantity_unit).toLowerCase();
-    if (!Number.isNaN(qty)) weight = unit === "kg" || unit === "l" ? qty * 1000 : qty;
-  } else {
-    const m = quantity?.match(/(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)/i);
-    if (m) {
-      const num = Number.parseFloat((m[1] ?? "").replace(",", "."));
-      const unit = (m[2] ?? "").toLowerCase();
-      weight = unit === "kg" || unit === "l" ? num * 1000 : num;
-    }
-  }
-
-  let category = "";
-  const cats = String(p.categories ?? "");
-  if (cats) {
-    const parts = cats
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const clean = parts.filter((s) => !/porcaria|junk|lixo/i.test(s));
-    category = (clean.at(-1) ?? parts.at(-1) ?? "").trim();
-  }
-
-  const tags: string[] = [];
-  const nutrientLevels = p.nutrient_levels as Record<string, string> | undefined;
-  for (const [n, l] of Object.entries(nutrientLevels ?? {})) {
-    const label = NUTRIENT_PT[n]?.[l];
-    if (label) tags.push(label);
-  }
-  const kwTags = ((p._keywords as string[] | undefined) ?? [])
-    .map((k) => k.toLowerCase().trim())
-    .filter(
-      (k) => k.length > 3 && !KW_BLOCK.has(k) && !/^\d+$/.test(k) && !/porcaria|lixo|junk/i.test(k),
-    )
-    .slice(0, 6);
-  tags.push(...kwTags);
-
-  const countriesTags = (p.countries_tags as string[] | undefined) ?? [];
-  const countries = String(p.countries ?? "").toLowerCase();
-  const isImported =
-    countriesTags.length > 0 &&
-    !countriesTags.includes("en:brazil") &&
-    !countries.includes("brazil") &&
-    !countries.includes("brasil");
-
-  const grade = String(p.nutriscore_grade ?? "").toLowerCase();
-  const nutriscoreGrade =
-    grade === "a" || grade === "b" || grade === "c" || grade === "d" || grade === "e"
-      ? (grade as "a" | "b" | "c" | "d" | "e")
-      : undefined;
-
-  const imageUrl = String(p.image_front_url ?? p.image_url ?? "").trim();
-  const filled = [name, brand, imageUrl].filter(Boolean).length;
-
-  return {
-    barcode,
-    name,
-    brand: brand || undefined,
-    category: category || undefined,
-    quantity,
-    weight,
-    packaging,
-    tags: tags.length ? tags : undefined,
-    isImported,
-    nutriscoreGrade,
-    imageUrl: imageUrl || undefined,
-    confidence: filled >= 3 ? "high" : filled >= 2 ? "medium" : "low",
-    source: "open_food_facts",
-  };
-}
-
-/* ── Cosmos Bluesoft ─────────────────────────────────────────── */
-
-async function fetchFromCosmosBr(barcode: string): Promise<OpenFoodFactsProduct | null> {
-  try {
-    const token = process.env.COSMOS_API_TOKEN;
-    const headers: Record<string, string> = { "User-Agent": OFF_UA, Accept: "application/json" };
-    if (token) headers["X-Cosmos-Token"] = token;
-
-    const res = await fetch(`https://api.cosmos.bluesoft.com.br/gtins/${barcode}.json`, {
-      headers,
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-
-    const json = (await res.json()) as {
-      description?: string;
-      brand?: { name?: string };
-      category?: { description?: string };
-      thumbnail?: string;
-    };
-
-    const name = (json.description ?? "").trim();
-    if (!name) return null;
-
-    return {
-      barcode,
-      name,
-      brand: json.brand?.name?.trim() || undefined,
-      category: json.category?.description?.trim() || undefined,
-      imageUrl: (json.thumbnail ?? "").trim() || undefined,
-      confidence: "high",
-      source: "cosmos_br",
-    };
-  } catch {
-    return null;
-  }
-}
-
-/* ── Main action ─────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Main action
+───────────────────────────────────────────────────────────────────── */
 
 export async function lookupProductByBarcodeAction(
   barcode: string,
+  organizationId?: string,
 ): Promise<Result<OpenFoodFactsProduct>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
@@ -344,45 +459,107 @@ export async function lookupProductByBarcodeAction(
 
   const hasGemini = !!process.env.GOOGLE_GEMINI_API_KEY;
 
-  // Busca dados brutos OFF + imagem EAN em paralelo (sempre)
-  const [rawOff, eanImageUrl] = await Promise.all([
-    fetchRawFromOFF(cleaned),
-    fetchEanPictureUrl(cleaned),
+  // Fetch Cosmos + org context in parallel
+  const [cosmosData, orgContext] = await Promise.all([
+    fetchFromCosmosBr(cleaned),
+    organizationId
+      ? Promise.all([
+          prisma.category.findMany({
+            where: { organizationId, deletedAt: null },
+            select: { id: true, name: true, parent: { select: { name: true } } },
+            orderBy: [{ position: "asc" }, { name: "asc" }],
+          }),
+          prisma.tag.findMany({
+            where: { organizationId },
+            select: { id: true, name: true, group: true },
+            orderBy: [{ group: "asc" }, { name: "asc" }],
+          }),
+          prisma.organization.findUnique({
+            where: { id: organizationId },
+            select: { taxRegime: true },
+          }),
+        ])
+      : null,
   ]);
 
-  // Se tem Gemini: usa IA para enriquecer os dados do OFF
-  if (rawOff && hasGemini) {
-    const geminiResult = await enrichWithGemini(rawOff, cleaned);
-    if (geminiResult) {
+  const categories: ContextCategory[] = orgContext
+    ? orgContext[0].map((c) => ({ id: c.id, name: c.name, parentName: c.parent?.name }))
+    : [];
+  const tags: ContextTag[] = orgContext ? orgContext[1] : [];
+  const taxRegime = orgContext ? (orgContext[2]?.taxRegime ?? null) : null;
+
+  // ── Path 1: Cosmos + Gemini full context ─────────────────────
+  if (cosmosData && hasGemini) {
+    const geminiResult = await enrichWithGeminiContext({
+      barcode: cleaned,
+      cosmosData,
+      categories,
+      tags,
+      taxRegime,
+    });
+
+    if (geminiResult?.name) {
+      const existingTagNames = (geminiResult.suggestedTagIds ?? [])
+        .map((id) => tags.find((t) => t.id === id)?.name)
+        .filter(Boolean) as string[];
+      const newTagNames = (geminiResult.suggestedNewTags ?? []).map((t) => t.name);
+      const allTagNames = [...existingTagNames, ...newTagNames];
+
       return {
         success: true,
-        data: { ...geminiResult, imageUrl: eanImageUrl ?? geminiResult.imageUrl },
+        data: {
+          barcode: cleaned,
+          name: geminiResult.name,
+          brand: geminiResult.brand || cosmosData.brand,
+          category: geminiResult.category || cosmosData.category,
+          categoryId: geminiResult.categoryId || undefined,
+          description: geminiResult.description || undefined,
+          quantity: geminiResult.quantity || undefined,
+          packaging: geminiResult.packaging || undefined,
+          isImported: geminiResult.isImported ?? false,
+          imageUrl: cosmosData.imageUrl,
+          weight: cosmosData.weight,
+          tags: allTagNames.length ? allTagNames : undefined,
+          suggestedTagIds: geminiResult.suggestedTagIds?.length
+            ? geminiResult.suggestedTagIds
+            : undefined,
+          suggestedNewTags: geminiResult.suggestedNewTags?.length
+            ? geminiResult.suggestedNewTags
+            : undefined,
+          suggestedUnit: geminiResult.unit || undefined,
+          suggestedPackUnit: geminiResult.packUnit || undefined,
+          suggestedPackSize: geminiResult.packSize || undefined,
+          confidence: "high",
+          source: "gemini",
+          // fiscal — Gemini confirms/corrects Cosmos values
+          ncm: geminiResult.ncm ?? cosmosData.ncmCode,
+          ncmDescription: cosmosData.ncmDescription,
+          cest: geminiResult.cest ?? cosmosData.cestCode,
+          cfopInternal: geminiResult.cfopInternal || undefined,
+          cfopInterstate: geminiResult.cfopInterstate || undefined,
+          origin: geminiResult.origin || undefined,
+          icmsCst: geminiResult.icmsCst || undefined,
+          icmsCsosn: geminiResult.icmsCsosn || undefined,
+          pisCst: geminiResult.pisCst || undefined,
+          cofinsCst: geminiResult.cofinsCst || undefined,
+        },
       };
     }
   }
 
-  // Cosmos BR (mais completo para BR sem Gemini)
-  const cosmos = await fetchFromCosmosBr(cleaned);
-  if (cosmos) {
-    return {
-      success: true,
-      data: { ...cosmos, imageUrl: eanImageUrl ?? cosmos.imageUrl },
-    };
+  // ── Path 2: Cosmos only (no Gemini / Gemini failed) ──────────
+  if (cosmosData) {
+    return { success: true, data: cosmosToProduct(cosmosData) };
   }
 
-  // Parse manual do OFF
-  if (rawOff) {
-    const manual = parseOffManual(rawOff, cleaned);
-    if (manual) {
-      return {
-        success: true,
-        data: { ...manual, imageUrl: eanImageUrl ?? manual.imageUrl },
-      };
-    }
+  // ── Path 3: Gemini barcode-only (no Cosmos token or not found) ─
+  if (hasGemini) {
+    const geminiOnly = await lookupWithGeminiBarcode(cleaned);
+    if (geminiOnly) return { success: true, data: geminiOnly };
   }
 
   return {
     success: false,
-    error: "Produto não encontrado nas bases consultadas. Preencha os dados manualmente.",
+    error: "Produto não encontrado. Verifique o token COSMOS_API_TOKEN ou preencha manualmente.",
   };
 }

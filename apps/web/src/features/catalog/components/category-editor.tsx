@@ -11,16 +11,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
+  Boxes,
+  CalendarClock,
   ChevronDown,
   ChevronRight,
   Folder,
   Info,
   Loader2,
+  type LucideIcon,
   MoreVertical,
   Pencil,
   Plus,
+  Receipt,
+  ShieldAlert,
+  Snowflake,
   Sparkles,
+  Thermometer,
   Trash2,
 } from "lucide-react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useTransition } from "react";
@@ -131,43 +139,47 @@ const PIS_COFINS_CST_OPTIONS = [
 
 /* ── Category row ─────────────────────────────────────────────── */
 
-/** Badges do perfil herdável de uma subcategoria. */
+/** Badges do perfil herdável de uma subcategoria — ícones lucide, estilo minimalista. */
 function ProfileBadges({ cat }: { cat: Category }) {
-  const badges: { key: string; label: string; tone: "fiscal" | "warn" | "neutral" }[] = [];
+  const tempIcon = cat.storageTemperature === "AMBIENTE" ? Thermometer : Snowflake;
+  const tempLabel = TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)?.label;
 
-  if (cat.taxDefault?.ncm) {
-    badges.push({ key: "ncm", label: cat.taxDefault.ncm, tone: "fiscal" });
-  } else {
-    badges.push({ key: "no-ncm", label: "Sem NCM", tone: "warn" });
-  }
-  if (cat.hasAgeRestriction) badges.push({ key: "age", label: "🔞 +18", tone: "neutral" });
-  if (cat.storageTemperature)
-    badges.push({
-      key: "temp",
-      label: TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)
-        ? `${TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)?.emoji} ${TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)?.label}`
-        : String(cat.storageTemperature),
-      tone: "neutral",
-    });
-  if (cat.controlsExpiry) badges.push({ key: "exp", label: "📅 Validade", tone: "neutral" });
-  if (cat.controlsLot) badges.push({ key: "lot", label: "🏷️ Lote", tone: "neutral" });
+  const chips: {
+    key: string;
+    icon: LucideIcon;
+    label: string;
+    tone: "fiscal" | "warn" | "muted";
+  }[] = [];
+  if (cat.taxDefault?.ncm)
+    chips.push({ key: "ncm", icon: Receipt, label: cat.taxDefault.ncm, tone: "fiscal" });
+  else chips.push({ key: "no-ncm", icon: Receipt, label: "Sem NCM", tone: "warn" });
+  if (cat.hasAgeRestriction)
+    chips.push({ key: "age", icon: ShieldAlert, label: "+18", tone: "muted" });
+  if (cat.storageTemperature && tempLabel)
+    chips.push({ key: "temp", icon: tempIcon, label: tempLabel, tone: "muted" });
+  if (cat.controlsExpiry)
+    chips.push({ key: "exp", icon: CalendarClock, label: "Validade", tone: "muted" });
+  if (cat.controlsLot) chips.push({ key: "lot", icon: Boxes, label: "Lote", tone: "muted" });
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {badges.map((b) => (
-        <span
-          key={b.key}
-          className={
-            b.tone === "fiscal"
-              ? "inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-600 dark:text-emerald-400"
-              : b.tone === "warn"
-                ? "inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-600 dark:text-amber-400"
-                : "inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground"
-          }
-        >
-          {b.label}
-        </span>
-      ))}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      {chips.map((c) => {
+        const Icon = c.icon;
+        return (
+          <span
+            key={c.key}
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px]",
+              c.tone === "fiscal" && "font-mono text-emerald-600 dark:text-emerald-400",
+              c.tone === "warn" && "text-amber-600 dark:text-amber-400",
+              c.tone === "muted" && "text-muted-foreground",
+            )}
+          >
+            <Icon className="h-3 w-3" />
+            {c.label}
+          </span>
+        );
+      })}
     </div>
   );
 }

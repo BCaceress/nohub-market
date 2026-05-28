@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { formatCNPJ, formatCEP, onlyDigits } from "@nohub/shared/brazilian";
-import { updateOrgAction, cepLookupForSettingsAction, type UpdateOrgInput } from "./actions/org-actions";
+import { formatCEP, formatCNPJ, onlyDigits } from "@nohub/shared/brazilian";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+  type UpdateOrgInput,
+  cepLookupForSettingsAction,
+  updateOrgAction,
+} from "./actions/org-actions";
 
 type Org = {
   id: string;
   legalName: string;
   tradeName: string | null;
-  document: string;
+  document: string | null;
   taxRegime: string | null;
   zipCode: string | null;
   street: string | null;
@@ -76,10 +80,10 @@ export function SettingsOrgForm({ org }: { org: Org }) {
     if (res.success) {
       const d = res.data as Record<string, string>;
       set({
-        street: d["street"] || form.street,
-        district: d["district"] || form.district,
-        city: d["city"] || form.city,
-        state: d["state"] || form.state,
+        street: d.street || form.street,
+        district: d.district || form.district,
+        city: d.city || form.city,
+        state: d.state || form.state,
       });
     }
   }
@@ -100,11 +104,7 @@ export function SettingsOrgForm({ org }: { org: Org }) {
     <form onSubmit={submit} className="flex flex-col gap-5">
       {/* Dados da empresa */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="CNPJ"
-          value={formatCNPJ(org.document)}
-          readOnly
-        />
+        <Field label="CNPJ" value={org.document ? formatCNPJ(org.document) : ""} readOnly />
         <div className="flex flex-col gap-2">
           <Label>Regime tributário</Label>
           <Select
@@ -141,9 +141,8 @@ export function SettingsOrgForm({ org }: { org: Org }) {
             value={form.zipCode}
             onChange={(e) => {
               const digits = onlyDigits(e.target.value);
-              const formatted = digits.length >= 5
-                ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}`
-                : digits;
+              const formatted =
+                digits.length >= 5 ? `${digits.slice(0, 5)}-${digits.slice(5, 8)}` : digits;
               set({ zipCode: formatted });
             }}
             onBlur={fetchCep}

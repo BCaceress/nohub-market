@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronDown, GitBranch, Layers, Package, Plus, Scissors } from "lucide-react";
+import { ChevronDown, Layers, Package, Plus, Scissors } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -23,12 +23,6 @@ const OPTIONS = [
     label: "Produto Fracionado",
     desc: "Vendido por peso ou volume (kg, g, l, ml…)",
     icon: <Scissors className="h-4 w-4 shrink-0 text-green-500" />,
-  },
-  {
-    type: "VARIANT_PARENT",
-    label: "Produto com Variantes",
-    desc: "Tem variações de tamanho, sabor, cor etc.",
-    icon: <GitBranch className="h-4 w-4 shrink-0 text-blue-500" />,
   },
 ] as const;
 
@@ -92,7 +86,7 @@ export function NewProductDropdown() {
               key={opt.type}
               type="button"
               onClick={() => navigate(opt.type)}
-              className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors"
+              className="w-full flex items-start gap-3 px-3 py-2.5 text-left cursor-pointer hover:bg-muted transition-colors"
             >
               <span className="mt-0.5">{opt.icon}</span>
               <span className="flex flex-col gap-0.5">

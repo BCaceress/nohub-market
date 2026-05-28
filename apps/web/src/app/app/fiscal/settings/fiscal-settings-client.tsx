@@ -107,7 +107,7 @@ export function FiscalSettingsClient({ config, certificate, error }: Props) {
   const isProduction = config?.environment === "PRODUCTION";
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-2xl font-bold">Configurações Fiscais</h1>
 
       {error && (

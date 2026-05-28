@@ -363,6 +363,7 @@ export type ListInvoicesResult =
 
 export async function listInvoicesAction(params?: {
   status?: string;
+  locationId?: string;
   page?: number;
   limit?: number;
 }): Promise<ListInvoicesResult> {
@@ -375,6 +376,7 @@ export async function listInvoicesAction(params?: {
     const where = {
       organizationId,
       ...(params?.status ? { status: params.status as never } : {}),
+      ...(params?.locationId ? { locationId: params.locationId } : {}),
     };
 
     const [invoices, total] = await Promise.all([

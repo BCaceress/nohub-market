@@ -640,8 +640,9 @@ model Product {
   imageUrl String?
 
   // Estoque
-  stockMin Decimal? @db.Decimal(10, 3) // ponto de reposição
-  location String?                     // corredor / prateleira / posição
+  stockMin   Decimal? @db.Decimal(10, 3) // ponto de reposição
+  stockIdeal Decimal? @db.Decimal(10, 3) // nível alvo de reposição
+  location   String?                     // corredor / prateleira / posição
 
   isActive Boolean @default(true)
   // Legado — mantido para compat com código Etapa 1

@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
+import { createContext, useContext } from "react";
 
 /* ── Context ────────────────────────────────────────────────── */
 
@@ -80,7 +80,7 @@ export function TabsTrigger({
         aria-selected={isActive}
         onClick={() => onValueChange(value)}
         className={cn(
-          "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
+          "flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all",
           isActive
             ? "bg-card text-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground",
@@ -112,7 +112,7 @@ export function TabsTrigger({
       aria-selected={isActive}
       onClick={() => onValueChange(value)}
       className={cn(
-        "relative flex items-center gap-2 border-b-2 px-4 py-2.5 -mb-px text-sm font-medium transition-colors",
+        "relative flex cursor-pointer items-center gap-2 border-b-2 px-4 py-2.5 -mb-px text-sm font-medium transition-colors",
         isActive
           ? "border-primary text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
@@ -125,9 +125,7 @@ export function TabsTrigger({
         <span
           className={cn(
             "ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
-            isActive
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground",
+            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
           )}
         >
           {badge}

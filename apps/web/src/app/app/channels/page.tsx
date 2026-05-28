@@ -1,7 +1,9 @@
-import { ChannelsManager } from "@/features/app/channels-manager";
+import { PageHeader } from "@/components/page-header";
 import { getChannelsAction } from "@/features/app/actions/channel-actions";
+import { ChannelsManager } from "@/features/app/channels-manager";
 import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { Radio } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Canais de venda — NoHub Market" };
@@ -24,12 +26,12 @@ export default async function ChannelsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">Canais de venda</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Ative ou desative os canais configurados no onboarding.
-        </p>
-      </div>
+      <PageHeader
+        icon={<Radio className="h-5 w-5" />}
+        iconTone="primary"
+        title="Canais de venda"
+        description="Ative ou desative os canais configurados no onboarding."
+      />
       <ChannelsManager organizationId={member.organizationId} channels={channels} />
     </div>
   );

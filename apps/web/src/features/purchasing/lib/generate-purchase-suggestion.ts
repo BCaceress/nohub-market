@@ -133,6 +133,7 @@ export async function generatePurchaseSuggestion(
     const product = balance.product;
     const currentStock = Number(balance.quantityOnHand);
     const minQuantity = balance.minQuantity != null ? Number(balance.minQuantity) : null;
+    const idealQuantity = balance.idealQuantity != null ? Number(balance.idealQuantity) : null;
     const totalSales = salesMap.get(balance.productId) ?? 0;
     const avgDailySales = totalSales / lookbackDays;
     const leadTimeDays = 7; // default; lookupable from Supplier but not required here
@@ -145,10 +146,20 @@ export async function generatePurchaseSuggestion(
 
     if (!belowMin && !lowCoverage) continue;
 
-    const suggestedQuantity =
-      avgDailySales > 0
-        ? Math.ceil(avgDailySales * (leadTimeDays + bufferDays * 2))
-        : Math.max(1, minQuantity ?? 1);
+    // Quantidade sugerida:
+    //  1. Se há idealQuantity definido → comprar até atingir o ideal (descontando estoque atual)
+    //  2. Senão, cobre leadTime + 2× buffer dias de demanda média
+    //  3. Fallback: ao menos minQuantity (ou 1 se sem definição)
+    const suggestedQuantity = (() => {
+      if (idealQuantity !== null && idealQuantity > currentStock) {
+        // Cobre exatamente o gap até o ideal — mais preciso que fórmula de dias
+        return Math.ceil(idealQuantity - currentStock);
+      }
+      if (avgDailySales > 0) {
+        return Math.ceil(avgDailySales * (leadTimeDays + bufferDays * 2));
+      }
+      return Math.max(1, idealQuantity ?? minQuantity ?? 1);
+    })();
 
     const mappedSupplier = product.supplierProductMappings[0]?.supplierId ?? null;
     const historicalSupplier = recentSupplierMap.get(balance.productId) ?? null;
@@ -187,6 +198,7 @@ export async function generatePurchaseSuggestion(
         lookbackDays,
         bufferDays,
         itemCount: suggestionItems.length,
+        algorithmNote: "idealQuantity used as target when defined",
       } as never,
       items: {
         create: suggestionItems.map((item) => ({

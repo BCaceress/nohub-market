@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Table, TableBody, TableCell, TableEmpty,
-  TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { setProductPriceAction, deleteProductPriceAction } from "../actions/price-actions";
-import { Plus, Pencil, Trash2, DollarSign } from "lucide-react";
+import { DollarSign, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { deleteProductPriceAction, setProductPriceAction } from "../actions/price-actions";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -37,18 +42,19 @@ interface Props {
   prices: PriceRow[];
   products: Product[];
   locations: Location[];
+  defaultLocationId?: string;
 }
 
 /* ── Channel labels ─────────────────────────────────────────── */
 
 const CHANNEL_OPTIONS = [
-  { value: "",                 label: "— Padrão (sem canal)" },
-  { value: "IFOOD",           label: "iFood" },
-  { value: "WHATSAPP",        label: "WhatsApp" },
-  { value: "MERCADO_LIVRE",   label: "Mercado Livre" },
-  { value: "RAPPI",           label: "Rappi" },
-  { value: "OWN_ECOMMERCE",   label: "E-commerce próprio" },
-  { value: "OTHER",           label: "Outro" },
+  { value: "", label: "— Padrão (sem canal)" },
+  { value: "IFOOD", label: "iFood" },
+  { value: "WHATSAPP", label: "WhatsApp" },
+  { value: "MERCADO_LIVRE", label: "Mercado Livre" },
+  { value: "RAPPI", label: "Rappi" },
+  { value: "OWN_ECOMMERCE", label: "E-commerce próprio" },
+  { value: "OTHER", label: "Outro" },
 ];
 
 function channelLabel(ch: string | null) {
@@ -69,14 +75,25 @@ type PriceForm = {
 };
 
 const EMPTY_FORM: PriceForm = {
-  productId: "", locationId: "", channel: "",
-  price: "", promoPrice: "", cost: "",
-  validFrom: "", validTo: "",
+  productId: "",
+  locationId: "",
+  channel: "",
+  price: "",
+  promoPrice: "",
+  cost: "",
+  validFrom: "",
+  validTo: "",
 };
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export function PriceMatrix({ organizationId, prices: initialPrices, products, locations }: Props) {
+export function PriceMatrix({
+  organizationId,
+  prices: initialPrices,
+  products,
+  locations,
+  defaultLocationId,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [prices, setPrices] = useState<PriceRow[]>(initialPrices);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -86,6 +103,7 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
   // Filters
   const [filterProduct, setFilterProduct] = useState("");
   const [filterChannel, setFilterChannel] = useState("");
+  const [filterLocation, setFilterLocation] = useState(defaultLocationId ?? "");
 
   function set(partial: Partial<PriceForm>) {
     setForm((f) => ({ ...f, ...partial }));
@@ -115,7 +133,7 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const toIso = (s: string) => s ? new Date(s).toISOString() : undefined;
+      const toIso = (s: string) => (s ? new Date(s).toISOString() : undefined);
       const result = await setProductPriceAction(organizationId, {
         productId: form.productId,
         locationId: form.locationId || undefined,
@@ -155,6 +173,7 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
   const displayed = prices.filter((p) => {
     if (filterProduct && p.product.id !== filterProduct) return false;
     if (filterChannel && (p.channel ?? "") !== filterChannel) return false;
+    if (filterLocation && (p.location?.id ?? "") !== filterLocation) return false;
     return true;
   });
 
@@ -165,27 +184,64 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
       {/* Filters + action */}
       <div className="flex items-end gap-3 mb-4 flex-wrap">
         <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
-          <label className="text-xs font-medium text-muted-foreground">Produto</label>
+          <label
+            htmlFor="price-filter-product"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Produto
+          </label>
           <select
+            id="price-filter-product"
             value={filterProduct}
             onChange={(e) => setFilterProduct(e.target.value)}
             className="flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             <option value="">Todos os produtos</option>
             {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1 min-w-[140px]">
-          <label className="text-xs font-medium text-muted-foreground">Canal</label>
+          <label
+            htmlFor="price-filter-channel"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Canal
+          </label>
           <select
+            id="price-filter-channel"
             value={filterChannel}
             onChange={(e) => setFilterChannel(e.target.value)}
             className="flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             {CHANNEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <label
+            htmlFor="price-filter-location"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Unidade
+          </label>
+          <select
+            id="price-filter-location"
+            value={filterLocation}
+            onChange={(e) => setFilterLocation(e.target.value)}
+            className="flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          >
+            <option value="">Todas as unidades</option>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
             ))}
           </select>
         </div>
@@ -224,7 +280,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
                 </TableCell>
                 <TableCell>
                   {row.channel ? (
-                    <Badge variant="secondary" className="text-xs">{channelLabel(row.channel)}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {channelLabel(row.channel)}
+                    </Badge>
                   ) : (
                     <span className="text-xs text-muted-foreground">Padrão</span>
                   )}
@@ -243,11 +301,18 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(row)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => openEdit(row)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
-                      variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={() => handleDelete(row.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -278,7 +343,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
               >
                 <option value="">Selecionar produto…</option>
                 {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -293,7 +360,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
                   className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                 >
                   {CHANNEL_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -306,7 +375,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
                 >
                   <option value="">Todas as unidades</option>
                   {locations.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -317,7 +388,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
               <div className="flex flex-col gap-1.5">
                 <Label>Preço (R$) *</Label>
                 <Input
-                  type="number" min="0" step="0.01"
+                  type="number"
+                  min="0"
+                  step="0.01"
                   value={form.price}
                   onChange={(e) => set({ price: e.target.value })}
                   placeholder="0,00"
@@ -327,7 +400,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
               <div className="flex flex-col gap-1.5">
                 <Label>Promo (R$)</Label>
                 <Input
-                  type="number" min="0" step="0.01"
+                  type="number"
+                  min="0"
+                  step="0.01"
                   value={form.promoPrice}
                   onChange={(e) => set({ promoPrice: e.target.value })}
                   placeholder="0,00"
@@ -336,7 +411,9 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
               <div className="flex flex-col gap-1.5">
                 <Label>Custo (R$)</Label>
                 <Input
-                  type="number" min="0" step="0.01"
+                  type="number"
+                  min="0"
+                  step="0.01"
                   value={form.cost}
                   onChange={(e) => set({ cost: e.target.value })}
                   placeholder="0,00"
@@ -371,8 +448,12 @@ export function PriceMatrix({ organizationId, prices: initialPrices, products, l
             )}
 
             <div className="flex gap-3 justify-end pt-1">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isPending}>{isPending ? "Salvando…" : "Salvar"}</Button>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Salvando…" : "Salvar"}
+              </Button>
             </div>
           </form>
         </DialogContent>

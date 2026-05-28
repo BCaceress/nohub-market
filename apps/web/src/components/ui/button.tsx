@@ -2,29 +2,32 @@ import { cn } from "@/lib/utils";
 import { Slot } from "@radix-ui/react-slot";
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "default" | "secondary" | "outline" | "ghost" | "link" | "destructive";
-type Size = "default" | "sm" | "lg" | "icon";
+type Variant = "default" | "secondary" | "outline" | "ghost" | "link" | "destructive" | "soft";
+
+type Size = "default" | "sm" | "lg" | "xl" | "icon" | "icon-sm" | "icon-lg";
 
 const variants: Record<Variant, string> = {
   default:
-    "bg-primary text-primary-foreground shadow-sm hover:opacity-90 active:scale-[0.98]",
+    "bg-primary text-primary-foreground shadow-sm hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] active:scale-[0.98]",
   secondary:
-    "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/70 active:scale-[0.98]",
+    "bg-secondary text-secondary-foreground shadow-xs hover:bg-[var(--surface-2)] active:scale-[0.98]",
   outline:
-    "border border-border bg-card shadow-sm hover:bg-secondary hover:text-secondary-foreground active:scale-[0.98]",
-  ghost:
-    "hover:bg-secondary hover:text-secondary-foreground active:scale-[0.98]",
-  link:
-    "text-accent underline-offset-4 hover:underline h-auto p-0 shadow-none",
+    "border border-border bg-card text-foreground shadow-xs hover:bg-surface-1 hover:border-border-strong active:scale-[0.98]",
+  ghost: "text-foreground hover:bg-surface-1 active:bg-surface-2 active:scale-[0.98]",
+  link: "text-primary underline-offset-4 hover:underline h-auto p-0 shadow-none",
   destructive:
     "bg-destructive text-destructive-foreground shadow-sm hover:opacity-90 active:scale-[0.98]",
+  soft: "bg-primary-soft text-primary-soft-foreground hover:bg-[color-mix(in_srgb,var(--primary-soft)_70%,var(--primary)_8%)] active:scale-[0.98]",
 };
 
 const sizes: Record<Size, string> = {
-  default: "h-10 px-4 py-2 text-sm",
-  sm:      "h-8 px-3 py-1.5 text-xs",
-  lg:      "h-11 px-6 py-2.5 text-sm",
-  icon:    "h-9 w-9 p-0",
+  default: "h-10 px-4 text-sm",
+  sm: "h-8 px-3 text-xs",
+  lg: "h-11 px-5 text-sm",
+  xl: "h-14 px-7 text-base touch-target",
+  icon: "h-10 w-10 p-0",
+  "icon-sm": "h-8 w-8 p-0",
+  "icon-lg": "h-12 w-12 p-0 touch-target",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -44,13 +47,9 @@ export function Button({
   return (
     <Comp
       className={cn(
-        // Base
-        "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium",
-        // Transitions
-        "transition-all duration-150",
-        // Focus
+        "inline-flex cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium tracking-tight",
+        "transition-[background-color,color,border-color,box-shadow,transform,opacity] duration-150",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        // Disabled
         "disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],

@@ -69,6 +69,14 @@ export async function processIssuance(invoiceId: string): Promise<ProcessIssuanc
     return { success: false, error: "Certificado A1 não configurado ou inativo", retryable: false };
   }
 
+  if (!invoice.organization.document) {
+    return {
+      success: false,
+      error: "CNPJ da organização não cadastrado — configure em /app/settings",
+      retryable: false,
+    };
+  }
+
   // Verificar validade do certificado
   if (certificate.validTo < new Date()) {
     return {

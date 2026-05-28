@@ -63,7 +63,7 @@ export async function consultPendingInvoices(): Promise<ConsultPendingResult> {
         ? decryptCredentials(Buffer.from(fiscalConfig.providerCredentials))
         : null;
 
-      if (!providerCreds?.token || !invoice.providerInvoiceId) {
+      if (!providerCreds?.token || !invoice.providerInvoiceId || !invoice.organization.document) {
         result.errors++;
         continue;
       }

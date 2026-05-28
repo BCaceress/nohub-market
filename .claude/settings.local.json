@@ -1,5 +1,14 @@
 {
   "permissions": {
-    "allow": ["Bash(npx biome *)"]
+    "allow": [
+      "Bash(npx biome *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npx prisma *)",
+      "Bash(node_modules/.bin/prisma --version)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm --filter @nohub/web typecheck)",
+      "Bash(npx --no-install tsc --noEmit -p apps/web/tsconfig.json)"
+    ]
   }
 }
