@@ -25,7 +25,9 @@ export async function getProductsAction(
     search?: string;
     categoryId?: string;
     productType?: string;
+    locationId?: string;
     isActive?: boolean;
+    noFiscal?: boolean;
     take?: number;
     skip?: number;
   } = {},
@@ -36,6 +38,8 @@ export async function getProductsAction(
     ...(opts.isActive !== undefined ? { isActive: opts.isActive } : {}),
     ...(opts.categoryId ? { categoryId: opts.categoryId } : {}),
     ...(opts.productType ? { productType: opts.productType as never } : {}),
+    ...(opts.noFiscal ? { taxData: { none: {} } } : {}),
+    ...(opts.locationId ? { stockEntries: { some: { locationId: opts.locationId } } } : {}),
     ...(opts.search
       ? {
           OR: [
@@ -55,7 +59,35 @@ export async function getProductsAction(
       include: {
         category: { select: { id: true, name: true } },
         supplier: { select: { id: true, name: true } },
-        _count: { select: { variants: true, taxData: true } },
+        _count: {
+          select: {
+            variants: true,
+            taxData: true,
+            prices: { where: { locationId: { not: null } } },
+          },
+        },
+        prices: {
+          where: opts.locationId
+            ? { locationId: opts.locationId, variantId: null }
+            : { locationId: { not: null }, variantId: null },
+          select: {
+            id: true,
+            price: true,
+            promoPrice: true,
+            location: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        stockEntries: {
+          where: opts.locationId ? { locationId: opts.locationId } : undefined,
+          select: {
+            id: true,
+            quantity: true,
+            minQuantity: true,
+            location: { select: { id: true, name: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        },
       },
       orderBy: { name: "asc" },
       take: opts.take ?? 100,
@@ -133,6 +165,7 @@ export async function createProductAction(
       name: d.name,
       description: d.description || null,
       brand: d.brand || null,
+      brandId: d.brandId || null,
       sku: d.sku || null,
       barcode: d.barcode || null,
       tags: d.tags,
@@ -145,7 +178,12 @@ export async function createProductAction(
       price: d.price,
       costPrice: d.costPrice ?? null,
       weight: d.weight ?? null,
+      height: d.height ?? null,
+      width: d.width ?? null,
+      length: d.length ?? null,
       imageUrl: d.imageUrl || null,
+      stockMin: d.stockMin ?? null,
+      location: d.location || null,
       isActive: d.isActive,
       active: d.isActive, // compat field
       categoryId: d.categoryId || null,
@@ -168,6 +206,20 @@ export async function createProductAction(
         },
       })
       .catch(() => {}); // ignore if already exists (race)
+  }
+
+  // Pack/wholesale barcode (caixa, fardo) — DUN14
+  if (d.packBarcode && d.packBarcode !== d.barcode) {
+    await prisma.productBarcode
+      .create({
+        data: {
+          organizationId,
+          productId: product.id,
+          barcode: d.packBarcode,
+          type: "DUN14",
+        },
+      })
+      .catch(() => {});
   }
 
   // Create base price in ProductPrice if provided
@@ -249,7 +301,12 @@ export async function updateProductAction(
       price: d.price,
       costPrice: d.costPrice ?? null,
       weight: d.weight ?? null,
+      height: d.height ?? null,
+      width: d.width ?? null,
+      length: d.length ?? null,
       imageUrl: d.imageUrl || null,
+      stockMin: d.stockMin ?? null,
+      location: d.location || null,
       isActive: d.isActive,
       active: d.isActive,
       categoryId: d.categoryId || null,
@@ -272,6 +329,134 @@ export async function updateProductAction(
   revalidatePath("/app/products");
   revalidatePath(`/app/products/${productId}`);
   return { success: true, data: null };
+}
+
+/* ── Set active (inativar/ativar sem deletar) ───────────────── */
+
+export async function setProductActiveAction(
+  organizationId: string,
+  productId: string,
+  isActive: boolean,
+): Promise<Result<null>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
+    return { success: false, error: "Sem permissão" };
+  }
+
+  await prisma.product.updateMany({
+    where: { id: productId, organizationId, deletedAt: null },
+    data: { isActive, active: isActive },
+  });
+
+  await writeAudit({
+    organizationId,
+    actorId: session.user.id,
+    action: isActive ? "product.activated" : "product.inactivated",
+    resourceType: "Product",
+    resourceId: productId,
+  });
+
+  revalidatePath("/app/products");
+  return { success: true, data: null };
+}
+
+/* ── Bulk set active ─────────────────────────────────────────── */
+
+export async function bulkSetProductsActiveAction(
+  organizationId: string,
+  productIds: string[],
+  isActive: boolean,
+): Promise<Result<{ count: number }>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
+    return { success: false, error: "Sem permissão" };
+  }
+
+  if (productIds.length === 0) return { success: true, data: { count: 0 } };
+
+  const result = await prisma.product.updateMany({
+    where: { id: { in: productIds }, organizationId, deletedAt: null },
+    data: { isActive, active: isActive },
+  });
+
+  await writeAudit({
+    organizationId,
+    actorId: session.user.id,
+    action: isActive ? "product.bulk_activated" : "product.bulk_inactivated",
+    resourceType: "Product",
+    resourceId: productIds.join(","),
+    metadata: { count: result.count },
+  });
+
+  revalidatePath("/app/products");
+  return { success: true, data: { count: result.count } };
+}
+
+/* ── Duplicate ───────────────────────────────────────────────── */
+
+export async function duplicateProductAction(
+  organizationId: string,
+  productId: string,
+): Promise<Result<{ id: string }>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
+    return { success: false, error: "Sem permissão" };
+  }
+
+  const src = await prisma.product.findFirst({
+    where: { id: productId, organizationId, deletedAt: null },
+  });
+  if (!src) return { success: false, error: "Produto não encontrado" };
+
+  const cloned = await prisma.product.create({
+    data: {
+      organizationId: src.organizationId,
+      name: `${src.name} (cópia)`,
+      description: src.description,
+      brand: src.brand,
+      sku: null,
+      barcode: null,
+      tags: src.tags,
+      productType: src.productType,
+      unit: src.unit,
+      saleUnit: src.saleUnit,
+      conversionFactor: src.conversionFactor,
+      packUnit: src.packUnit,
+      packSize: src.packSize,
+      price: src.price,
+      costPrice: src.costPrice,
+      weight: src.weight,
+      height: src.height,
+      width: src.width,
+      length: src.length,
+      imageUrl: src.imageUrl,
+      categoryId: src.categoryId,
+      supplierId: src.supplierId,
+      isActive: src.isActive,
+      active: src.active,
+    },
+  });
+
+  await writeAudit({
+    organizationId,
+    actorId: session.user.id,
+    action: "product.duplicated",
+    resourceType: "Product",
+    resourceId: cloned.id,
+    metadata: { sourceId: src.id },
+  });
+
+  revalidatePath("/app/products");
+  return { success: true, data: { id: cloned.id } };
 }
 
 /* ── Archive (soft delete — RN-C10) ─────────────────────────── */
@@ -316,6 +501,10 @@ export async function getProductCategoriesAction(organizationId: string) {
       icon: true,
       parentId: true,
       slug: true,
+      hasAgeRestriction: true,
+      storageTemperature: true,
+      controlsExpiry: true,
+      controlsLot: true,
       defaultTags: {
         include: { tag: { select: { id: true, name: true, group: true, color: true } } },
       },
@@ -355,11 +544,99 @@ export async function generateSkuAction(
   // Prefixo final: PAI-CAT (se houver pai) ou CAT-CAT (se raiz)
   const prefix = category.parent ? `${parentPrefix}-${catPrefix}` : catPrefix;
 
-  // Conta produtos já existentes nesta categoria para determinar sequência
-  const count = await prisma.product.count({
-    where: { organizationId, categoryId, deletedAt: null },
+  // 4-digit random suffix, unique per org (retry up to 20 times)
+  const existing = await prisma.product.findMany({
+    where: { organizationId, sku: { startsWith: `${prefix}-` }, deletedAt: null },
+    select: { sku: true },
+  });
+  const usedSuffixes = new Set(existing.map((p) => p.sku?.slice(prefix.length + 1)));
+
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const rand = String(Math.floor(Math.random() * 9000) + 1000); // 1000–9999
+    if (!usedSuffixes.has(rand)) {
+      return { success: true, sku: `${prefix}-${rand}` };
+    }
+  }
+  // Fallback: timestamp-based suffix
+  return { success: true, sku: `${prefix}-${Date.now().toString().slice(-4)}` };
+}
+
+/* ── Duplicate detection by barcode ──────────────────────────── */
+
+export async function findProductByBarcodeAction(
+  organizationId: string,
+  barcode: string,
+): Promise<{ id: string; name: string; imageUrl: string | null; sku: string | null } | null> {
+  const session = await getSession();
+  if (!session) return null;
+
+  const clean = barcode.trim().replace(/\D/g, "");
+  if (clean.length < 8) return null;
+
+  // Check legacy Product.barcode and canonical ProductBarcode
+  const [direct, viaTable] = await Promise.all([
+    prisma.product.findFirst({
+      where: { organizationId, barcode: clean, deletedAt: null },
+      select: { id: true, name: true, imageUrl: true, sku: true },
+    }),
+    prisma.productBarcode.findFirst({
+      where: { organizationId, barcode: clean },
+      select: {
+        product: {
+          select: { id: true, name: true, imageUrl: true, sku: true, deletedAt: true },
+        },
+      },
+    }),
+  ]);
+
+  if (direct) return direct;
+  if (viaTable?.product && !viaTable.product.deletedAt) {
+    const { id, name, imageUrl, sku } = viaTable.product;
+    return { id, name, imageUrl, sku };
+  }
+  return null;
+}
+
+/* ── Product search for Kit composer ─────────────────────────── */
+
+export async function searchProductsForKitAction(
+  organizationId: string,
+  query: string,
+): Promise<
+  Array<{
+    id: string;
+    name: string;
+    unit: string;
+    costPrice: number | null;
+    imageUrl: string | null;
+  }>
+> {
+  const session = await getSession();
+  if (!session) return [];
+
+  const rows = await prisma.product.findMany({
+    where: {
+      organizationId,
+      deletedAt: null,
+      productType: { not: "KIT" }, // RN-C04
+      isActive: true,
+      ...(query.trim()
+        ? {
+            OR: [
+              { name: { contains: query.trim(), mode: "insensitive" } },
+              { sku: { contains: query.trim(), mode: "insensitive" } },
+              { barcode: { contains: query.trim() } },
+            ],
+          }
+        : {}),
+    },
+    select: { id: true, name: true, unit: true, costPrice: true, imageUrl: true },
+    orderBy: { name: "asc" },
+    take: 15,
   });
 
-  const seq = String(count + 1).padStart(3, "0");
-  return { success: true, sku: `${prefix}-${seq}` };
+  return rows.map((p) => ({
+    ...p,
+    costPrice: p.costPrice ? Number(p.costPrice) : null,
+  }));
 }

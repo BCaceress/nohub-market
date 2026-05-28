@@ -45,17 +45,27 @@ enum TaxRegime {
   MEI
 }
 
-enum BusinessType {
-  UNMANNED_MARKET
-  CONVENIENCE
-  BEVERAGE
-  HYBRID
+// Segmento operacional — define experiência, módulos, fluxos.
+// RN: 1 conta = 1 segmento, imutável após onboarding.
+enum SegmentType {
+  BEVERAGE_CONVENIENCE  // Conveniência de bebidas
+  SUPERMARKET           // Supermercado
+  UNMANNED_MARKET       // Mercado autônomo
+}
+
+// Estrutura de estoque escolhida no onboarding.
+enum StockStructureType {
+  LOCAL        // estoque local por loja, sem CD
+  CENTRAL_DC   // centro de distribuição abastece lojas
+  HYBRID       // CD + estoque local
 }
 
 enum LocationType {
   STORE
   DC
   HYBRID
+  WAREHOUSE   // depósito auxiliar sem PDV
+  DARK_STORE  // fulfillment-only, sem atendimento presencial
 }
 
 enum SalesChannelType {
@@ -155,6 +165,13 @@ enum TaxOrigin {
   ESTRANGEIRO_DIRETO            // 6
   ESTRANGEIRO_NACIONAL          // 7
   NACIONAL_MENOS_70_IMPORTADO   // 8
+}
+
+// Temperatura de armazenagem — perfil operacional herdável da subcategoria
+enum StorageTemperature {
+  AMBIENTE
+  REFRIGERADO
+  CONGELADO
 }
 
 enum FiscalSegment {
@@ -277,10 +294,14 @@ model Organization {
   slug         String        @unique
   legalName    String
   tradeName    String?
-  document     String        @unique
+  // Document opcional no onboarding — segmento + lojas vêm primeiro; CNPJ pode ser preenchido em settings depois.
+  document     String?       @unique
   documentType DocumentType  @default(CNPJ)
   taxRegime    TaxRegime?
-  businessType BusinessType?
+
+  // Segmentação operacional — definida no onboarding, imutável.
+  segmentType        SegmentType?
+  stockStructureType StockStructureType?
 
   zipCode    String?
   street     String?
@@ -344,6 +365,7 @@ model Organization {
   nfeImports             NfeImport[]
   supplierProductMappings SupplierProductMapping[]
   tags                    Tag[]
+  brands                  Brand[]
 
   @@index([document])
   @@index([deletedAt])
@@ -520,6 +542,23 @@ model Supplier {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// CATÁLOGO — Marcas
+// ─────────────────────────────────────────────────────────────────────
+
+model Brand {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // CATÁLOGO — Etapa 2: Categorias
 // ─────────────────────────────────────────────────────────────────────
 
@@ -532,6 +571,13 @@ model Category {
   iconColor      String? @default("#f59e0b") // cor do ícone em hex
   parentId       String?
   position       Int     @default(0)
+
+  hasAgeRestriction Boolean @default(false)
+
+  // Perfil operacional herdável pela subcategoria (Category filha) → Produto
+  storageTemperature StorageTemperature? // AMBIENTE | REFRIGERADO | CONGELADO
+  controlsExpiry     Boolean             @default(false) // controla validade
+  controlsLot        Boolean             @default(false) // controla lote
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -558,10 +604,11 @@ model Product {
   organizationId String
   supplierId     String?
   categoryId     String?     // FK → Category (Etapa 2)
+  brandId        String?     // FK → Brand
 
-  name        String
-  description String?
-  brand       String?
+  name             String
+  description      String?
+  brand            String?   // legacy plain-text brand — still writable
 
   // SKU único por org — validado na camada de aplicação (null não computa no unique)
   sku     String?
@@ -586,7 +633,15 @@ model Product {
   costPrice Decimal? @db.Decimal(10, 2)
 
   weight   Decimal? @db.Decimal(10, 3) // kg
+  // Dimensões logísticas (cm) — frete e expedição
+  height   Decimal? @db.Decimal(10, 2)
+  width    Decimal? @db.Decimal(10, 2)
+  length   Decimal? @db.Decimal(10, 2)
   imageUrl String?
+
+  // Estoque
+  stockMin Decimal? @db.Decimal(10, 3) // ponto de reposição
+  location String?                     // corredor / prateleira / posição
 
   isActive Boolean @default(true)
   // Legado — mantido para compat com código Etapa 1
@@ -596,6 +651,11 @@ model Product {
   minAge            Int?
   expiryDays        Int?
   allowFractioned   Boolean @default(false)
+
+  // Overrides do perfil herdado da subcategoria — null = herda da Category
+  storageTemperature StorageTemperature? // null = usa o da subcategoria
+  controlsExpiry     Boolean?            // null = herda; true/false = sobrescreve
+  controlsLot        Boolean?            // null = herda; true/false = sobrescreve
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -610,6 +670,7 @@ model Product {
 
   // Relações Etapa 2
   category        Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandRef        Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
   barcodes        ProductBarcode[]
   variants        ProductVariant[]
   kitComponents   ProductKitComponent[] @relation("KitProduct")
@@ -645,7 +706,16 @@ model ProductBarcode {
   variantId      String?
   barcode        String
   type           ProductBarcodeType @default(EAN13)
-  createdAt      DateTime           @default(now())
+
+  // Multi-embalagem: nome da embalagem ("Unidade", "Fardo 6", "Caixa 24")
+  // e quantas `unit` cada bipada representa (1, 6, 24).
+  label     String? // exibido no PDV / cadastro
+  factor    Decimal @db.Decimal(10, 3) @default(1) // multiplicador de quantidade
+  isDefault Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -775,6 +845,10 @@ model ProductTax {
   cofinsCst  String?
   cofinsRate Decimal?       @db.Decimal(5, 4)
 
+  // IPI
+  ipiCst  String?
+  ipiRate Decimal? @db.Decimal(5, 2)
+
   unitTaxable Boolean       @default(true)
 
   createdAt DateTime @default(now())
@@ -807,6 +881,8 @@ model CategoryTaxDefault {
   pisRate        Decimal?  @db.Decimal(5, 4)
   cofinsCst      String?
   cofinsRate     Decimal?  @db.Decimal(5, 4)
+  ipiCst         String?
+  ipiRate        Decimal?  @db.Decimal(5, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -998,8 +1074,9 @@ model StockBalance {
   quantityReserved Decimal @db.Decimal(10, 3) @default(0) // reservado
   // quantityAvailable = quantityOnHand - quantityReserved (calculada na query)
 
-  averageCost Decimal? @db.Decimal(10, 4) // custo médio móvel (RN-E09)
-  minQuantity Decimal? @db.Decimal(10, 3) // limiar de alerta de estoque baixo
+  averageCost   Decimal? @db.Decimal(10, 4) // custo médio móvel (RN-E09)
+  minQuantity   Decimal? @db.Decimal(10, 3) // limiar de alerta / ponto de reposição
+  idealQuantity Decimal? @db.Decimal(10, 3) // quantidade alvo após reposição
 
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())

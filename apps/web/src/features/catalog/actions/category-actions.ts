@@ -30,14 +30,47 @@ function generateSlug(name: string): string {
 
 /* ── List ────────────────────────────────────────────────────── */
 
-export async function getCategoriesAction(organizationId: string) {
-  return prisma.category.findMany({
+type FlatCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  iconColor: string | null;
+  parentId: string | null;
+  position: number;
+  hasAgeRestriction: boolean;
+  storageTemperature: "AMBIENTE" | "REFRIGERADO" | "CONGELADO" | null;
+  controlsExpiry: boolean;
+  controlsLot: boolean;
+  taxDefault: {
+    ncm: string | null;
+    cest: string | null;
+    cfopInternal: string | null;
+    cfopInterstate: string | null;
+    origin: string;
+    icmsCst: string | null;
+    icmsCsosn: string | null;
+    icmsRate: { toString(): string } | null;
+    pisCst: string | null;
+    pisRate: { toString(): string } | null;
+    cofinsCst: string | null;
+    cofinsRate: { toString(): string } | null;
+    ipiCst: string | null;
+    ipiRate: { toString(): string } | null;
+    unitTaxable: boolean;
+  } | null;
+  defaultTags: { tag: { id: string; name: string; group: string | null; color: string | null } }[];
+  _count: { products: number };
+  children: FlatCategory[];
+};
+
+/**
+ * Fetch all categories flat then build infinite-depth tree in memory.
+ */
+export async function getCategoriesAction(organizationId: string): Promise<FlatCategory[]> {
+  const rows = await prisma.category.findMany({
     where: { organizationId, deletedAt: null },
     include: {
-      children: {
-        where: { deletedAt: null },
-        orderBy: [{ position: "asc" }, { name: "asc" }],
-      },
       taxDefault: true,
       defaultTags: {
         include: { tag: { select: { id: true, name: true, group: true, color: true } } },
@@ -46,6 +79,29 @@ export async function getCategoriesAction(organizationId: string) {
     },
     orderBy: [{ position: "asc" }, { name: "asc" }],
   });
+
+  // Build map id → node (with empty children array)
+  const map = new Map<string, FlatCategory>();
+  for (const row of rows) {
+    map.set(row.id, { ...row, children: [] } as FlatCategory);
+  }
+
+  // Wire children
+  const roots: FlatCategory[] = [];
+  for (const node of map.values()) {
+    if (node.parentId) {
+      const parent = map.get(node.parentId);
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        roots.push(node); // orphan → treat as root
+      }
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
 }
 
 export async function getCategoryDefaultTagsAction(categoryId: string) {
@@ -81,38 +137,62 @@ export async function createCategoryAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position, icon, iconColor } = parsed.data;
-  const slug = parsed.data.slug || generateSlug(name);
+  const {
+    name,
+    parentId,
+    position,
+    hasAgeRestriction,
+    storageTemperature,
+    controlsExpiry,
+    controlsLot,
+  } = parsed.data;
+  const baseSlug = parsed.data.slug || generateSlug(name);
 
-  // Ensure slug uniqueness within org
-  const exists = await prisma.category.findFirst({
-    where: { organizationId, slug, deletedAt: null },
-  });
-  const finalSlug = exists ? `${slug}-${Date.now()}` : slug;
-
-  const category = await prisma.category.create({
-    data: {
-      organizationId,
-      name,
-      slug: finalSlug,
-      icon: icon || null,
-      iconColor: iconColor || "#f59e0b",
-      parentId: parentId || null,
-      position,
-    },
-  });
+  // Insert with retry on unique conflict (avoids TOCTOU race)
+  let category: { id: string };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${Date.now()}`;
+    try {
+      category = await prisma.category.create({
+        data: {
+          organizationId,
+          name,
+          slug,
+          icon: null,
+          iconColor: null,
+          parentId: parentId || null,
+          position,
+          hasAgeRestriction: hasAgeRestriction ?? false,
+          storageTemperature: storageTemperature || null,
+          controlsExpiry: controlsExpiry ?? false,
+          controlsLot: controlsLot ?? false,
+        },
+        select: { id: true },
+      });
+      break;
+    } catch (err: unknown) {
+      const isUniqueViolation =
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as { code: string }).code === "P2002";
+      if (!isUniqueViolation || attempt === 4) throw err;
+    }
+  }
+  // biome-ignore lint/style/noNonNullAssertion: assigned in loop above or thrown
+  const finalCategory = category!;
 
   await writeAudit({
     organizationId,
     actorId: session.user.id,
     action: "category.created",
     resourceType: "Category",
-    resourceId: category.id,
-    after: { name, slug: finalSlug },
+    resourceId: finalCategory.id,
+    after: { name },
   });
 
   revalidatePath("/app/products/categories");
-  return { success: true, data: { id: category.id } };
+  return { success: true, data: { id: finalCategory.id } };
 }
 
 /* ── Update ──────────────────────────────────────────────────── */
@@ -134,16 +214,28 @@ export async function updateCategoryAction(
   if (!parsed.success)
     return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
-  const { name, parentId, position, icon, iconColor } = parsed.data;
+  const {
+    name,
+    parentId,
+    position,
+    hasAgeRestriction,
+    storageTemperature,
+    controlsExpiry,
+    controlsLot,
+  } = parsed.data;
 
   await prisma.category.updateMany({
     where: { id: categoryId, organizationId },
     data: {
       name,
-      icon: icon || null,
-      iconColor: iconColor || "#f59e0b",
+      icon: null,
+      iconColor: null,
       parentId: parentId || null,
       position,
+      hasAgeRestriction: hasAgeRestriction ?? false,
+      storageTemperature: storageTemperature || null,
+      controlsExpiry: controlsExpiry ?? false,
+      controlsLot: controlsLot ?? false,
     },
   });
 
@@ -183,6 +275,15 @@ export async function deleteCategoryAction(
   return { success: true, data: null };
 }
 
+/* ── Clear icons (one-time cleanup) ─────────────────────────── */
+
+export async function clearCategoryIconsAction(organizationId: string): Promise<void> {
+  await prisma.category.updateMany({
+    where: { organizationId },
+    data: { icon: null, iconColor: null },
+  });
+}
+
 /* ── Fiscal default ──────────────────────────────────────────── */
 
 export async function setCategoryTaxDefaultAction(
@@ -215,6 +316,8 @@ export async function setCategoryTaxDefaultAction(
     pisRate,
     cofinsCst,
     cofinsRate,
+    ipiCst,
+    ipiRate,
   } = parsed.data;
 
   const taxPayload = {
@@ -230,6 +333,8 @@ export async function setCategoryTaxDefaultAction(
     pisRate: pisRate ?? null,
     cofinsCst: cofinsCst || null,
     cofinsRate: cofinsRate ?? null,
+    ipiCst: ipiCst || null,
+    ipiRate: ipiRate ?? null,
   };
 
   await prisma.categoryTaxDefault.upsert({
@@ -276,4 +381,126 @@ export async function setCategoryTagsAction(
 
   revalidatePath("/app/products/categories");
   return { success: true, data: null };
+}
+
+/* ── AI fiscal suggestion for subcategory ────────────────────── */
+
+export interface TaxSuggestion {
+  ncm?: string;
+  cest?: string;
+  cfopInternal?: string;
+  cfopInterstate?: string;
+  origin?: string;
+  icmsCst?: string;
+  icmsCsosn?: string;
+  icmsRate?: string;
+  pisCst?: string;
+  pisRate?: string;
+  cofinsCst?: string;
+  cofinsRate?: string;
+  confidence: "high" | "medium" | "low";
+  notes?: string; // e.g. "NCM 22021000 — Cervejas de malte"
+}
+
+export async function suggestSubcategoryTaxAction(params: {
+  subcategoryName: string;
+  parentCategoryName?: string;
+  taxRegime: string | null;
+}): Promise<Result<TaxSuggestion>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (!apiKey) return { success: false, error: "Gemini não configurado" };
+
+  const { subcategoryName, parentCategoryName, taxRegime } = params;
+  const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
+
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
+
+    const context = parentCategoryName
+      ? `Categoria: "${parentCategoryName}" > Subcategoria: "${subcategoryName}"`
+      : `Subcategoria: "${subcategoryName}"`;
+
+    const prompt = `Você é especialista fiscal brasileiro especializado em NCM/CEST para varejo.
+
+${context}
+Regime tributário: ${isSimples ? "Simples Nacional / MEI" : "Regime Normal (Lucro Real/Presumido)"}
+
+Identifique o NCM correto para produtos desta subcategoria e preencha todos os valores fiscais padrão.
+Retorne APENAS JSON válido sem markdown:
+{
+  "ncm": "8 dígitos NCM (obrigatório)",
+  "ncmDescription": "descrição do NCM escolhido",
+  "cest": "7 dígitos CEST ou null",
+  "cfopInternal": "${isSimples ? "5405" : "5102"}",
+  "cfopInterstate": "${isSimples ? "6404" : "6102"}",
+  "origin": "NACIONAL",
+  ${
+    isSimples
+      ? `"icmsCsosn": "400",
+  "icmsCst": null,`
+      : `"icmsCst": "00",
+  "icmsCsosn": null,`
+  }
+  "icmsRate": ${isSimples ? "null" : "12"},
+  "pisCst": "${isSimples ? "07" : "01"}",
+  "pisRate": ${isSimples ? "null" : "0.65"},
+  "cofinsCst": "${isSimples ? "07" : "01"}",
+  "cofinsRate": ${isSimples ? "null" : "3.0"},
+  "confidence": "high",
+  "notes": "NCM XXXXXXXX — descrição curta do que representa"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+
+    const text = (response.text ?? "").trim();
+    if (!text) return { success: false, error: "Sem resposta da IA" };
+
+    const data = JSON.parse(text) as {
+      ncm?: string;
+      ncmDescription?: string;
+      cest?: string | null;
+      cfopInternal?: string;
+      cfopInterstate?: string;
+      origin?: string;
+      icmsCst?: string | null;
+      icmsCsosn?: string | null;
+      icmsRate?: number | null;
+      pisCst?: string;
+      pisRate?: number | null;
+      cofinsCst?: string;
+      cofinsRate?: number | null;
+      confidence?: string;
+      notes?: string;
+    };
+
+    return {
+      success: true,
+      data: {
+        ncm: data.ncm?.replace(/\D/g, "").slice(0, 8) || undefined,
+        cest: data.cest ? data.cest.replace(/\D/g, "").slice(0, 7) || undefined : undefined,
+        cfopInternal: data.cfopInternal || undefined,
+        cfopInterstate: data.cfopInterstate || undefined,
+        origin: data.origin || "NACIONAL",
+        icmsCst: data.icmsCst || undefined,
+        icmsCsosn: data.icmsCsosn || undefined,
+        icmsRate: data.icmsRate != null ? String(data.icmsRate) : undefined,
+        pisCst: data.pisCst || undefined,
+        pisRate: data.pisRate != null ? String(data.pisRate) : undefined,
+        cofinsCst: data.cofinsCst || undefined,
+        cofinsRate: data.cofinsRate != null ? String(data.cofinsRate) : undefined,
+        confidence: (data.confidence as "high" | "medium" | "low") || "medium",
+        notes: data.notes || data.ncmDescription || undefined,
+      },
+    };
+  } catch {
+    return { success: false, error: "Erro ao consultar IA" };
+  }
 }

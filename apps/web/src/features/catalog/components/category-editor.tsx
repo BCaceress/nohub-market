@@ -1,147 +1,38 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Apple,
-  Baby,
-  Banana,
-  Beef,
-  Beer,
-  Briefcase,
-  Cake,
-  Candy,
-  Car,
-  Carrot,
   ChevronDown,
   ChevronRight,
-  Coffee,
-  Cookie,
-  CupSoda,
-  Dumbbell,
-  Egg,
-  Fish,
-  Flame,
-  FlaskConical,
   Folder,
-  FolderOpen,
-  Gift,
-  GlassWater,
-  Grape,
-  Heart,
-  Home,
-  IceCream,
   Info,
-  Leaf,
-  Milk,
-  Package,
-  Palette,
+  Loader2,
+  MoreVertical,
   Pencil,
-  Pizza,
   Plus,
-  Salad,
-  Sandwich,
-  Search,
-  Shield,
-  ShoppingBag,
-  ShoppingCart,
-  Star,
-  Tag,
+  Sparkles,
   Trash2,
-  TrendingUp,
-  Utensils,
-  Wheat,
-  Wine,
-  X,
-  Zap,
 } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
+  type TaxSuggestion,
   createCategoryAction,
   deleteCategoryAction,
-  setCategoryTagsAction,
   setCategoryTaxDefaultAction,
+  suggestSubcategoryTaxAction,
   updateCategoryAction,
 } from "../actions/category-actions";
-
-/* ── Icon palette ────────────────────────────────────────────── */
-
-type IconDefinition = {
-  id: string;
-  label: string;
-  Component: React.ElementType;
-};
-
-const ICON_OPTIONS: IconDefinition[] = [
-  // Bebidas
-  { id: "beer", label: "Cervejas", Component: Beer },
-  { id: "wine", label: "Vinhos", Component: Wine },
-  { id: "coffee", label: "Café / quentes", Component: Coffee },
-  { id: "milk", label: "Laticínios / leite", Component: Milk },
-  { id: "cup-soda", label: "Refrigerantes / sucos", Component: CupSoda },
-  { id: "glass-water", label: "Água / bebidas", Component: GlassWater },
-  // Frutas e vegetais
-  { id: "apple", label: "Frutas", Component: Apple },
-  { id: "banana", label: "Frutas tropicais", Component: Banana },
-  { id: "grape", label: "Uvas / vitivinícola", Component: Grape },
-  { id: "carrot", label: "Hortifruti", Component: Carrot },
-  { id: "salad", label: "Saladas / naturais", Component: Salad },
-  { id: "leaf", label: "Orgânicos / natural", Component: Leaf },
-  // Proteínas e refeições
-  { id: "beef", label: "Carnes / açougue", Component: Beef },
-  { id: "fish", label: "Pescados", Component: Fish },
-  { id: "egg", label: "Ovos", Component: Egg },
-  { id: "utensils", label: "Gastronomia / restaurante", Component: Utensils },
-  { id: "flame", label: "Grelhados / churrasco", Component: Flame },
-  // Padaria e doces
-  { id: "wheat", label: "Padaria / grãos", Component: Wheat },
-  { id: "sandwich", label: "Lanches / padaria", Component: Sandwich },
-  { id: "pizza", label: "Pizzas / fastfood", Component: Pizza },
-  { id: "cake", label: "Bolos / confeitaria", Component: Cake },
-  { id: "cookie", label: "Biscoitos / snacks", Component: Cookie },
-  { id: "candy", label: "Doces / confeitaria", Component: Candy },
-  { id: "ice-cream", label: "Sorvetes / gelados", Component: IceCream },
-  // Supermercado e loja
-  { id: "shopping-cart", label: "Mercearia", Component: ShoppingCart },
-  { id: "shopping-bag", label: "Sacola / geral", Component: ShoppingBag },
-  { id: "package", label: "Estoque / geral", Component: Package },
-  { id: "tag", label: "Promoções / ofertas", Component: Tag },
-  // Casa e saúde
-  { id: "home", label: "Casa / limpeza", Component: Home },
-  { id: "flask-conical", label: "Limpeza / químicos", Component: FlaskConical },
-  { id: "heart", label: "Saúde / farmácia", Component: Heart },
-  { id: "baby", label: "Bebê / infantil", Component: Baby },
-  // Estilo de vida
-  { id: "dumbbell", label: "Fitness / esporte", Component: Dumbbell },
-  { id: "car", label: "Automotivo", Component: Car },
-  // Destaques e negócios
-  { id: "star", label: "Premium / destaque", Component: Star },
-  { id: "gift", label: "Presentes", Component: Gift },
-  { id: "zap", label: "Promoção / energéticos", Component: Zap },
-  { id: "trending-up", label: "Eletrônicos / tech", Component: TrendingUp },
-  { id: "briefcase", label: "Profissional / negócios", Component: Briefcase },
-  { id: "palette", label: "Arte / criatividade", Component: Palette },
-  { id: "shield", label: "Proteção / segurança", Component: Shield },
-];
-
-/* ── Color palette ───────────────────────────────────────────── */
-
-const PRESET_COLORS = [
-  { name: "Amber", value: "#f59e0b" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Red", value: "#ef4444" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Purple", value: "#a855f7" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Cyan", value: "#06b6d4" },
-  { name: "Green", value: "#10b981" },
-  { name: "Lime", value: "#84cc16" },
-  { name: "Slate", value: "#64748b" },
-];
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -158,16 +49,12 @@ type TaxDefault = {
   pisRate: { toString(): string } | null;
   cofinsCst: string | null;
   cofinsRate: { toString(): string } | null;
+  ipiCst: string | null;
+  ipiRate: { toString(): string } | null;
   unitTaxable: boolean;
 } | null;
 
-export type TagOption = {
-  id: string;
-  name: string;
-  group: string;
-  color: string | null;
-  scope: "SUBCATEGORY" | "PRODUCT";
-};
+type Temperature = "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
 
 type Category = {
   id: string;
@@ -177,17 +64,26 @@ type Category = {
   iconColor: string | null;
   parentId: string | null;
   position: number;
+  hasAgeRestriction?: boolean;
+  storageTemperature?: Temperature | null;
+  controlsExpiry?: boolean;
+  controlsLot?: boolean;
   taxDefault: TaxDefault;
-  defaultTags: { tag: TagOption }[];
   children: Category[];
   _count: { products: number };
 };
 
+const TEMPERATURE_OPTIONS: { value: Temperature; label: string; emoji: string }[] = [
+  { value: "AMBIENTE", label: "Ambiente", emoji: "🌡️" },
+  { value: "REFRIGERADO", label: "Refrigerado", emoji: "❄️" },
+  { value: "CONGELADO", label: "Congelado", emoji: "🧊" },
+];
+
 interface Props {
   organizationId: string;
   categories: Category[];
-  allTags: TagOption[];
   taxRegime: string | null;
+  onCategoryCreated?: (cat: { id: string; name: string; parentId: string | null }) => void;
 }
 
 /* ── Tax constants ───────────────────────────────────────────── */
@@ -233,329 +129,284 @@ const PIS_COFINS_CST_OPTIONS = [
   { value: "99", label: "99 — Outras entradas" },
 ];
 
-/* ── Icon picker ─────────────────────────────────────────────── */
+/* ── Category row ─────────────────────────────────────────────── */
 
-type IconPickerValue = { iconId: string; color: string } | null;
+/** Badges do perfil herdável de uma subcategoria. */
+function ProfileBadges({ cat }: { cat: Category }) {
+  const badges: { key: string; label: string; tone: "fiscal" | "warn" | "neutral" }[] = [];
 
-function IconPicker({
-  value,
-  onChange,
-}: {
-  value: IconPickerValue;
-  onChange: (v: IconPickerValue) => void;
-}) {
-  const colorInputRef = useRef<HTMLInputElement>(null);
-  const selectedColor = value?.color || "#f59e0b";
-
-  function handleIconSelect(iconId: string) {
-    onChange({ iconId, color: selectedColor });
+  if (cat.taxDefault?.ncm) {
+    badges.push({ key: "ncm", label: cat.taxDefault.ncm, tone: "fiscal" });
+  } else {
+    badges.push({ key: "no-ncm", label: "Sem NCM", tone: "warn" });
   }
-
-  function handleColorChange(color: string) {
-    if (value) {
-      onChange({ iconId: value.iconId, color });
-    } else {
-      // Se nenhum ícone escolhido, só atualiza a cor para quando selecionar
-      onChange(null);
-    }
-  }
+  if (cat.hasAgeRestriction) badges.push({ key: "age", label: "🔞 +18", tone: "neutral" });
+  if (cat.storageTemperature)
+    badges.push({
+      key: "temp",
+      label: TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)
+        ? `${TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)?.emoji} ${TEMPERATURE_OPTIONS.find((t) => t.value === cat.storageTemperature)?.label}`
+        : String(cat.storageTemperature),
+      tone: "neutral",
+    });
+  if (cat.controlsExpiry) badges.push({ key: "exp", label: "📅 Validade", tone: "neutral" });
+  if (cat.controlsLot) badges.push({ key: "lot", label: "🏷️ Lote", tone: "neutral" });
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Preview do ícone selecionado */}
-      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-        {value ? (
-          <>
-            {(() => {
-              const iconDef = ICON_OPTIONS.find((o) => o.id === value.iconId);
-              if (!iconDef) return null;
-              return (
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${selectedColor}20` }}
-                  >
-                    <iconDef.Component className="h-4 w-4" style={{ color: selectedColor }} />
-                  </span>
-                  <span className="text-sm font-medium">{iconDef.label}</span>
-                </div>
-              );
-            })()}
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => onChange(null)}
-            >
-              Remover
-            </button>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Clique em um ícone abaixo para selecionar</p>
-        )}
-      </div>
-
-      {/* Grade de ícones — 3 linhas com scroll horizontal */}
-      <div className="overflow-x-auto rounded-lg border border-border bg-muted/20 p-2 pb-3">
-        <div className="grid grid-rows-3 grid-flow-col gap-1.5" style={{ gridAutoColumns: "3rem" }}>
-          {ICON_OPTIONS.map((opt) => {
-            const isSelected = value?.iconId === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                title={opt.label}
-                onClick={() => handleIconSelect(opt.id)}
-                className={`flex h-11 w-12 flex-col items-center justify-center rounded-lg transition-all ${
-                  isSelected ? "ring-2 ring-ring ring-offset-1" : "hover:bg-accent/60"
-                }`}
-                style={isSelected ? { backgroundColor: `${selectedColor}25` } : undefined}
-              >
-                <opt.Component
-                  className="h-5 w-5"
-                  style={{ color: isSelected ? selectedColor : undefined }}
-                />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Cores — sempre visíveis abaixo dos ícones */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs text-muted-foreground">Cor do ícone</Label>
-        <div className="flex items-center gap-2 flex-wrap">
-          {PRESET_COLORS.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              title={preset.name}
-              onClick={() => {
-                if (value) {
-                  onChange({ iconId: value.iconId, color: preset.value });
-                }
-              }}
-              className={`h-7 w-7 rounded-md transition-all shrink-0 ${
-                selectedColor === preset.value && value
-                  ? "ring-2 ring-ring ring-offset-1 scale-110"
-                  : value
-                    ? "hover:scale-105 opacity-90 hover:opacity-100"
-                    : "opacity-40 cursor-not-allowed"
-              }`}
-              style={{ backgroundColor: preset.value }}
-              disabled={!value}
-            />
-          ))}
-
-          {/* Quadrado cor customizada — abre color picker */}
-          <button
-            type="button"
-            title="Cor customizada"
-            onClick={() => value && colorInputRef.current?.click()}
-            disabled={!value}
-            className={`relative h-7 w-7 rounded-md border border-border overflow-hidden transition-all shrink-0 ${
-              value ? "hover:scale-105 cursor-pointer" : "opacity-40 cursor-not-allowed"
-            } ${
-              value && !PRESET_COLORS.some((c) => c.value === selectedColor)
-                ? "ring-2 ring-ring ring-offset-1 scale-110"
-                : ""
-            }`}
-            style={{
-              background:
-                "conic-gradient(#ef4444, #f97316, #f59e0b, #84cc16, #10b981, #06b6d4, #3b82f6, #a855f7, #ec4899, #ef4444)",
-            }}
-          >
-            <input
-              ref={colorInputRef}
-              type="color"
-              className="sr-only"
-              value={selectedColor}
-              onChange={(e) => handleColorChange(e.target.value)}
-            />
-          </button>
-
-          {/* Hex atual se for cor customizada */}
-          {value && !PRESET_COLORS.some((c) => c.value === selectedColor) && (
-            <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-mono">
-              {selectedColor}
-            </code>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {badges.map((b) => (
+        <span
+          key={b.key}
+          className={
+            b.tone === "fiscal"
+              ? "inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-600 dark:text-emerald-400"
+              : b.tone === "warn"
+                ? "inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-600 dark:text-amber-400"
+                : "inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground"
+          }
+        >
+          {b.label}
+        </span>
+      ))}
     </div>
   );
 }
 
-/* ── Category row ─────────────────────────────────────────────── */
-
-function CategoryRow({
+function CatActionsMenu({
   cat,
-  depth,
-  organizationId,
-  allCategories,
-  taxRegime,
-  inheritedIcon,
-  inheritedColor,
   onEdit,
   onDelete,
   onTaxEdit,
   onAddSubcategory,
 }: {
   cat: Category;
-  depth: number;
-  organizationId: string;
-  allCategories: Category[];
-  taxRegime: string | null;
-  inheritedIcon?: string | null;
-  inheritedColor?: string | null;
+  onEdit: (cat: Category) => void;
+  onDelete: (cat: Category) => void;
+  onTaxEdit: (cat: Category) => void;
+  onAddSubcategory: (parentCat: Category) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <MoreVertical className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {!cat.parentId && (
+          <DropdownMenuItem onClick={() => onAddSubcategory(cat)}>
+            <Plus className="h-3.5 w-3.5" />
+            Adicionar subcategoria
+          </DropdownMenuItem>
+        )}
+        {cat.parentId && (
+          <DropdownMenuItem onClick={() => onTaxEdit(cat)}>
+            <Info className="h-3.5 w-3.5" />
+            Fiscal padrão
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onClick={() => onEdit(cat)}>
+          <Pencil className="h-3.5 w-3.5" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+          onClick={() => onDelete(cat)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function SubcategoryCard({
+  cat,
+  onEdit,
+  onDelete,
+  onTaxEdit,
+  onAddSubcategory,
+}: {
+  cat: Category;
+  onEdit: (cat: Category) => void;
+  onDelete: (cat: Category) => void;
+  onTaxEdit: (cat: Category) => void;
+  onAddSubcategory: (parentCat: Category) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-surface-1/30 p-3.5 transition-colors hover:border-border-strong">
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          onClick={() => onTaxEdit(cat)}
+          className="flex-1 truncate text-left text-sm font-medium transition-colors hover:text-primary"
+          title="Editar fiscal padrão"
+        >
+          {cat.name}
+        </button>
+        <span className="shrink-0 text-[11px] text-muted-foreground/60">
+          {cat._count?.products ?? 0} prod.
+        </span>
+        <CatActionsMenu
+          cat={cat}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onTaxEdit={onTaxEdit}
+          onAddSubcategory={onAddSubcategory}
+        />
+      </div>
+      <ProfileBadges cat={cat} />
+    </div>
+  );
+}
+
+function RootCard({
+  cat,
+  onEdit,
+  onDelete,
+  onTaxEdit,
+  onAddSubcategory,
+}: {
+  cat: Category;
   onEdit: (cat: Category) => void;
   onDelete: (cat: Category) => void;
   onTaxEdit: (cat: Category) => void;
   onAddSubcategory: (parentCat: Category) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const hasChildren = (cat.children ?? []).length > 0;
-
-  // Subcategoria herda ícone do pai
-  const displayIconId = depth > 0 ? inheritedIcon : cat.icon;
-  const displayColor = depth > 0 ? inheritedColor || "#f59e0b" : cat.iconColor || "#f59e0b";
-  const iconDef = ICON_OPTIONS.find((opt) => opt.id === displayIconId);
-  const IconComponent = iconDef?.Component;
+  const children = cat.children ?? [];
 
   return (
-    <>
-      <div
-        className={`flex items-center gap-2.5 py-2.5 pr-3 rounded-lg hover:bg-muted/40 group transition-colors ${
-          depth === 0 ? "border-b border-border/50 last:border-0" : ""
-        }`}
-        style={{ paddingLeft: `${14 + depth * 22}px` }}
-      >
-        {/* Expand toggle */}
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
         <button
           type="button"
-          className="h-4 w-4 shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           onClick={() => setExpanded((e) => !e)}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
         >
-          {hasChildren ? (
-            expanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )
-          ) : (
-            <span className="h-3.5 w-3.5 inline-block" />
-          )}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Folder className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold leading-none">{cat.name}</span>
+            <span className="mt-1 block text-[11px] text-muted-foreground/70">
+              {children.length} subcategoria{children.length === 1 ? "" : "s"}
+            </span>
+          </span>
         </button>
 
-        {/* Ícone */}
-        <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-          style={{ backgroundColor: `${displayColor}20` }}
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden h-8 gap-1.5 sm:inline-flex"
+          onClick={() => onAddSubcategory(cat)}
         >
-          {IconComponent ? (
-            <IconComponent className="h-3.5 w-3.5" style={{ color: displayColor }} />
-          ) : hasChildren ? (
-            expanded ? (
-              <FolderOpen className="h-3.5 w-3.5" style={{ color: displayColor }} />
-            ) : (
-              <Folder className="h-3.5 w-3.5" style={{ color: displayColor }} />
-            )
-          ) : (
-            <Tag className="h-3.5 w-3.5 text-muted-foreground/50" />
-          )}
-        </span>
-
-        {/* Nome */}
-        <span
-          className={`flex-1 text-sm truncate ${depth === 0 ? "font-semibold" : "font-medium"}`}
+          <Plus className="h-3.5 w-3.5" />
+          Subcategoria
+        </Button>
+        <CatActionsMenu
+          cat={cat}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onTaxEdit={onTaxEdit}
+          onAddSubcategory={onAddSubcategory}
+        />
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          aria-label={expanded ? "Recolher" : "Expandir"}
         >
-          {cat.name}
-        </span>
-
-        {/* Contagem de produtos */}
-        <Badge variant="secondary" className="text-xs shrink-0 opacity-60">
-          {cat._count?.products ?? 0} prod.
-        </Badge>
-
-        {/* Status fiscal */}
-        {cat.taxDefault?.ncm ? (
-          <Badge variant="success" className="text-xs shrink-0 font-mono">
-            {cat.taxDefault.ncm}
-          </Badge>
-        ) : (
-          <Badge variant="warning" className="text-xs shrink-0">
-            Sem NCM
-          </Badge>
-        )}
-
-        {/* Ações */}
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          {!hasChildren && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              title="Adicionar subcategoria"
-              onClick={() => onAddSubcategory(cat)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            title="Fiscal padrão"
-            onClick={() => onTaxEdit(cat)}
-          >
-            <Info className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            title="Editar"
-            onClick={() => onEdit(cat)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-            title="Excluir"
-            onClick={() => onDelete(cat)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
       </div>
 
-      {/* Filhos */}
-      {hasChildren &&
-        expanded &&
-        (cat.children ?? []).map((child) => (
-          <CategoryRow
-            key={child.id}
-            cat={child}
-            depth={depth + 1}
-            organizationId={organizationId}
-            allCategories={allCategories}
-            taxRegime={taxRegime}
-            inheritedIcon={cat.icon}
-            inheritedColor={cat.iconColor}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onTaxEdit={onTaxEdit}
-            onAddSubcategory={onAddSubcategory}
-          />
-        ))}
-    </>
+      {/* Subcategorias */}
+      {expanded && (
+        <div className="border-t border-border/60 p-3">
+          {children.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => onAddSubcategory(cat)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-muted/10 px-4 py-5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Adicionar subcategoria
+            </button>
+          ) : (
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {children.map((child) => (
+                <SubcategoryCard
+                  key={child.id}
+                  cat={child}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onTaxEdit={onTaxEdit}
+                  onAddSubcategory={onAddSubcategory}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
+}
+
+/* ── Tree helpers (pure) ─────────────────────────────────────── */
+
+function treeInsert(tree: Category[], node: Category, parentId: string | null): Category[] {
+  if (!parentId) return [...tree, node];
+  return tree.map((cat) => {
+    if (cat.id === parentId) return { ...cat, children: [...(cat.children ?? []), node] };
+    if ((cat.children ?? []).length > 0)
+      return { ...cat, children: treeInsert(cat.children, node, parentId) };
+    return cat;
+  });
+}
+
+function treeUpdate(tree: Category[], id: string, patch: Partial<Category>): Category[] {
+  return tree.map((cat) => {
+    if (cat.id === id) return { ...cat, ...patch };
+    if ((cat.children ?? []).length > 0)
+      return { ...cat, children: treeUpdate(cat.children, id, patch) };
+    return cat;
+  });
+}
+
+function treeRemove(tree: Category[], id: string): Category[] {
+  return tree
+    .filter((cat) => cat.id !== id)
+    .map((cat) => ({
+      ...cat,
+      children: treeRemove(cat.children ?? [], id),
+    }));
+}
+
+function treeUpdateTax(tree: Category[], id: string, tax: Category["taxDefault"]): Category[] {
+  return tree.map((cat) => {
+    if (cat.id === id) return { ...cat, taxDefault: tax };
+    if ((cat.children ?? []).length > 0)
+      return { ...cat, children: treeUpdateTax(cat.children, id, tax) };
+    return cat;
+  });
 }
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export function CategoryEditor({ organizationId, categories: initial, allTags, taxRegime }: Props) {
+export type CategoryEditorHandle = { openNew: () => void };
+
+export const CategoryEditor = forwardRef<CategoryEditorHandle, Props>(function CategoryEditor(
+  { organizationId, categories: initial, taxRegime, onCategoryCreated }: Props,
+  ref,
+) {
   const [isPending, startTransition] = useTransition();
   const [categories, setCategories] = useState<Category[]>(initial);
 
@@ -565,14 +416,29 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
   const [subparentId, setSubparentId] = useState<string | null>(null);
   const [catForm, setCatForm] = useState({
     name: "",
-    icon: null as IconPickerValue,
-    tagIds: [] as string[],
+    hasAgeRestriction: false,
+    storageTemperature: "" as "" | Temperature,
+    controlsExpiry: false,
+    controlsLot: false,
   });
-  const [tagSearch, setTagSearch] = useState("");
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus name input whenever dialog opens
+  useEffect(() => {
+    if (catDialog) {
+      const t = setTimeout(() => nameInputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [catDialog]);
 
   // Tax dialog
   const [taxDialog, setTaxDialog] = useState(false);
   const [taxCat, setTaxCat] = useState<Category | null>(null);
+  const [isAiSuggesting, setIsAiSuggesting] = useState(false);
+  const [aiNotes, setAiNotes] = useState<string | undefined>(undefined);
+  const [aiConfidence, setAiConfidence] = useState<TaxSuggestion["confidence"] | undefined>(
+    undefined,
+  );
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI";
 
   const [taxForm, setTaxForm] = useState({
@@ -588,67 +454,121 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
     pisRate: "",
     cofinsCst: "01",
     cofinsRate: "",
+    ipiCst: "",
+    ipiRate: "",
   });
 
   // Subcategoria: sem picker de ícone (herda do pai)
   const isSubcategory =
     subparentId !== null || (editingCat !== null && editingCat.parentId !== null);
 
+  /* ── Expose openNew to parent via ref ──────────────────────── */
+  useImperativeHandle(ref, () => ({ openNew: () => openNew() }));
+
   /* ── Category CRUD ─────────────────────────────────────────── */
+
+  const EMPTY_CAT_FORM = {
+    name: "",
+    hasAgeRestriction: false,
+    storageTemperature: "" as "" | Temperature,
+    controlsExpiry: false,
+    controlsLot: false,
+  };
 
   function openNew() {
     setEditingCat(null);
     setSubparentId(null);
-    setTagSearch("");
-    setCatForm({ name: "", icon: null, tagIds: [] });
+    setCatForm(EMPTY_CAT_FORM);
     setCatDialog(true);
   }
 
   function openNewSubcategory(parentCat: Category) {
     setEditingCat(null);
     setSubparentId(parentCat.id);
-    setTagSearch("");
-    setCatForm({ name: "", icon: null, tagIds: [] });
+    setCatForm(EMPTY_CAT_FORM);
     setCatDialog(true);
   }
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
     setSubparentId(null);
-    setTagSearch("");
     setCatForm({
       name: cat.name,
-      icon: cat.icon ? { iconId: cat.icon, color: cat.iconColor || "#f59e0b" } : null,
-      tagIds: (cat.defaultTags ?? []).map((dt) => dt.tag.id),
+      hasAgeRestriction: cat.hasAgeRestriction ?? false,
+      storageTemperature: cat.storageTemperature ?? "",
+      controlsExpiry: cat.controlsExpiry ?? false,
+      controlsLot: cat.controlsLot ?? false,
     });
     setCatDialog(true);
   }
 
-  function handleCatSubmit(e: React.FormEvent) {
+  function handleCatSubmit(e: React.FormEvent, mode: "save" | "saveAndNew" = "save") {
     e.preventDefault();
     startTransition(async () => {
+      const parentId = subparentId ?? editingCat?.parentId ?? null;
+      // Perfil operacional só se aplica a subcategorias (Category filha)
+      const isSub = parentId !== null;
       const input = {
         name: catForm.name,
-        icon: isSubcategory ? undefined : catForm.icon?.iconId || undefined,
-        iconColor: isSubcategory ? undefined : catForm.icon?.color || undefined,
-        parentId: subparentId ?? editingCat?.parentId ?? undefined,
+        parentId: parentId ?? undefined,
         position: 0,
+        hasAgeRestriction: isSub ? catForm.hasAgeRestriction : false,
+        storageTemperature: isSub ? catForm.storageTemperature || undefined : undefined,
+        controlsExpiry: isSub ? catForm.controlsExpiry : false,
+        controlsLot: isSub ? catForm.controlsLot : false,
       };
-      const result = editingCat
-        ? await updateCategoryAction(organizationId, editingCat.id, input)
-        : await createCategoryAction(organizationId, input);
 
+      if (editingCat) {
+        const result = await updateCategoryAction(organizationId, editingCat.id, input);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        setCategories((prev) =>
+          treeUpdate(prev, editingCat.id, {
+            name: catForm.name,
+            hasAgeRestriction: input.hasAgeRestriction,
+            storageTemperature: (input.storageTemperature as Temperature) || null,
+            controlsExpiry: input.controlsExpiry,
+            controlsLot: input.controlsLot,
+          }),
+        );
+        toast.success("Categoria atualizada!");
+        setCatDialog(false);
+        return;
+      }
+
+      const result = await createCategoryAction(organizationId, input);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
+      const newNode: Category = {
+        id: result.data.id,
+        name: catForm.name,
+        slug: catForm.name.toLowerCase().replace(/\s+/g, "-"),
+        icon: null,
+        iconColor: null,
+        parentId: parentId,
+        position: 0,
+        hasAgeRestriction: input.hasAgeRestriction,
+        storageTemperature: (input.storageTemperature as Temperature) || null,
+        controlsExpiry: input.controlsExpiry,
+        controlsLot: input.controlsLot,
+        taxDefault: null,
+        children: [],
+        _count: { products: 0 },
+      };
+      setCategories((prev) => treeInsert(prev, newNode, parentId));
+      onCategoryCreated?.({ id: result.data.id, name: catForm.name, parentId });
+      toast.success("Categoria criada!");
 
-      const categoryId = editingCat ? editingCat.id : (result.data?.id ?? "");
-      await setCategoryTagsAction(organizationId, categoryId, catForm.tagIds);
-
-      toast.success(editingCat ? "Categoria atualizada!" : "Categoria criada!");
-      setCatDialog(false);
-      window.location.reload();
+      if (mode === "saveAndNew") {
+        setCatForm((f) => ({ ...f, name: "" }));
+        setTimeout(() => nameInputRef.current?.focus(), 30);
+      } else {
+        setCatDialog(false);
+      }
     });
   }
 
@@ -657,8 +577,8 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
     startTransition(async () => {
       const result = await deleteCategoryAction(organizationId, cat.id);
       if (result.success) {
+        setCategories((prev) => treeRemove(prev, cat.id));
         toast.success("Categoria removida");
-        setCategories((prev) => prev.filter((c) => c.id !== cat.id));
       } else {
         toast.error(result.error);
       }
@@ -669,6 +589,8 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
 
   function openTaxEdit(cat: Category) {
     setTaxCat(cat);
+    setAiNotes(undefined);
+    setAiConfidence(undefined);
     const t = cat.taxDefault;
     setTaxForm({
       ncm: t?.ncm ?? "",
@@ -683,15 +605,64 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
       pisRate: t?.pisRate?.toString() ?? "",
       cofinsCst: t?.cofinsCst ?? "01",
       cofinsRate: t?.cofinsRate?.toString() ?? "",
+      ipiCst: t?.ipiCst ?? "",
+      ipiRate: t?.ipiRate?.toString() ?? "",
     });
     setTaxDialog(true);
+
+    // Auto-sugestão IA para subcategorias sem NCM cadastrado
+    if (cat.parentId && !t?.ncm) {
+      void triggerAiSuggestion(cat);
+    }
+  }
+
+  async function triggerAiSuggestion(cat: Category) {
+    setIsAiSuggesting(true);
+    setAiNotes(undefined);
+    setAiConfidence(undefined);
+
+    // Busca nome da categoria pai
+    const parentCat = cat.parentId ? categories.find((c) => c.id === cat.parentId) : undefined;
+
+    const result = await suggestSubcategoryTaxAction({
+      subcategoryName: cat.name,
+      parentCategoryName: parentCat?.name,
+      taxRegime,
+    });
+
+    setIsAiSuggesting(false);
+
+    if (result.success) {
+      const s = result.data;
+      setAiNotes(s.notes);
+      setAiConfidence(s.confidence);
+      // Preenche apenas campos vazios com sugestão da IA
+      setTaxForm((prev) => ({
+        ncm: prev.ncm || s.ncm || prev.ncm,
+        cest: prev.cest || s.cest || prev.cest,
+        cfopInternal: prev.cfopInternal || s.cfopInternal || prev.cfopInternal,
+        cfopInterstate: prev.cfopInterstate || s.cfopInterstate || prev.cfopInterstate,
+        origin: prev.origin !== "NACIONAL" ? prev.origin : (s.origin ?? prev.origin),
+        icmsCst: prev.icmsCst || s.icmsCst || prev.icmsCst,
+        icmsCsosn: prev.icmsCsosn || s.icmsCsosn || prev.icmsCsosn,
+        icmsRate: prev.icmsRate || s.icmsRate || prev.icmsRate,
+        pisCst: prev.pisCst || s.pisCst || prev.pisCst,
+        pisRate: prev.pisRate || s.pisRate || prev.pisRate,
+        cofinsCst: prev.cofinsCst || s.cofinsCst || prev.cofinsCst,
+        cofinsRate: prev.cofinsRate || s.cofinsRate || prev.cofinsRate,
+        ipiCst: prev.ipiCst,
+        ipiRate: prev.ipiRate,
+      }));
+    } else {
+      toast.error(result.error ?? "IA indisponível");
+    }
   }
 
   function handleTaxSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!taxCat) return;
     startTransition(async () => {
-      const result = await setCategoryTaxDefaultAction(organizationId, {
+      const payload = {
         categoryId: taxCat.id,
         ncm: taxForm.ncm,
         cest: taxForm.cest || undefined,
@@ -705,11 +676,32 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
         pisRate: taxForm.pisRate ? Number(taxForm.pisRate) : undefined,
         cofinsCst: taxForm.cofinsCst || undefined,
         cofinsRate: taxForm.cofinsRate ? Number(taxForm.cofinsRate) : undefined,
-      });
+        ipiCst: taxForm.ipiCst || undefined,
+        ipiRate: taxForm.ipiRate ? Number(taxForm.ipiRate) : undefined,
+      };
+      const result = await setCategoryTaxDefaultAction(organizationId, payload);
       if (result.success) {
+        // Patch taxDefault in local tree — no flicker
+        const newTax: Category["taxDefault"] = {
+          ncm: taxForm.ncm || null,
+          cest: taxForm.cest || null,
+          cfopInternal: taxForm.cfopInternal || null,
+          cfopInterstate: taxForm.cfopInterstate || null,
+          origin: taxForm.origin,
+          icmsCst: isSimples ? null : taxForm.icmsCst || null,
+          icmsCsosn: isSimples ? taxForm.icmsCsosn || null : null,
+          icmsRate: taxForm.icmsRate ? { toString: () => taxForm.icmsRate } : null,
+          pisCst: taxForm.pisCst || null,
+          pisRate: taxForm.pisRate ? { toString: () => taxForm.pisRate } : null,
+          cofinsCst: taxForm.cofinsCst || null,
+          cofinsRate: taxForm.cofinsRate ? { toString: () => taxForm.cofinsRate } : null,
+          ipiCst: taxForm.ipiCst || null,
+          ipiRate: taxForm.ipiRate ? { toString: () => taxForm.ipiRate } : null,
+          unitTaxable: taxCat.taxDefault?.unitTaxable ?? false,
+        };
+        setCategories((prev) => treeUpdateTax(prev, taxCat.id, newTax));
         toast.success("Fiscal padrão salvo!");
         setTaxDialog(false);
-        window.location.reload();
       } else {
         toast.error(result.error);
       }
@@ -717,30 +709,10 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
   }
 
   const rootCategories = categories.filter((c) => !c.parentId);
-  const totalCount = categories.length;
-  const withTaxCount = categories.filter((c) => c.taxDefault?.ncm).length;
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (
     <>
-      {/* Barra de ações */}
-      <div className="flex items-center justify-between gap-4 pb-1">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>
-            <strong className="text-foreground font-semibold">{totalCount}</strong> categoria
-            {totalCount !== 1 ? "s" : ""}
-          </span>
-          <span className="text-border">|</span>
-          <span>
-            <strong className="text-foreground font-semibold">{withTaxCount}</strong> com NCM
-          </span>
-        </div>
-        <Button size="sm" onClick={openNew} className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Nova categoria
-        </Button>
-      </div>
-
       {/* Lista de categorias */}
       {categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center">
@@ -758,32 +730,18 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
           </Button>
         </div>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden bg-card">
-          <div className="px-3 py-2">
-            {rootCategories.map((cat) => (
-              <CategoryRow
-                key={cat.id}
-                cat={cat}
-                depth={0}
-                organizationId={organizationId}
-                allCategories={categories}
-                taxRegime={taxRegime}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onTaxEdit={openTaxEdit}
-                onAddSubcategory={openNewSubcategory}
-              />
-            ))}
-          </div>
+        <div className="flex flex-col gap-3">
+          {rootCategories.map((cat) => (
+            <RootCard
+              key={cat.id}
+              cat={cat}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onTaxEdit={openTaxEdit}
+              onAddSubcategory={openNewSubcategory}
+            />
+          ))}
         </div>
-      )}
-
-      {/* Dica fiscal */}
-      {categories.length > 0 && (
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Info className="h-3 w-3 shrink-0" />O fiscal padrão (NCM, ICMS, PIS, COFINS) é herdado
-          pelos produtos sem configuração própria — RN-C13.
-        </p>
       )}
 
       {/* ── Dialog: categoria ──────────────────────────────────── */}
@@ -808,6 +766,7 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
                 Nome <span className="text-destructive">*</span>
               </Label>
               <Input
+                ref={nameInputRef}
                 value={catForm.name}
                 onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder={
@@ -818,130 +777,94 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
               />
             </div>
 
-            {/* Ícone — apenas para categorias raiz */}
-            {!isSubcategory && (
-              <div className="flex flex-col gap-1.5">
-                <Label>Ícone da categoria</Label>
-                <IconPicker
-                  value={catForm.icon}
-                  onChange={(v) => setCatForm((f) => ({ ...f, icon: v }))}
-                />
-              </div>
-            )}
-
-            {/* Tags padrão — apenas tags de escopo SUBCATEGORY */}
-            {allTags.filter((t) => t.scope === "SUBCATEGORY").length > 0 && (
-              <div className="flex flex-col gap-2">
-                <Label>Tags padrão</Label>
-                <p className="text-xs text-muted-foreground -mt-1">
-                  Tags contextuais (temperatura, dieta, público…) associadas automaticamente aos
-                  produtos desta categoria. Tags de SKU (embalagem, volume) são definidas por
-                  produto.
+            {/* Perfil herdável — subcategorias */}
+            {isSubcategory && (
+              <div className="flex flex-col gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  Perfil herdável pelos produtos
                 </p>
 
-                {/* Tags selecionadas */}
-                {catForm.tagIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {catForm.tagIds.map((tid) => {
-                      const tag = allTags.find((t) => t.id === tid);
-                      if (!tag) return null;
+                {/* Temperatura de armazenagem */}
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">Temperatura de armazenagem</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {TEMPERATURE_OPTIONS.map((opt) => {
+                      const active = catForm.storageTemperature === opt.value;
                       return (
-                        <span
-                          key={tid}
-                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border"
-                          style={
-                            tag.color
-                              ? {
-                                  backgroundColor: `${tag.color}20`,
-                                  borderColor: `${tag.color}40`,
-                                  color: tag.color,
-                                }
-                              : undefined
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            setCatForm((f) => ({
+                              ...f,
+                              storageTemperature: active ? "" : opt.value,
+                            }))
                           }
+                          className={`flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm transition-colors ${
+                            active
+                              ? "border-primary bg-primary/10 font-medium text-foreground"
+                              : "border-border bg-card text-muted-foreground hover:bg-muted/40"
+                          }`}
                         >
-                          {tag.name}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCatForm((f) => ({
-                                ...f,
-                                tagIds: f.tagIds.filter((id) => id !== tid),
-                              }))
-                            }
-                            className="opacity-60 hover:opacity-100 transition-opacity ml-0.5"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
+                          <span>{opt.emoji}</span>
+                          {opt.label}
+                        </button>
                       );
                     })}
                   </div>
-                )}
-
-                {/* Busca + lista de tags disponíveis */}
-                <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/20 p-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      value={tagSearch}
-                      onChange={(e) => setTagSearch(e.target.value)}
-                      placeholder="Buscar tags…"
-                      className="w-full rounded-md border border-input bg-card pl-8 pr-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-0.5">
-                    {allTags
-                      .filter(
-                        (t) =>
-                          t.scope === "SUBCATEGORY" &&
-                          !catForm.tagIds.includes(t.id) &&
-                          (tagSearch === "" ||
-                            t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
-                            t.group.toLowerCase().includes(tagSearch.toLowerCase())),
-                      )
-                      .map((tag) => (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          onClick={() =>
-                            setCatForm((f) => ({ ...f, tagIds: [...f.tagIds, tag.id] }))
-                          }
-                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border transition-all hover:opacity-80"
-                          style={
-                            tag.color
-                              ? {
-                                  backgroundColor: `${tag.color}15`,
-                                  borderColor: `${tag.color}30`,
-                                  color: tag.color,
-                                }
-                              : {
-                                  backgroundColor: "hsl(var(--muted))",
-                                  borderColor: "hsl(var(--border))",
-                                }
-                          }
-                        >
-                          <Plus className="h-2.5 w-2.5 opacity-60" />
-                          {tag.name}
-                        </button>
-                      ))}
-                    {allTags.filter(
-                      (t) =>
-                        t.scope === "SUBCATEGORY" &&
-                        !catForm.tagIds.includes(t.id) &&
-                        (tagSearch === "" ||
-                          t.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
-                          t.group.toLowerCase().includes(tagSearch.toLowerCase())),
-                    ).length === 0 && (
-                      <p className="text-xs text-muted-foreground px-1 py-1">
-                        {catForm.tagIds.length >=
-                        allTags.filter((t) => t.scope === "SUBCATEGORY").length
-                          ? "Todas as tags contextuais já foram adicionadas."
-                          : "Nenhuma tag contextual encontrada."}
-                      </p>
-                    )}
-                  </div>
                 </div>
+
+                {/* Restrição de idade */}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 hover:bg-muted/40 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={catForm.hasAgeRestriction}
+                    onChange={(e) =>
+                      setCatForm((f) => ({ ...f, hasAgeRestriction: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Restrição de idade (+18)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Exige verificação de maioridade na venda
+                    </p>
+                  </div>
+                </label>
+
+                {/* Controla validade */}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 hover:bg-muted/40 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={catForm.controlsExpiry}
+                    onChange={(e) =>
+                      setCatForm((f) => ({ ...f, controlsExpiry: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Controla validade</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Produtos exigem data de validade no recebimento
+                    </p>
+                  </div>
+                </label>
+
+                {/* Controla lote */}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 hover:bg-muted/40 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={catForm.controlsLot}
+                    onChange={(e) => setCatForm((f) => ({ ...f, controlsLot: e.target.checked }))}
+                    className="h-4 w-4 rounded border border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Controla lote</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Rastreabilidade por lote no estoque
+                    </p>
+                  </div>
+                </label>
               </div>
             )}
 
@@ -949,6 +872,17 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
               <Button type="button" variant="outline" size="sm" onClick={() => setCatDialog(false)}>
                 Cancelar
               </Button>
+              {!editingCat && isSubcategory && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending || !catForm.name.trim()}
+                  onClick={(e) => handleCatSubmit(e as unknown as React.FormEvent, "saveAndNew")}
+                >
+                  Salvar e criar outra
+                </Button>
+              )}
               <Button type="submit" size="sm" disabled={isPending}>
                 {isPending ? "Salvando…" : "Salvar"}
               </Button>
@@ -961,11 +895,60 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
       <Dialog open={taxDialog} onOpenChange={setTaxDialog}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fiscal padrão — {taxCat?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Fiscal padrão — {taxCat?.name}
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-1 mb-4">
-            Aplicado a todos os produtos desta categoria sem configuração própria (RN-C13).
-          </p>
+          <div className="flex items-center justify-between gap-3 -mt-1 mb-1">
+            <p className="text-xs text-muted-foreground">
+              Aplicado a todos os produtos desta subcategoria sem configuração própria (RN-C13).
+            </p>
+            {taxCat?.parentId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs shrink-0"
+                disabled={isAiSuggesting}
+                onClick={() => taxCat && void triggerAiSuggestion(taxCat)}
+              >
+                {isAiSuggesting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3 text-blue-500" />
+                )}
+                {isAiSuggesting ? "Consultando IA…" : "Sugerir com IA"}
+              </Button>
+            )}
+          </div>
+
+          {/* Banner de sugestão IA */}
+          {isAiSuggesting && (
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300 mb-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+              IA identificando valores fiscais para "{taxCat?.name}"…
+            </div>
+          )}
+          {!isAiSuggesting && aiNotes && (
+            <div className="flex items-start gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300 mb-2">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">Sugestão IA</span>
+                <span>{aiNotes}</span>
+                {aiConfidence && (
+                  <span className="opacity-70">
+                    Confiança:{" "}
+                    {aiConfidence === "high"
+                      ? "alta"
+                      : aiConfidence === "medium"
+                        ? "média"
+                        : "baixa"}
+                    . Revise antes de salvar.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleTaxSubmit} className="flex flex-col gap-4">
             {/* NCM / CEST */}
@@ -1149,6 +1132,36 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
               </div>
             </div>
 
+            {/* IPI */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label>IPI CST</Label>
+                <Input
+                  value={taxForm.ipiCst}
+                  onChange={(e) =>
+                    setTaxForm((f) => ({
+                      ...f,
+                      ipiCst: e.target.value.replace(/\D/g, "").slice(0, 3),
+                    }))
+                  }
+                  placeholder="50"
+                  maxLength={3}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Alíquota IPI (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={taxForm.ipiRate}
+                  onChange={(e) => setTaxForm((f) => ({ ...f, ipiRate: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
             <div className="flex gap-2.5 justify-end pt-1 border-t border-border">
               <Button type="button" variant="outline" size="sm" onClick={() => setTaxDialog(false)}>
                 Cancelar
@@ -1162,4 +1175,4 @@ export function CategoryEditor({ organizationId, categories: initial, allTags, t
       </Dialog>
     </>
   );
-}
+});

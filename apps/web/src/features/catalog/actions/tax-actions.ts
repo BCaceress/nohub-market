@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { productTaxSchema, type ProductTaxInput } from "../schemas";
+import { type ProductTaxInput, productTaxSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
   const m = await prisma.member.findUnique({
@@ -26,12 +26,15 @@ export async function setProductTaxAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = productTaxSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -43,10 +46,16 @@ export async function setProductTaxAction(
   const isSimples = org?.taxRegime === "SIMPLES_NACIONAL" || org?.taxRegime === "MEI";
 
   if (isSimples && d.icmsCst) {
-    return { success: false, error: "Organização com Simples Nacional deve usar CSOSN, não CST (RN-C06)" };
+    return {
+      success: false,
+      error: "Organização com Simples Nacional deve usar CSOSN, não CST (RN-C06)",
+    };
   }
   if (!isSimples && d.icmsCsosn) {
-    return { success: false, error: "Organização com regime Normal deve usar CST, não CSOSN (RN-C06)" };
+    return {
+      success: false,
+      error: "Organização com regime Normal deve usar CST, não CSOSN (RN-C06)",
+    };
   }
 
   const taxData = {
@@ -62,6 +71,8 @@ export async function setProductTaxAction(
     pisRate: d.pisRate ?? null,
     cofinsCst: d.cofinsCst || null,
     cofinsRate: d.cofinsRate ?? null,
+    ipiCst: d.ipiCst || null,
+    ipiRate: d.ipiRate ?? null,
     unitTaxable: d.unitTaxable,
   };
 

@@ -52,6 +52,12 @@ export const categorySchema = z.object({
     .or(z.literal("")), // cor em hex
   parentId: z.string().cuid().optional().or(z.literal("")),
   position: z.coerce.number().int().min(0).default(0),
+  hasAgeRestriction: z.boolean().default(false),
+
+  // Perfil operacional herdável (subcategoria)
+  storageTemperature: z.enum(["AMBIENTE", "REFRIGERADO", "CONGELADO"]).optional().or(z.literal("")),
+  controlsExpiry: z.boolean().default(false),
+  controlsLot: z.boolean().default(false),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
 
@@ -63,8 +69,10 @@ export const productSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(200),
   description: z.string().max(2000).optional().or(z.literal("")),
   brand: z.string().max(100).optional().or(z.literal("")),
+  brandId: z.string().cuid().optional().or(z.literal("")),
   sku: z.string().max(50).optional().or(z.literal("")),
   barcode: z.string().max(20).optional().or(z.literal("")),
+  packBarcode: z.string().max(20).optional().or(z.literal("")),
   tags: z.array(z.string().max(50)).default([]),
 
   productType: z.enum(["SIMPLE", "VARIANT_PARENT", "KIT", "FRACTIONED"]).default("SIMPLE"),
@@ -89,7 +97,15 @@ export const productSchema = z.object({
   costPrice: z.coerce.number().min(0).optional(),
 
   weight: z.coerce.number().min(0).optional(),
+  // Dimensões logísticas em cm
+  height: z.coerce.number().min(0).optional(),
+  width: z.coerce.number().min(0).optional(),
+  length: z.coerce.number().min(0).optional(),
   imageUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+
+  // Estoque
+  stockMin: z.coerce.number().min(0).optional(),
+  location: z.string().max(80).optional().or(z.literal("")),
 
   categoryId: z.string().cuid().optional().or(z.literal("")),
   supplierId: z.string().cuid().optional().or(z.literal("")),
@@ -100,6 +116,24 @@ export const productSchema = z.object({
   expiryDays: z.coerce.number().int().min(1).optional(),
 });
 export type ProductInput = z.infer<typeof productSchema>;
+
+// Cadastro Rápido — apenas EAN, Nome, Subcategoria, Preço de Venda e Unidade
+// são obrigatórios. Marca, Preço de Compra e Imagem ficam opcionais.
+export const quickProductSchema = z.object({
+  barcode: z.string().min(8, "EAN obrigatório (mín. 8 dígitos)").max(20),
+  name: z.string().min(1, "Nome obrigatório").max(200),
+  categoryId: z.string().cuid("Selecione a subcategoria"),
+  price: z.coerce.number().positive("Preço de venda obrigatório"),
+  unit: z
+    .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+    .default("UN"),
+
+  brand: z.string().max(100).optional().or(z.literal("")),
+  brandId: z.string().cuid().optional().or(z.literal("")),
+  costPrice: z.coerce.number().min(0).optional(),
+  imageUrl: z.string().url("URL inválida").optional().or(z.literal("")),
+});
+export type QuickProductInput = z.infer<typeof quickProductSchema>;
 
 // ─────────────────────────────────────────────────────────────────────
 // Variante
@@ -188,6 +222,8 @@ const taxBaseSchema = z.object({
   pisRate: z.coerce.number().min(0).max(100).optional(),
   cofinsCst: z.string().max(3).optional().or(z.literal("")),
   cofinsRate: z.coerce.number().min(0).max(100).optional(),
+  ipiCst: z.string().max(3).optional().or(z.literal("")),
+  ipiRate: z.coerce.number().min(0).max(100).optional(),
   unitTaxable: z.boolean().default(true),
 });
 

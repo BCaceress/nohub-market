@@ -1,5 +1,5 @@
-import { prisma } from "../index";
 import type { TaxOrigin } from "@prisma/client";
+import { prisma } from "../index";
 
 export interface ResolvedTax {
   ncm: string;
@@ -18,6 +18,10 @@ export interface ResolvedTax {
   pisRate: string | null;
   cofinsCst: string | null;
   cofinsRate: string | null;
+
+  // IPI
+  ipiCst: string | null;
+  ipiRate: string | null;
 
   unitTaxable: boolean;
   source: "product" | "category_default";
@@ -57,8 +61,7 @@ export async function resolveTax(input: ResolveTaxInput): Promise<TaxResult> {
     }),
   ]);
 
-  const isSimples =
-    org?.taxRegime === "SIMPLES_NACIONAL" || org?.taxRegime === "MEI";
+  const isSimples = org?.taxRegime === "SIMPLES_NACIONAL" || org?.taxRegime === "MEI";
 
   // 1. ProductTax específico
   const productTax = await prisma.productTax.findFirst({
@@ -76,18 +79,23 @@ export async function resolveTax(input: ResolveTaxInput): Promise<TaxResult> {
     };
   }
 
-  // 2. CategoryTaxDefault
-  if (product?.categoryId) {
-    const catDefault = await prisma.categoryTaxDefault.findUnique({
-      where: { categoryId: product.categoryId },
+  // 2. CategoryTaxDefault — sobe a árvore de categorias (subcategoria → pai → raiz)
+  //    e usa o primeiro default com NCM encontrado (RN-C13).
+  let currentCategoryId = product?.categoryId ?? null;
+  for (let depth = 0; currentCategoryId && depth < 10; depth++) {
+    const category = await prisma.category.findUnique({
+      where: { id: currentCategoryId },
+      select: { parentId: true, taxDefault: true },
     });
+    if (!category) break;
 
-    if (catDefault && catDefault.ncm) {
+    if (category.taxDefault?.ncm) {
       return {
         success: true,
-        data: sanitizeTax(catDefault, isSimples, "category_default"),
+        data: sanitizeTax(category.taxDefault, isSimples, "category_default"),
       };
     }
+    currentCategoryId = category.parentId;
   }
 
   return { success: false, error: "TAX_NOT_CONFIGURED" };
@@ -107,6 +115,8 @@ function sanitizeTax(
     pisRate?: { toString(): string } | null;
     cofinsCst?: string | null;
     cofinsRate?: { toString(): string } | null;
+    ipiCst?: string | null;
+    ipiRate?: { toString(): string } | null;
     unitTaxable?: boolean;
   },
   isSimples: boolean,
@@ -126,6 +136,8 @@ function sanitizeTax(
     pisRate: row.pisRate?.toString() ?? null,
     cofinsCst: row.cofinsCst ?? null,
     cofinsRate: row.cofinsRate?.toString() ?? null,
+    ipiCst: row.ipiCst ?? null,
+    ipiRate: row.ipiRate?.toString() ?? null,
     unitTaxable: row.unitTaxable ?? true,
     source,
   };
