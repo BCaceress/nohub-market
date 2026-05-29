@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "@/lib/utils";
 
 interface SheetProps {
   open: boolean;
@@ -15,6 +15,19 @@ interface SheetProps {
 
 export function Sheet({ open, onClose, children, className, side = "right" }: SheetProps) {
   const overlayRef = useRef<HTMLDialogElement>(null);
+  const [shouldRender, setShouldRender] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setShouldRender(true);
+      return;
+    }
+
+    if (!shouldRender) return;
+
+    const timeout = window.setTimeout(() => setShouldRender(false), 300);
+    return () => window.clearTimeout(timeout);
+  }, [open, shouldRender]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +50,7 @@ export function Sheet({ open, onClose, children, className, side = "right" }: Sh
     };
   }, [open]);
 
-  if (typeof window === "undefined") return null;
+  if (!shouldRender || typeof window === "undefined") return null;
 
   return createPortal(
     <>

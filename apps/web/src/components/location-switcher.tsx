@@ -1,17 +1,6 @@
 "use client";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { setSelectedLocationAction } from "@/features/app/actions/selected-location-actions";
-import { ALL_LOCATIONS } from "@/lib/selected-location";
-import { cn } from "@/lib/utils";
-import {
   Building2,
   Check,
   ChevronDown,
@@ -26,6 +15,17 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { setSelectedLocationAction } from "@/features/app/actions/selected-location-actions";
+import { ALL_LOCATIONS } from "@/lib/selected-location";
+import { cn } from "@/lib/utils";
 
 export type LocationKind = "STORE" | "DC" | "HYBRID" | "WAREHOUSE" | "DARK_STORE";
 

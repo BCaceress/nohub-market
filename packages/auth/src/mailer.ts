@@ -4,11 +4,7 @@ import { Resend } from "resend";
 const env = getEnv();
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-export async function sendEmail(opts: {
-  to: string;
-  subject: string;
-  html: string;
-}) {
+export async function sendEmail(opts: { to: string; subject: string; html: string }) {
   // Sem RESEND_API_KEY (dev): loga no console em vez de falhar (decisão 14 análoga).
   if (!resend) {
     console.log(`\n📧 [DEV EMAIL] → ${opts.to}\n   ${opts.subject}\n   ${opts.html}\n`);

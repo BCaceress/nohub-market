@@ -23,7 +23,7 @@ export async function explodeKit(kitProductId: string): Promise<ExplodeKitResult
     select: { productType: true },
   });
 
-  if (!kit || kit.productType !== "KIT") {
+  if (kit?.productType !== "KIT") {
     return { success: false, error: "NOT_A_KIT" };
   }
 
@@ -45,9 +45,7 @@ export async function explodeKit(kitProductId: string): Promise<ExplodeKitResult
   }
 
   // RN-C04: nenhum componente pode ser KIT
-  const hasNestedKit = components.some(
-    (c) => c.componentProduct.productType === "KIT",
-  );
+  const hasNestedKit = components.some((c) => c.componentProduct.productType === "KIT");
   if (hasNestedKit) {
     return { success: false, error: "NESTED_KIT" };
   }

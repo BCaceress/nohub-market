@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { type HTMLAttributes, type ReactNode, useId, useState } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * Minimalist CSS-driven tooltip. No portal, no Radix.
@@ -43,6 +43,7 @@ export function Tooltip({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: wrapper de tooltip — eventos hover/focus apenas mostram a dica; a interatividade real fica nos filhos
     <span
       className={cn("relative inline-flex", className)}
       onMouseEnter={onEnter}

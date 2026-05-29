@@ -6,7 +6,7 @@
  * Ou junto ao seed principal via: pnpm --filter @nohub/db seed
  */
 
-import { PrismaClient, type FiscalSegment } from "@prisma/client";
+import { type FiscalSegment, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -18,8 +18,8 @@ interface TemplateRow {
   suggestedCest?: string;
   defaultCfopInternal: string;
   defaultCfopInterstate: string;
-  icmsCst?: string;     // regime normal
-  icmsCsosn?: string;   // simples nacional
+  icmsCst?: string; // regime normal
+  icmsCsosn?: string; // simples nacional
   pisCst?: string;
   cofinsCst?: string;
   description?: string;

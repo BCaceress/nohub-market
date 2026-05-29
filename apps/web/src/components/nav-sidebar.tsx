@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import {
   BarChart3,
   Boxes,
@@ -34,6 +33,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -168,13 +168,7 @@ const OPEN_KEY = "nohub-sidebar-open";
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 
-export function NavSidebar({
-  orgName,
-  role,
-}: {
-  orgName: string;
-  role: string;
-}) {
+export function NavSidebar({ orgName, role }: { orgName: string; role: string }) {
   const safeRole = (
     ["owner", "admin", "manager", "operator", "viewer"].includes(role) ? role : "viewer"
   ) as Role;
@@ -392,6 +386,7 @@ function RootItem({
   const standaloneHref = !hasChildren ? root.href : undefined;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: hover abre/fecha o submenu; navegação real nos Link/button internos
     <div ref={wrapperRef} className="relative" onMouseEnter={enter} onMouseLeave={leave}>
       {standaloneHref ? (
         <Link href={standaloneHref} className={rowBase} aria-current={active ? "page" : undefined}>
@@ -433,6 +428,7 @@ function RootItem({
 
       {/* Collapsed flyout */}
       {collapsed && hasChildren && flyoutOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: flyout do menu colapsado; hover só mantém aberto, links reais dentro
         <div
           className="absolute left-full top-0 z-40 ml-2 min-w-[200px] animate-in-right"
           onMouseEnter={enter}
@@ -511,13 +507,7 @@ function SubLink({
 
 /* ── Account footer link ────────────────────────────────────── */
 
-function AccountLink({
-  collapsed,
-  pathname,
-}: {
-  collapsed: boolean;
-  pathname: string;
-}) {
+function AccountLink({ collapsed, pathname }: { collapsed: boolean; pathname: string }) {
   const active = isPathActive("/app/account", pathname);
   return (
     <Link

@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export function Dialog({
   open,

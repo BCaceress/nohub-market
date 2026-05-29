@@ -7,7 +7,15 @@ export interface ResolvedPrice {
   promoPrice: Decimal | null;
   cost: Decimal | null;
   isPromo: boolean;
-  source: "variant+location+channel" | "variant+location" | "variant+channel" | "variant" | "product+location+channel" | "product+location" | "product+channel" | "product";
+  source:
+    | "variant+location+channel"
+    | "variant+location"
+    | "variant+channel"
+    | "variant"
+    | "product+location+channel"
+    | "product+location"
+    | "product+channel"
+    | "product";
 }
 
 export type PriceResult =
@@ -28,13 +36,16 @@ function isPromoActive(validFrom: Date | null, validTo: Date | null): boolean {
   return true;
 }
 
-function toResolved(row: {
-  price: Decimal;
-  promoPrice: Decimal | null;
-  cost: Decimal | null;
-  validFrom: Date | null;
-  validTo: Date | null;
-}, source: ResolvedPrice["source"]): ResolvedPrice {
+function toResolved(
+  row: {
+    price: Decimal;
+    promoPrice: Decimal | null;
+    cost: Decimal | null;
+    validFrom: Date | null;
+    validTo: Date | null;
+  },
+  source: ResolvedPrice["source"],
+): ResolvedPrice {
   const promoActive = row.promoPrice !== null && isPromoActive(row.validFrom, row.validTo);
   return {
     price: row.price,

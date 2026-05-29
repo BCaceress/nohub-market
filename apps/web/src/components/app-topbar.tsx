@@ -1,17 +1,5 @@
 "use client";
 
-import { type LocationOption, LocationSwitcher } from "@/components/location-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Kbd } from "@/components/ui/kbd";
-import { cn } from "@/lib/utils";
 import {
   Bell,
   ChevronDown,
@@ -25,6 +13,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { type LocationOption, LocationSwitcher } from "@/components/location-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
+import { cn } from "@/lib/utils";
 
 interface AppTopbarProps {
   userName: string;

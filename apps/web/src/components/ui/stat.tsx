@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface StatProps {
   label: string;
