@@ -43,7 +43,10 @@ export async function setProductTaxAction(
     where: { id: organizationId },
     select: { taxRegime: true },
   });
-  const isSimples = org?.taxRegime === "SIMPLES_NACIONAL" || org?.taxRegime === "MEI";
+  // Regime não configurado (null) assume Simples Nacional — default da audiência
+  // (mercados/conveniências) e consistente com o frontend e o enriquecimento por IA.
+  const isSimples =
+    !org?.taxRegime || org.taxRegime === "SIMPLES_NACIONAL" || org.taxRegime === "MEI";
 
   if (isSimples && d.icmsCst) {
     return {

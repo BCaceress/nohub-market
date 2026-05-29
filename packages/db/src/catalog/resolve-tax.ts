@@ -61,7 +61,10 @@ export async function resolveTax(input: ResolveTaxInput): Promise<TaxResult> {
     }),
   ]);
 
-  const isSimples = org?.taxRegime === "SIMPLES_NACIONAL" || org?.taxRegime === "MEI";
+  // Regime não configurado (null) assume Simples Nacional — consistente com
+  // cadastro, validação fiscal (RN-C06) e enriquecimento por IA.
+  const isSimples =
+    !org?.taxRegime || org.taxRegime === "SIMPLES_NACIONAL" || org.taxRegime === "MEI";
 
   // 1. ProductTax específico
   const productTax = await prisma.productTax.findFirst({
