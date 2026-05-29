@@ -9,66 +9,66 @@
  * Referência: https://developers.facebook.com/docs/whatsapp/cloud-api
  */
 
+import crypto from "node:crypto";
 import type { OrderStatus } from "@nohub/db";
-import crypto from "crypto";
 import type {
+  AdapterResult,
   ChannelAdapter,
   NormalizedOrder,
-  AdapterResult,
   SyncProduct,
 } from "./channel-adapter";
 
 /* ── Tipos do payload Meta (anti-corruption: ficam aqui) ─────── */
 
 interface MetaWaMessage {
-  id:        string;
-  from:      string; // phone number
+  id: string;
+  from: string; // phone number
   timestamp: string;
-  type:      "text" | "interactive" | "order" | string;
-  text?:     { body: string };
-  order?:    MetaWaOrder;
+  type: "text" | "interactive" | "order" | string;
+  text?: { body: string };
+  order?: MetaWaOrder;
   interactive?: {
-    type:        "button_reply" | "list_reply";
+    type: "button_reply" | "list_reply";
     button_reply?: { id: string; title: string };
-    list_reply?:   { id: string; title: string };
+    list_reply?: { id: string; title: string };
   };
 }
 
 interface MetaWaOrderProduct {
   product_retailer_id: string;
-  quantity:            number;
-  item_price:          number;
-  currency:            string;
+  quantity: number;
+  item_price: number;
+  currency: string;
 }
 
 interface MetaWaOrder {
-  catalog_id?:     string;
-  text?:           string;
-  product_items:   MetaWaOrderProduct[];
+  catalog_id?: string;
+  text?: string;
+  product_items: MetaWaOrderProduct[];
 }
 
 interface MetaWaContact {
-  wa_id:   string;
+  wa_id: string;
   profile: { name: string };
 }
 
 interface MetaWaWebhookEntry {
-  id:      string;
+  id: string;
   changes: Array<{
     value: {
       messaging_product: "whatsapp";
-      metadata:   { display_phone_number: string; phone_number_id: string };
-      contacts?:  MetaWaContact[];
-      messages?:  MetaWaMessage[];
-      statuses?:  Array<{ id: string; status: string; timestamp: string }>;
+      metadata: { display_phone_number: string; phone_number_id: string };
+      contacts?: MetaWaContact[];
+      messages?: MetaWaMessage[];
+      statuses?: Array<{ id: string; status: string; timestamp: string }>;
     };
     field: string;
   }>;
 }
 
 interface MetaWebhookPayload {
-  object:  "whatsapp_business_account";
-  entry:   MetaWaWebhookEntry[];
+  object: "whatsapp_business_account";
+  entry: MetaWaWebhookEntry[];
 }
 
 /* ── Adapter ─────────────────────────────────────────────────── */
@@ -78,24 +78,13 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Valida assinatura Meta: X-Hub-Signature-256 = sha256=<hmac>
    * Referência: https://developers.facebook.com/docs/graph-api/webhooks/getting-started#verification-requests
    */
-  verifySignature(
-    payload: string,
-    headers: Record<string, string>,
-    secret: string,
-  ): boolean {
-    const raw =
-      headers["x-hub-signature-256"] ?? headers["X-Hub-Signature-256"] ?? "";
+  verifySignature(payload: string, headers: Record<string, string>, secret: string): boolean {
+    const raw = headers["x-hub-signature-256"] ?? headers["X-Hub-Signature-256"] ?? "";
     if (!raw.startsWith("sha256=")) return false;
     const received = raw.slice("sha256=".length);
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(payload)
-      .digest("hex");
+    const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
     try {
-      return crypto.timingSafeEqual(
-        Buffer.from(received, "hex"),
-        Buffer.from(expected, "hex"),
-      );
+      return crypto.timingSafeEqual(Buffer.from(received, "hex"), Buffer.from(expected, "hex"));
     } catch {
       return false;
     }
@@ -116,9 +105,9 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
 
       // Extrair primeira mensagem do tipo order
-      let message:  MetaWaMessage  | undefined;
-      let contact:  MetaWaContact  | undefined;
-      let phoneNumberId: string    | undefined;
+      let message: MetaWaMessage | undefined;
+      let contact: MetaWaContact | undefined;
+      let phoneNumberId: string | undefined;
 
       for (const entry of raw.entry) {
         for (const change of entry.changes) {
@@ -144,37 +133,37 @@ export class WhatsAppAdapter implements ChannelAdapter {
 
       const waOrder = message.order;
       const items = waOrder.product_items.map((p) => ({
-        externalId:    p.product_retailer_id,
-        name:          p.product_retailer_id, // nome resolvido via ChannelProductMapping
-        quantity:      p.quantity,
-        unitPrice:     p.item_price,
+        externalId: p.product_retailer_id,
+        name: p.product_retailer_id, // nome resolvido via ChannelProductMapping
+        quantity: p.quantity,
+        unitPrice: p.item_price,
         discountAmount: 0,
-        lineTotal:     p.item_price * p.quantity,
+        lineTotal: p.item_price * p.quantity,
       }));
 
       const total = items.reduce((s, i) => s + i.lineTotal, 0);
 
       const channelMetadata: Record<string, unknown> = {
-        messageId:     message.id,
-        waFrom:        message.from,
-        timestamp:     message.timestamp,
-        catalogId:     waOrder.catalog_id,
+        messageId: message.id,
+        waFrom: message.from,
+        timestamp: message.timestamp,
+        catalogId: waOrder.catalog_id,
         phoneNumberId,
-        orderText:     waOrder.text,
-        rawProducts:   waOrder.product_items,
+        orderText: waOrder.text,
+        rawProducts: waOrder.product_items,
       };
 
       return {
         success: true,
         data: {
-          externalId:     message.id,
+          externalId: message.id,
           externalStatus: "PLACED",
-          mappedStatus:   "DRAFT", // WA orders always start as DRAFT (needs confirmation)
+          mappedStatus: "DRAFT", // WA orders always start as DRAFT (needs confirmation)
           items,
           total,
           channelMetadata,
-          customerName:   contact?.profile.name,
-          customerPhone:  message.from,
+          customerName: contact?.profile.name,
+          customerPhone: message.from,
         },
       };
     } catch (err) {
@@ -189,20 +178,16 @@ export class WhatsAppAdapter implements ChannelAdapter {
    * Formata mensagem de saída para o cliente via WhatsApp.
    * Usa template aprovado pela Meta ou mensagem de texto simples (dentro da janela 24h).
    */
-  formatOutbound(order: {
-    id: string;
-    status: OrderStatus;
-    channelMetadata: unknown;
-  }): unknown {
+  formatOutbound(order: { id: string; status: OrderStatus; channelMetadata: unknown }): unknown {
     const meta = order.channelMetadata as Record<string, unknown> | null;
-    const to   = meta?.waFrom as string | undefined;
+    const to = meta?.waFrom as string | undefined;
 
     // Mapeamento status → mensagem amigável
     const statusMessages: Partial<Record<OrderStatus, string>> = {
-      CONFIRMED:  "✅ Pedido confirmado! Estamos preparando seu pedido.",
-      FULFILLED:  "🚚 Seu pedido saiu para entrega!",
-      COMPLETED:  "🎉 Pedido concluído! Obrigado pela preferência.",
-      CANCELED:   "❌ Seu pedido foi cancelado. Entre em contato para mais informações.",
+      CONFIRMED: "✅ Pedido confirmado! Estamos preparando seu pedido.",
+      FULFILLED: "🚚 Seu pedido saiu para entrega!",
+      COMPLETED: "🎉 Pedido concluído! Obrigado pela preferência.",
+      CANCELED: "❌ Seu pedido foi cancelado. Entre em contato para mais informações.",
     };
 
     return {
@@ -252,7 +237,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
     if (!credentials.accessToken || !credentials.phoneNumberId) {
       return {
         success: false,
-        error:   "Credenciais WhatsApp não configuradas",
+        error: "Credenciais WhatsApp não configuradas",
         retryable: true,
       };
     }
@@ -266,15 +251,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     // TODO: Chamar API real
     // POST https://graph.facebook.com/v18.0/{phoneNumberId}/messages
     const body = this.formatOutbound({
-      id:              _orderId,
-      status:          newStatus,
+      id: _orderId,
+      status: newStatus,
       channelMetadata: metadata ?? null,
     });
 
-    console.warn(
-      `[WhatsAppAdapter.pushStatus] Simulado — enviaria para ${to}:`,
-      body,
-    );
+    console.warn(`[WhatsAppAdapter.pushStatus] Simulado — enviaria para ${to}:`, body);
 
     return { success: true, data: undefined };
   }

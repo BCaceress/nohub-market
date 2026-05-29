@@ -1,13 +1,13 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 import { applyMovement } from "../lib/apply-movement";
 import { pickFEFO } from "../lib/pick-fefo";
-import { inboundSchema, lossSchema, adjustmentSchema } from "../schemas";
+import { adjustmentSchema, inboundSchema, lossSchema } from "../schemas";
 
 /* ── RBAC ────────────────────────────────────────────────────── */
 
@@ -28,21 +28,23 @@ export async function getBalanceSummaryAction(organizationId: string, locationId
       ...(locationId ? { locationId } : {}),
     },
     include: {
-      product:  { select: { id: true, name: true, sku: true, unit: true, isActive: true, productType: true } },
-      variant:  { select: { id: true, name: true } },
+      product: {
+        select: { id: true, name: true, sku: true, unit: true, isActive: true, productType: true },
+      },
+      variant: { select: { id: true, name: true } },
       location: { select: { id: true, name: true } },
-      lot:      { select: { id: true, code: true, expiryDate: true } },
+      lot: { select: { id: true, code: true, expiryDate: true } },
     },
     orderBy: [{ product: { name: "asc" } }, { location: { name: "asc" } }],
   });
 
   return rows.map((r) => ({
     ...r,
-    quantityOnHand:   Number(r.quantityOnHand),
+    quantityOnHand: Number(r.quantityOnHand),
     quantityReserved: Number(r.quantityReserved),
     quantityAvailable: Math.max(0, Number(r.quantityOnHand) - Number(r.quantityReserved)),
-    averageCost:      r.averageCost ? Number(r.averageCost) : null,
-    minQuantity:      r.minQuantity ? Number(r.minQuantity) : null,
+    averageCost: r.averageCost ? Number(r.averageCost) : null,
+    minQuantity: r.minQuantity ? Number(r.minQuantity) : null,
   }));
 }
 
@@ -50,25 +52,30 @@ export async function getMovementsAction(
   organizationId: string,
   opts: {
     locationId?: string;
-    productId?:  string;
-    variantId?:  string;
-    type?:       string;
-    reason?:     string;
-    from?:       Date;
-    to?:         Date;
-    take?:       number;
-    skip?:       number;
+    productId?: string;
+    variantId?: string;
+    type?: string;
+    reason?: string;
+    from?: Date;
+    to?: Date;
+    take?: number;
+    skip?: number;
   } = {},
 ) {
   const where = {
     organizationId,
     ...(opts.locationId ? { locationId: opts.locationId } : {}),
-    ...(opts.productId  ? { productId:  opts.productId  } : {}),
-    ...(opts.variantId  ? { variantId:  opts.variantId  } : {}),
-    ...(opts.type       ? { type:       opts.type as never } : {}),
-    ...(opts.reason     ? { reason:     opts.reason as never } : {}),
-    ...((opts.from || opts.to)
-      ? { createdAt: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } }
+    ...(opts.productId ? { productId: opts.productId } : {}),
+    ...(opts.variantId ? { variantId: opts.variantId } : {}),
+    ...(opts.type ? { type: opts.type as never } : {}),
+    ...(opts.reason ? { reason: opts.reason as never } : {}),
+    ...(opts.from || opts.to
+      ? {
+          createdAt: {
+            ...(opts.from ? { gte: opts.from } : {}),
+            ...(opts.to ? { lte: opts.to } : {}),
+          },
+        }
       : {}),
   };
 
@@ -77,10 +84,10 @@ export async function getMovementsAction(
     prisma.stockMovement.findMany({
       where,
       include: {
-        product:  { select: { id: true, name: true, unit: true } },
-        variant:  { select: { id: true, name: true } },
+        product: { select: { id: true, name: true, unit: true } },
+        variant: { select: { id: true, name: true } },
         location: { select: { id: true, name: true } },
-        lot:      { select: { id: true, code: true, expiryDate: true } },
+        lot: { select: { id: true, code: true, expiryDate: true } },
       },
       orderBy: { createdAt: "desc" },
       take: opts.take ?? 50,
@@ -92,10 +99,10 @@ export async function getMovementsAction(
     total,
     movements: movements.map((m) => ({
       ...m,
-      quantity:    Number(m.quantity),
+      quantity: Number(m.quantity),
       previousQty: Number(m.previousQty),
-      newQty:      Number(m.newQty),
-      unitCost:    m.unitCost ? Number(m.unitCost) : null,
+      newQty: Number(m.newQty),
+      unitCost: m.unitCost ? Number(m.unitCost) : null,
     })),
   };
 }
@@ -118,19 +125,23 @@ export async function getLotsAction(organizationId: string, productId?: string) 
 export async function getAlertsAction(organizationId: string) {
   const [lowStock, expiring] = await Promise.all([
     // Estoque abaixo do mínimo
-    prisma.stockBalance.findMany({
-      where: {
-        organizationId,
-        minQuantity: { not: null },
-      },
-      include: {
-        product:  { select: { id: true, name: true, sku: true } },
-        variant:  { select: { id: true, name: true } },
-        location: { select: { id: true, name: true } },
-      },
-    }).then((rows) =>
-      rows.filter((r) => r.minQuantity !== null && Number(r.quantityOnHand) <= Number(r.minQuantity))
-    ),
+    prisma.stockBalance
+      .findMany({
+        where: {
+          organizationId,
+          minQuantity: { not: null },
+        },
+        include: {
+          product: { select: { id: true, name: true, sku: true } },
+          variant: { select: { id: true, name: true } },
+          location: { select: { id: true, name: true } },
+        },
+      })
+      .then((rows) =>
+        rows.filter(
+          (r) => r.minQuantity !== null && Number(r.quantityOnHand) <= Number(r.minQuantity),
+        ),
+      ),
 
     // Lotes vencendo em 30 dias
     prisma.stockLot.findMany({
@@ -154,11 +165,11 @@ export async function getAlertsAction(organizationId: string) {
 
   return {
     lowStockCount: lowStock.length,
-    lowStockItems: lowStock.slice(0, 10).map(r => ({
+    lowStockItems: lowStock.slice(0, 10).map((r) => ({
       ...r,
-      quantityOnHand:   Number(r.quantityOnHand),
+      quantityOnHand: Number(r.quantityOnHand),
       quantityReserved: Number(r.quantityReserved),
-      minQuantity:      Number(r.minQuantity),
+      minQuantity: Number(r.minQuantity),
     })),
     expiringCount: expiring.length,
     expiringItems: expiring,
@@ -173,12 +184,15 @@ export async function registerInboundAction(
 ): Promise<Result<{ movementId: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = inboundSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -186,13 +200,15 @@ export async function registerInboundAction(
   let lotId: string | null = null;
   if (d.lotCode) {
     const lot = await prisma.stockLot.upsert({
-      where: { organizationId_productId_code: { organizationId, productId: d.productId, code: d.lotCode } },
+      where: {
+        organizationId_productId_code: { organizationId, productId: d.productId, code: d.lotCode },
+      },
       create: {
         organizationId,
-        productId:       d.productId,
-        variantId:       d.variantId || null,
-        code:            d.lotCode,
-        expiryDate:      d.expiryDate ? new Date(d.expiryDate) : null,
+        productId: d.productId,
+        variantId: d.variantId || null,
+        code: d.lotCode,
+        expiryDate: d.expiryDate ? new Date(d.expiryDate) : null,
         manufactureDate: d.manufactureDate ? new Date(d.manufactureDate) : null,
       },
       update: {
@@ -204,29 +220,34 @@ export async function registerInboundAction(
 
   const result = await applyMovement({
     organizationId,
-    locationId:     d.locationId,
-    productId:      d.productId,
-    variantId:      d.variantId || null,
+    locationId: d.locationId,
+    productId: d.productId,
+    variantId: d.variantId || null,
     lotId,
-    type:           "INBOUND",
-    quantity:       d.quantity,
-    unitCost:       d.unitCost ?? null,
-    reason:         d.reason as never,
-    note:           d.note || null,
+    type: "INBOUND",
+    quantity: d.quantity,
+    unitCost: d.unitCost ?? null,
+    reason: d.reason as never,
+    note: d.note || null,
     idempotencyKey: d.idempotencyKey || null,
-    actorId:        session.user.id,
-    actorName:      session.user.name,
+    actorId: session.user.id,
+    actorName: session.user.name,
   });
 
   if (!result.success) return { success: false, error: result.message };
 
   await writeAudit({
     organizationId,
-    actorId:      session.user.id,
-    action:       "stock.inbound",
+    actorId: session.user.id,
+    action: "stock.inbound",
     resourceType: "StockMovement",
-    resourceId:   result.movementId,
-    after: { productId: d.productId, locationId: d.locationId, quantity: d.quantity, lotCode: d.lotCode },
+    resourceId: result.movementId,
+    after: {
+      productId: d.productId,
+      locationId: d.locationId,
+      quantity: d.quantity,
+      lotCode: d.lotCode,
+    },
   });
 
   revalidatePath("/app/inventory");
@@ -241,26 +262,32 @@ export async function registerLossAction(
 ): Promise<Result<{ movementId: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = lossSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
   // FEFO: escolhe de quais lotes tirar
   const fefo = await pickFEFO({
     organizationId,
-    productId:  d.productId,
-    variantId:  d.variantId || null,
+    productId: d.productId,
+    variantId: d.variantId || null,
     locationId: d.locationId,
-    quantity:   d.quantity,
+    quantity: d.quantity,
   });
 
   if (!fefo.success) {
-    return { success: false, error: `Estoque insuficiente (disponível: ${fefo.available.toFixed(3)})` };
+    return {
+      success: false,
+      error: `Estoque insuficiente (disponível: ${fefo.available.toFixed(3)})`,
+    };
   }
 
   let lastMovementId = "";
@@ -269,15 +296,15 @@ export async function registerLossAction(
     const result = await applyMovement({
       organizationId,
       locationId: d.locationId,
-      productId:  d.productId,
-      variantId:  d.variantId || null,
-      lotId:      alloc.lotId,
-      type:       "LOSS",
-      quantity:   alloc.quantity,
-      reason:     d.reason as never,
-      note:       d.note,
-      actorId:    session.user.id,
-      actorName:  session.user.name,
+      productId: d.productId,
+      variantId: d.variantId || null,
+      lotId: alloc.lotId,
+      type: "LOSS",
+      quantity: alloc.quantity,
+      reason: d.reason as never,
+      note: d.note,
+      actorId: session.user.id,
+      actorName: session.user.name,
     });
 
     if (!result.success) return { success: false, error: result.message };
@@ -286,11 +313,16 @@ export async function registerLossAction(
 
   await writeAudit({
     organizationId,
-    actorId:      session.user.id,
-    action:       "stock.loss",
+    actorId: session.user.id,
+    action: "stock.loss",
     resourceType: "StockMovement",
-    resourceId:   lastMovementId,
-    after: { productId: d.productId, locationId: d.locationId, quantity: d.quantity, reason: d.reason },
+    resourceId: lastMovementId,
+    after: {
+      productId: d.productId,
+      locationId: d.locationId,
+      quantity: d.quantity,
+      reason: d.reason,
+    },
   });
 
   revalidatePath("/app/inventory");
@@ -305,39 +337,47 @@ export async function registerAdjustmentAction(
 ): Promise<Result<{ movementId: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = adjustmentSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
   const result = await applyMovement({
     organizationId,
-    locationId:     d.locationId,
-    productId:      d.productId,
-    variantId:      d.variantId || null,
-    lotId:          d.lotId || null,
-    type:           "ADJUSTMENT",
-    quantity:       d.newQuantity, // para ADJUSTMENT, quantity = novo saldo
-    reason:         d.reason as never,
-    note:           d.note,
+    locationId: d.locationId,
+    productId: d.productId,
+    variantId: d.variantId || null,
+    lotId: d.lotId || null,
+    type: "ADJUSTMENT",
+    quantity: d.newQuantity, // para ADJUSTMENT, quantity = novo saldo
+    reason: d.reason as never,
+    note: d.note,
     idempotencyKey: d.idempotencyKey || null,
-    actorId:        session.user.id,
-    actorName:      session.user.name,
+    actorId: session.user.id,
+    actorName: session.user.name,
   });
 
   if (!result.success) return { success: false, error: result.message };
 
   await writeAudit({
     organizationId,
-    actorId:      session.user.id,
-    action:       "stock.adjustment",
+    actorId: session.user.id,
+    action: "stock.adjustment",
     resourceType: "StockMovement",
-    resourceId:   result.movementId,
-    after: { productId: d.productId, locationId: d.locationId, newQuantity: d.newQuantity, reason: d.reason },
+    resourceId: result.movementId,
+    after: {
+      productId: d.productId,
+      locationId: d.locationId,
+      newQuantity: d.newQuantity,
+      reason: d.reason,
+    },
   });
 
   revalidatePath("/app/inventory");
@@ -352,7 +392,9 @@ export async function updateMinQuantityAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -360,8 +402,8 @@ export async function updateMinQuantityAction(
     where: {
       organizationId,
       locationId: input.locationId,
-      productId:  input.productId,
-      variantId:  input.variantId ?? null,
+      productId: input.productId,
+      variantId: input.variantId ?? null,
     },
     data: { minQuantity: input.minQuantity },
   });

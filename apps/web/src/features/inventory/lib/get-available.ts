@@ -8,23 +8,23 @@ import { prisma } from "@nohub/db";
 
 export type AvailableInput = {
   organizationId: string;
-  productId:      string;
-  variantId?:     string | null;
-  locationId?:    string; // se omitido, soma todos os locais
-  lotId?:         string | null;
+  productId: string;
+  variantId?: string | null;
+  locationId?: string; // se omitido, soma todos os locais
+  lotId?: string | null;
 };
 
 export type AvailableResult = {
-  onHand:    number;
-  reserved:  number;
+  onHand: number;
+  reserved: number;
   available: number;
   averageCost: number | null;
   byLocation: Array<{
-    locationId:  string;
+    locationId: string;
     locationName?: string;
-    onHand:      number;
-    reserved:    number;
-    available:   number;
+    onHand: number;
+    reserved: number;
+    available: number;
   }>;
 };
 
@@ -32,7 +32,7 @@ export async function getAvailable(input: AvailableInput): Promise<AvailableResu
   const rows = await prisma.stockBalance.findMany({
     where: {
       organizationId: input.organizationId,
-      productId:      input.productId,
+      productId: input.productId,
       ...(input.variantId !== undefined ? { variantId: input.variantId } : {}),
       ...(input.locationId ? { locationId: input.locationId } : {}),
       ...(input.lotId !== undefined ? { lotId: input.lotId } : {}),
@@ -40,26 +40,29 @@ export async function getAvailable(input: AvailableInput): Promise<AvailableResu
     include: { location: { select: { id: true, name: true } } },
   });
 
-  let totalOnHand   = 0;
+  let totalOnHand = 0;
   let totalReserved = 0;
-  let weightedCost  = 0;
+  let weightedCost = 0;
 
-  const byLocation = new Map<string, { locationId: string; locationName?: string; onHand: number; reserved: number }>();
+  const byLocation = new Map<
+    string,
+    { locationId: string; locationName?: string; onHand: number; reserved: number }
+  >();
 
   for (const row of rows) {
     const oh = Number(row.quantityOnHand);
     const rv = Number(row.quantityReserved);
-    totalOnHand   += oh;
+    totalOnHand += oh;
     totalReserved += rv;
-    weightedCost  += Number(row.averageCost ?? 0) * oh;
+    weightedCost += Number(row.averageCost ?? 0) * oh;
 
     const loc = byLocation.get(row.locationId) ?? {
-      locationId:   row.locationId,
+      locationId: row.locationId,
       locationName: row.location.name,
-      onHand:       0,
-      reserved:     0,
+      onHand: 0,
+      reserved: 0,
     };
-    loc.onHand   += oh;
+    loc.onHand += oh;
     loc.reserved += rv;
     byLocation.set(row.locationId, loc);
   }
@@ -67,11 +70,11 @@ export async function getAvailable(input: AvailableInput): Promise<AvailableResu
   const averageCost = totalOnHand > 0 ? weightedCost / totalOnHand : null;
 
   return {
-    onHand:    totalOnHand,
-    reserved:  totalReserved,
+    onHand: totalOnHand,
+    reserved: totalReserved,
     available: Math.max(0, totalOnHand - totalReserved),
     averageCost,
-    byLocation: Array.from(byLocation.values()).map(l => ({
+    byLocation: Array.from(byLocation.values()).map((l) => ({
       ...l,
       available: Math.max(0, l.onHand - l.reserved),
     })),

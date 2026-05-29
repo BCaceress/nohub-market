@@ -4,25 +4,24 @@
  * Se falhar qualquer parte, rollback total — estoque nunca vaza.
  */
 
-import { prisma } from "@nohub/db";
 import { applyMovement } from "./apply-movement";
 
 export type TransferCoreInput = {
   organizationId: string;
   fromLocationId: string;
-  toLocationId:   string;
-  productId:      string;
-  variantId?:     string | null;
-  lotId?:         string | null;
-  quantity:       number;
-  note?:          string | null;
-  actorId:        string;
-  actorName?:     string | null;
+  toLocationId: string;
+  productId: string;
+  variantId?: string | null;
+  lotId?: string | null;
+  quantity: number;
+  note?: string | null;
+  actorId: string;
+  actorName?: string | null;
   idempotencyKey?: string | null;
 };
 
 export type TransferResult =
-  | { success: true;  transferGroupId: string; outMovementId: string; inMovementId: string }
+  | { success: true; transferGroupId: string; outMovementId: string; inMovementId: string }
   | { success: false; error: string };
 
 export async function transfer(input: TransferCoreInput): Promise<TransferResult> {
@@ -34,21 +33,21 @@ export async function transfer(input: TransferCoreInput): Promise<TransferResult
 
   // ── TRANSFER_OUT na origem ──────────────────────────────────────
   const outResult = await applyMovement({
-    organizationId:  input.organizationId,
-    locationId:      input.fromLocationId,
-    productId:       input.productId,
-    variantId:       input.variantId,
-    lotId:           input.lotId,
-    type:            "TRANSFER_OUT",
-    quantity:        input.quantity,
-    reason:          "TRANSFER",
-    referenceType:   "TRANSFER",
-    referenceId:     transferGroupId,
+    organizationId: input.organizationId,
+    locationId: input.fromLocationId,
+    productId: input.productId,
+    variantId: input.variantId,
+    lotId: input.lotId,
+    type: "TRANSFER_OUT",
+    quantity: input.quantity,
+    reason: "TRANSFER",
+    referenceType: "TRANSFER",
+    referenceId: transferGroupId,
     transferGroupId,
-    note:            input.note,
-    actorId:         input.actorId,
-    actorName:       input.actorName,
-    idempotencyKey:  input.idempotencyKey ? `${input.idempotencyKey}:out` : null,
+    note: input.note,
+    actorId: input.actorId,
+    actorName: input.actorName,
+    idempotencyKey: input.idempotencyKey ? `${input.idempotencyKey}:out` : null,
   });
 
   if (!outResult.success) {
@@ -57,39 +56,39 @@ export async function transfer(input: TransferCoreInput): Promise<TransferResult
 
   // ── TRANSFER_IN no destino ──────────────────────────────────────
   const inResult = await applyMovement({
-    organizationId:  input.organizationId,
-    locationId:      input.toLocationId,
-    productId:       input.productId,
-    variantId:       input.variantId,
-    lotId:           input.lotId,
-    type:            "TRANSFER_IN",
-    quantity:        input.quantity,
-    reason:          "TRANSFER",
-    referenceType:   "TRANSFER",
-    referenceId:     transferGroupId,
+    organizationId: input.organizationId,
+    locationId: input.toLocationId,
+    productId: input.productId,
+    variantId: input.variantId,
+    lotId: input.lotId,
+    type: "TRANSFER_IN",
+    quantity: input.quantity,
+    reason: "TRANSFER",
+    referenceType: "TRANSFER",
+    referenceId: transferGroupId,
     transferGroupId,
-    note:            input.note,
-    actorId:         input.actorId,
-    actorName:       input.actorName,
-    idempotencyKey:  input.idempotencyKey ? `${input.idempotencyKey}:in` : null,
+    note: input.note,
+    actorId: input.actorId,
+    actorName: input.actorName,
+    idempotencyKey: input.idempotencyKey ? `${input.idempotencyKey}:in` : null,
   });
 
   if (!inResult.success) {
     // Rollback: reverter o TRANSFER_OUT com um TRANSFER_IN compensatório
     await applyMovement({
       organizationId: input.organizationId,
-      locationId:     input.fromLocationId,
-      productId:      input.productId,
-      variantId:      input.variantId,
-      lotId:          input.lotId,
-      type:           "TRANSFER_IN", // reverte
-      quantity:       input.quantity,
-      reason:         "MANUAL",
-      referenceType:  "TRANSFER_ROLLBACK",
-      referenceId:    transferGroupId,
+      locationId: input.fromLocationId,
+      productId: input.productId,
+      variantId: input.variantId,
+      lotId: input.lotId,
+      type: "TRANSFER_IN", // reverte
+      quantity: input.quantity,
+      reason: "MANUAL",
+      referenceType: "TRANSFER_ROLLBACK",
+      referenceId: transferGroupId,
       transferGroupId,
-      note:           `Estorno automático: ${inResult.message}`,
-      actorId:        input.actorId,
+      note: `Estorno automático: ${inResult.message}`,
+      actorId: input.actorId,
     }).catch(() => {
       // Se o rollback também falhar, registrar mas não bloquear o retorno de erro
       console.error("[transfer] Rollback failed for group", transferGroupId);
@@ -99,9 +98,9 @@ export async function transfer(input: TransferCoreInput): Promise<TransferResult
   }
 
   return {
-    success:         true,
+    success: true,
     transferGroupId,
-    outMovementId:   outResult.movementId,
-    inMovementId:    inResult.movementId,
+    outMovementId: outResult.movementId,
+    inMovementId: inResult.movementId,
   };
 }

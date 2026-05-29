@@ -12,8 +12,8 @@
  * como threshold. leadTimeDays usa defaultLeadTimeDays do Supplier ou default de 7 dias.
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */
 

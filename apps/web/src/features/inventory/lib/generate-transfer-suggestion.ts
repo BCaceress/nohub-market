@@ -18,8 +18,8 @@
  * in-memory para exibição imediata (modo atual).
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */
 

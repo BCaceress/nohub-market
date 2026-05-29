@@ -8,9 +8,9 @@
  * Max: maxAttempts (padrão: 5) — após isso, status = FAILED (dead letter).
  */
 
-import { processIssuance } from "@/features/fiscal/lib/process-issuance";
-import { prisma } from "@nohub/db";
 import type { OrderStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { processIssuance } from "@/features/fiscal/lib/process-issuance";
 import { ifoodAdapter } from "../adapters/ifood-adapter";
 import { mercadolivreAdapter } from "../adapters/mercadolivre-adapter";
 import { whatsappAdapter } from "../adapters/whatsapp-adapter";

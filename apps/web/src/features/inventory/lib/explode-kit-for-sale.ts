@@ -6,22 +6,22 @@
 
 import { prisma } from "@nohub/db";
 import { explodeKit } from "@nohub/db/catalog";
-import { getAvailable } from "./get-available";
 import { applyMovement } from "./apply-movement";
+import { getAvailable } from "./get-available";
 
 export type KitSaleInput = {
   organizationId: string;
-  locationId:     string;
-  kitProductId:   string;
-  saleQuantity:   number; // quantas unidades do kit vendeu
-  actorId:        string;
-  actorName?:     string | null;
+  locationId: string;
+  kitProductId: string;
+  saleQuantity: number; // quantas unidades do kit vendeu
+  actorId: string;
+  actorName?: string | null;
   referenceType?: string;
-  referenceId?:   string;
+  referenceId?: string;
 };
 
 export type KitSaleResult =
-  | { success: true;  movementIds: string[]; componentsConsumed: number }
+  | { success: true; movementIds: string[]; componentsConsumed: number }
   | { success: false; error: string; insufficientComponent?: string };
 
 export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleResult> {
@@ -38,9 +38,9 @@ export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleRes
     const needed = comp.quantity * input.saleQuantity;
     const avail = await getAvailable({
       organizationId: input.organizationId,
-      productId:      comp.componentProductId,
-      variantId:      comp.componentVariantId,
-      locationId:     input.locationId,
+      productId: comp.componentProductId,
+      variantId: comp.componentVariantId,
+      locationId: input.locationId,
     });
 
     if (avail.available < needed) {
@@ -63,17 +63,17 @@ export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleRes
     const qty = comp.quantity * input.saleQuantity;
     const result = await applyMovement({
       organizationId: input.organizationId,
-      locationId:     input.locationId,
-      productId:      comp.componentProductId,
-      variantId:      comp.componentVariantId,
-      type:           "OUTBOUND",
-      quantity:       qty,
-      reason:         "SALE",
-      referenceType:  input.referenceType ?? "KIT_SALE",
-      referenceId:    input.referenceId ?? input.kitProductId,
-      note:           `Componente de kit — baixa por venda de ${input.saleQuantity}x kit`,
-      actorId:        input.actorId,
-      actorName:      input.actorName,
+      locationId: input.locationId,
+      productId: comp.componentProductId,
+      variantId: comp.componentVariantId,
+      type: "OUTBOUND",
+      quantity: qty,
+      reason: "SALE",
+      referenceType: input.referenceType ?? "KIT_SALE",
+      referenceId: input.referenceId ?? input.kitProductId,
+      note: `Componente de kit — baixa por venda de ${input.saleQuantity}x kit`,
+      actorId: input.actorId,
+      actorName: input.actorName,
     });
 
     if (!result.success) {
@@ -83,14 +83,14 @@ export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleRes
         if (mv) {
           await applyMovement({
             organizationId: input.organizationId,
-            locationId:     mv.locationId,
-            productId:      mv.productId,
-            variantId:      mv.variantId,
-            type:           "INBOUND",
-            quantity:       Number(mv.quantity),
-            reason:         "MANUAL",
-            note:           `Estorno de kit: ${result.message}`,
-            actorId:        input.actorId,
+            locationId: mv.locationId,
+            productId: mv.productId,
+            variantId: mv.variantId,
+            type: "INBOUND",
+            quantity: Number(mv.quantity),
+            reason: "MANUAL",
+            note: `Estorno de kit: ${result.message}`,
+            actorId: input.actorId,
           }).catch(() => {});
         }
       }
@@ -101,7 +101,7 @@ export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleRes
   }
 
   return {
-    success:            true,
+    success: true,
     movementIds,
     componentsConsumed: components.length,
   };
@@ -113,8 +113,8 @@ export async function explodeKitForSale(input: KitSaleInput): Promise<KitSaleRes
  */
 export async function getKitAvailableUnits(input: {
   organizationId: string;
-  locationId:     string;
-  kitProductId:   string;
+  locationId: string;
+  kitProductId: string;
 }): Promise<number> {
   const kitResult = await explodeKit(input.kitProductId);
   if (!kitResult.success) return 0;
@@ -124,9 +124,9 @@ export async function getKitAvailableUnits(input: {
   for (const comp of kitResult.data) {
     const avail = await getAvailable({
       organizationId: input.organizationId,
-      productId:      comp.componentProductId,
-      variantId:      comp.componentVariantId,
-      locationId:     input.locationId,
+      productId: comp.componentProductId,
+      variantId: comp.componentVariantId,
+      locationId: input.locationId,
     });
 
     const mountableFromThisComp = comp.quantity > 0 ? avail.available / comp.quantity : Infinity;

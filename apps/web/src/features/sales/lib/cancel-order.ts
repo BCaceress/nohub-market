@@ -4,11 +4,11 @@
  * Pedido cancelado nunca é deletado: estado CANCELED + motivo + estorno.
  */
 
+import type { OrderStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { applyMovement } from "@/features/inventory/lib/apply-movement";
 import { releaseReservation } from "@/features/inventory/lib/reserve-stock";
 import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
-import type { OrderStatus } from "@nohub/db";
 import { canTransition, isTerminal } from "./can-transition";
 
 export type CancelOrderInput = {

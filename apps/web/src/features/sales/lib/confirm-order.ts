@@ -6,31 +6,29 @@
  * RN-V05: sem disponível, não confirma (anti-oversell).
  */
 
-import { prisma } from "@nohub/db";
 import type { OrderStatus } from "@nohub/db";
-import { writeAudit } from "@/lib/audit";
+import { prisma } from "@nohub/db";
 import { reserveStock } from "@/features/inventory/lib/reserve-stock";
+import { writeAudit } from "@/lib/audit";
 import { canTransition } from "./can-transition";
 
 export type ConfirmOrderInput = {
   organizationId: string;
-  orderId:        string;
-  actorId:        string;
-  actorName?:     string | null;
-  source?:        string;
+  orderId: string;
+  actorId: string;
+  actorName?: string | null;
+  source?: string;
 };
 
 export type ConfirmOrderResult =
-  | { success: true;  orderId: string }
+  | { success: true; orderId: string }
   | { success: false; error: string; code?: string };
 
-export async function confirmOrder(
-  input: ConfirmOrderInput,
-): Promise<ConfirmOrderResult> {
+export async function confirmOrder(input: ConfirmOrderInput): Promise<ConfirmOrderResult> {
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
     include: {
-      items:    true,
+      items: true,
       location: { select: { id: true, name: true } },
     },
   });
@@ -43,7 +41,7 @@ export async function confirmOrder(
     return {
       success: false,
       error: `Transição inválida: ${order.status} → CONFIRMED`,
-      code:  "INVALID_TRANSITION",
+      code: "INVALID_TRANSITION",
     };
   }
 
@@ -60,8 +58,8 @@ export async function confirmOrder(
   if (hasAgeRestricted && !order.customerId && order.channel === "SELF_SERVICE") {
     return {
       success: false,
-      error:   "Venda autônoma com produto de idade restrita exige identificação do cliente",
-      code:    "AGE_RESTRICTION",
+      error: "Venda autônoma com produto de idade restrita exige identificação do cliente",
+      code: "AGE_RESTRICTION",
     };
   }
 
@@ -77,14 +75,14 @@ export async function confirmOrder(
 
     const reserve = await reserveStock({
       organizationId: input.organizationId,
-      locationId:     order.locationId,
-      productId:      item.productId,
-      variantId:      item.variantId,
-      quantity:       Number(item.quantity),
-      referenceType:  "ORDER",
-      referenceId:    order.id,
-      actorId:        input.actorId,
-      actorName:      input.actorName,
+      locationId: order.locationId,
+      productId: item.productId,
+      variantId: item.variantId,
+      quantity: Number(item.quantity),
+      referenceType: "ORDER",
+      referenceId: order.id,
+      actorId: input.actorId,
+      actorName: input.actorName,
     });
 
     if (!reserve.success) {
@@ -92,16 +90,14 @@ export async function confirmOrder(
       for (const rid of reservations) {
         const r = await prisma.stockReservation.findUnique({ where: { id: rid } });
         if (r) {
-          const { releaseReservation } = await import(
-            "@/features/inventory/lib/reserve-stock"
-          );
+          const { releaseReservation } = await import("@/features/inventory/lib/reserve-stock");
           await releaseReservation(rid, input.actorId).catch(() => {});
         }
       }
       return {
         success: false,
-        error:   reserve.error,
-        code:    "INSUFFICIENT_STOCK",
+        error: reserve.error,
+        code: "INSUFFICIENT_STOCK",
       };
     }
 
@@ -116,21 +112,21 @@ export async function confirmOrder(
     }),
     prisma.orderStatusHistory.create({
       data: {
-        orderId:    order.id,
+        orderId: order.id,
         fromStatus: order.status as OrderStatus,
-        toStatus:   "CONFIRMED",
-        actorId:    input.actorId,
-        source:     input.source ?? "INTERNAL",
+        toStatus: "CONFIRMED",
+        actorId: input.actorId,
+        source: input.source ?? "INTERNAL",
       },
     }),
   ]);
 
   await writeAudit({
     organizationId: input.organizationId,
-    actorId:        input.actorId,
-    action:         "order.confirmed",
-    resourceType:   "Order",
-    resourceId:     order.id,
+    actorId: input.actorId,
+    action: "order.confirmed",
+    resourceType: "Order",
+    resourceId: order.id,
     after: { status: "CONFIRMED", reservations },
   });
 

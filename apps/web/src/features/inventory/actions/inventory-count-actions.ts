@@ -1,10 +1,10 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 import { applyMovement } from "../lib/apply-movement";
 import { countItemSchema } from "../schemas";
 
@@ -24,7 +24,9 @@ export async function startInventoryCountAction(
 ): Promise<Result<{ countId: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -44,9 +46,9 @@ export async function startInventoryCountAction(
   const balances = await prisma.stockBalance.findMany({
     where: { organizationId, locationId: input.locationId },
     select: {
-      productId:      true,
-      variantId:      true,
-      lotId:          true,
+      productId: true,
+      variantId: true,
+      lotId: true,
       quantityOnHand: true,
     },
   });
@@ -55,14 +57,14 @@ export async function startInventoryCountAction(
     data: {
       organizationId,
       locationId: input.locationId,
-      status:     "IN_PROGRESS",
-      startedBy:  session.user.id,
-      note:       input.note || null,
+      status: "IN_PROGRESS",
+      startedBy: session.user.id,
+      note: input.note || null,
       items: {
         create: balances.map((b) => ({
-          productId:      b.productId,
-          variantId:      b.variantId ?? null,
-          lotId:          b.lotId ?? null,
+          productId: b.productId,
+          variantId: b.variantId ?? null,
+          lotId: b.lotId ?? null,
           systemQuantity: b.quantityOnHand,
           countedQuantity: null,
         })),
@@ -72,10 +74,10 @@ export async function startInventoryCountAction(
 
   await writeAudit({
     organizationId,
-    actorId:      session.user.id,
-    action:       "stock.count.start",
+    actorId: session.user.id,
+    action: "stock.count.start",
     resourceType: "InventoryCount",
-    resourceId:   count.id,
+    resourceId: count.id,
     after: { locationId: input.locationId, itemCount: balances.length },
   });
 
@@ -92,12 +94,15 @@ export async function addCountItemAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = countItemSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -120,15 +125,15 @@ export async function addCountItemAction(
         countId,
         productId: d.productId,
         variantId: (d.variantId ?? null) as unknown as string,
-        lotId:     (d.lotId    ?? null) as unknown as string,
+        lotId: (d.lotId ?? null) as unknown as string,
       },
     },
     create: {
       countId,
-      productId:       d.productId,
-      variantId:       d.variantId || null,
-      lotId:           d.lotId    || null,
-      systemQuantity:  d.systemQuantity,
+      productId: d.productId,
+      variantId: d.variantId || null,
+      lotId: d.lotId || null,
+      systemQuantity: d.systemQuantity,
       countedQuantity: d.countedQuantity,
     },
     update: {
@@ -147,7 +152,9 @@ export async function closeInventoryCountAction(
 ): Promise<Result<{ adjustmentsCreated: number }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -171,25 +178,25 @@ export async function closeInventoryCountAction(
     if (item.countedQuantity === null) continue; // item não contado → pular
 
     const counted = Number(item.countedQuantity);
-    const system  = Number(item.systemQuantity);
+    const system = Number(item.systemQuantity);
 
     if (Math.abs(counted - system) < 0.001) continue; // sem divergência
 
     // Gera ADJUSTMENT com novo saldo absoluto (RN-E13)
     const result = await applyMovement({
       organizationId,
-      locationId:     count.locationId,
-      productId:      item.productId,
-      variantId:      item.variantId,
-      lotId:          item.lotId,
-      type:           "ADJUSTMENT",
-      quantity:       counted,
-      reason:         "INVENTORY_COUNT",
-      referenceType:  "InventoryCount",
-      referenceId:    countId,
-      note:           `Ajuste de contagem — sistema: ${system.toFixed(3)}, contado: ${counted.toFixed(3)}`,
-      actorId:        session.user.id,
-      actorName:      session.user.name,
+      locationId: count.locationId,
+      productId: item.productId,
+      variantId: item.variantId,
+      lotId: item.lotId,
+      type: "ADJUSTMENT",
+      quantity: counted,
+      reason: "INVENTORY_COUNT",
+      referenceType: "InventoryCount",
+      referenceId: countId,
+      note: `Ajuste de contagem — sistema: ${system.toFixed(3)}, contado: ${counted.toFixed(3)}`,
+      actorId: session.user.id,
+      actorName: session.user.name,
     });
 
     if (result.success) {
@@ -208,10 +215,10 @@ export async function closeInventoryCountAction(
 
   await writeAudit({
     organizationId,
-    actorId:      session.user.id,
-    action:       "stock.count.close",
+    actorId: session.user.id,
+    action: "stock.count.close",
     resourceType: "InventoryCount",
-    resourceId:   countId,
+    resourceId: countId,
     after: { adjustmentsCreated },
   });
 
@@ -227,17 +234,14 @@ export async function getInventoryCountsAction(organizationId: string) {
     where: { organizationId },
     include: {
       location: { select: { id: true, name: true } },
-      items:    { select: { id: true, countedQuantity: true } },
+      items: { select: { id: true, countedQuantity: true } },
     },
     orderBy: { startedAt: "desc" },
     take: 50,
   });
 }
 
-export async function getInventoryCountDetailAction(
-  organizationId: string,
-  countId: string,
-) {
+export async function getInventoryCountDetailAction(organizationId: string, countId: string) {
   const count = await prisma.inventoryCount.findUnique({
     where: { id: countId },
     include: {
@@ -257,7 +261,7 @@ export async function getInventoryCountDetailAction(
     ...count,
     items: count.items.map((item) => ({
       ...item,
-      systemQuantity:  Number(item.systemQuantity),
+      systemQuantity: Number(item.systemQuantity),
       countedQuantity: item.countedQuantity !== null ? Number(item.countedQuantity) : null,
       divergence:
         item.countedQuantity !== null

@@ -1,8 +1,8 @@
 "use client";
 
-import type { SegmentType, StockStructureType } from "@/lib/capabilities";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import type { SegmentType, StockStructureType } from "@/lib/capabilities";
 
 export interface StoreDraft {
   name: string;

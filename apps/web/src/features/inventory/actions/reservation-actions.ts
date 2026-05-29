@@ -1,14 +1,10 @@
 "use server";
 
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import {
-  reserveStock,
-  releaseReservation,
-  consumeReservation,
-} from "../lib/reserve-stock";
+import { getSession } from "@/lib/auth-server";
+import { consumeReservation, releaseReservation, reserveStock } from "../lib/reserve-stock";
 import { reserveSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
@@ -25,27 +21,30 @@ export async function reserveForOrderAction(
 ): Promise<Result<{ reservationId: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = reserveSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
   const result = await reserveStock({
     organizationId,
-    locationId:    d.locationId,
-    productId:     d.productId,
-    variantId:     d.variantId || null,
-    lotId:         d.lotId    || null,
-    quantity:      d.quantity,
+    locationId: d.locationId,
+    productId: d.productId,
+    variantId: d.variantId || null,
+    lotId: d.lotId || null,
+    quantity: d.quantity,
     referenceType: d.referenceType,
-    referenceId:   d.referenceId,
-    expiresAt:     d.expiresAt ? new Date(d.expiresAt) : null,
-    actorId:       session.user.id,
-    actorName:     session.user.name,
+    referenceId: d.referenceId,
+    expiresAt: d.expiresAt ? new Date(d.expiresAt) : null,
+    actorId: session.user.id,
+    actorName: session.user.name,
   });
 
   if (!result.success) return { success: false, error: result.error };
@@ -60,7 +59,9 @@ export async function releaseOrderReservationAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -86,7 +87,9 @@ export async function consumeOrderReservationAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -114,12 +117,12 @@ export async function getReservationsAction(
       organizationId,
       status: "ACTIVE",
       ...(opts.referenceType ? { referenceType: opts.referenceType } : {}),
-      ...(opts.referenceId   ? { referenceId:   opts.referenceId   } : {}),
-      ...(opts.productId     ? { productId:      opts.productId     } : {}),
+      ...(opts.referenceId ? { referenceId: opts.referenceId } : {}),
+      ...(opts.productId ? { productId: opts.productId } : {}),
     },
     include: {
-      product:  { select: { id: true, name: true, sku: true } },
-      variant:  { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, sku: true } },
+      variant: { select: { id: true, name: true } },
       location: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },

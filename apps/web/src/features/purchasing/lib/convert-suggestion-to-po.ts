@@ -8,8 +8,8 @@
  * unitCost por item: usa estimativa via ProductPrice.cost ou 0 se não disponível.
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { createPurchaseOrder } from "./create-purchase-order";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */

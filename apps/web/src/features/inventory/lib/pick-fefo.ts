@@ -10,19 +10,19 @@ import { prisma } from "@nohub/db";
 
 export type PickFEFOInput = {
   organizationId: string;
-  productId:      string;
-  variantId?:     string | null;
-  locationId:     string;
-  quantity:       number;
+  productId: string;
+  variantId?: string | null;
+  locationId: string;
+  quantity: number;
 };
 
 export type LotAllocation = {
-  lotId:    string | null;
+  lotId: string | null;
   quantity: number;
 };
 
 export type PickFEFOResult =
-  | { success: true;  allocations: LotAllocation[] }
+  | { success: true; allocations: LotAllocation[] }
   | { success: false; error: "INSUFFICIENT_STOCK"; available: number };
 
 export async function pickFEFO(input: PickFEFOInput): Promise<PickFEFOResult> {
@@ -30,10 +30,10 @@ export async function pickFEFO(input: PickFEFOInput): Promise<PickFEFOResult> {
   const balancesWithLot = await prisma.stockBalance.findMany({
     where: {
       organizationId: input.organizationId,
-      productId:      input.productId,
-      variantId:      input.variantId ?? null,
-      locationId:     input.locationId,
-      lotId:          { not: null },
+      productId: input.productId,
+      variantId: input.variantId ?? null,
+      locationId: input.locationId,
+      lotId: { not: null },
       quantityOnHand: { gt: 0 },
     },
     include: {
@@ -50,15 +50,16 @@ export async function pickFEFO(input: PickFEFOInput): Promise<PickFEFOResult> {
     const noLotBalance = await prisma.stockBalance.findFirst({
       where: {
         organizationId: input.organizationId,
-        productId:      input.productId,
-        variantId:      input.variantId ?? null,
-        locationId:     input.locationId,
-        lotId:          null,
+        productId: input.productId,
+        variantId: input.variantId ?? null,
+        locationId: input.locationId,
+        lotId: null,
       },
     });
 
-    const available = Math.max(0,
-      Number(noLotBalance?.quantityOnHand ?? 0) - Number(noLotBalance?.quantityReserved ?? 0)
+    const available = Math.max(
+      0,
+      Number(noLotBalance?.quantityOnHand ?? 0) - Number(noLotBalance?.quantityReserved ?? 0),
     );
 
     if (available < input.quantity) {

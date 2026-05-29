@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useEffect, useState } from "react";
 import { trackOnboardingEvent } from "./metrics";
 import { StepReview } from "./steps/step-review";
 import { StepSegment } from "./steps/step-segment";

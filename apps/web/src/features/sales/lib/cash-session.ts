@@ -10,25 +10,23 @@ import { writeAudit } from "@/lib/audit";
 
 export type OpenCashSessionInput = {
   organizationId: string;
-  locationId:     string;
-  operatorId:     string;
-  openingAmount:  number;
-  note?:          string;
+  locationId: string;
+  operatorId: string;
+  openingAmount: number;
+  note?: string;
 };
 
 export type OpenCashSessionResult =
-  | { success: true;  sessionId: string }
+  | { success: true; sessionId: string }
   | { success: false; error: string };
 
-export async function openCashSession(
-  input: OpenCashSessionInput,
-): Promise<OpenCashSessionResult> {
+export async function openCashSession(input: OpenCashSessionInput): Promise<OpenCashSessionResult> {
   // Verifica se já há caixa aberto neste local
   const existing = await prisma.cashSession.findFirst({
     where: {
       organizationId: input.organizationId,
-      locationId:     input.locationId,
-      status:         "OPEN",
+      locationId: input.locationId,
+      status: "OPEN",
     },
   });
   if (existing) {
@@ -38,15 +36,15 @@ export async function openCashSession(
   const session = await prisma.cashSession.create({
     data: {
       organizationId: input.organizationId,
-      locationId:     input.locationId,
-      operatorId:     input.operatorId,
-      openingAmount:  input.openingAmount,
-      note:           input.note ?? null,
+      locationId: input.locationId,
+      operatorId: input.operatorId,
+      openingAmount: input.openingAmount,
+      note: input.note ?? null,
       movements: {
         create: {
-          type:   "OPEN",
+          type: "OPEN",
           amount: input.openingAmount,
-          note:   "Abertura de caixa",
+          note: "Abertura de caixa",
           actorId: input.operatorId,
         },
       },
@@ -55,10 +53,10 @@ export async function openCashSession(
 
   await writeAudit({
     organizationId: input.organizationId,
-    actorId:        input.operatorId,
-    action:         "cash.opened",
-    resourceType:   "CashSession",
-    resourceId:     session.id,
+    actorId: input.operatorId,
+    action: "cash.opened",
+    resourceType: "CashSession",
+    resourceId: session.id,
     after: { openingAmount: input.openingAmount, locationId: input.locationId },
   });
 
@@ -69,14 +67,14 @@ export async function openCashSession(
 
 export type CloseCashSessionInput = {
   organizationId: string;
-  sessionId:      string;
-  closingAmount:  number;
-  actorId:        string;
-  note?:          string;
+  sessionId: string;
+  closingAmount: number;
+  actorId: string;
+  note?: string;
 };
 
 export type CloseCashSessionResult =
-  | { success: true;  sessionId: string; divergence: number }
+  | { success: true; sessionId: string; divergence: number }
   | { success: false; error: string };
 
 export async function closeCashSession(
@@ -87,7 +85,7 @@ export async function closeCashSession(
     include: {
       movements: true,
       orders: {
-        where:  { status: { in: ["COMPLETED", "PAID"] } },
+        where: { status: { in: ["COMPLETED", "PAID"] } },
         include: { payments: { where: { status: "CONFIRMED" } } },
       },
     },
@@ -109,43 +107,44 @@ export async function closeCashSession(
   }, 0);
 
   const cashSalesTotal = session.orders.reduce((acc, order) => {
-    return acc + order.payments
-      .filter((p) => p.method === "CASH")
-      .reduce((s, p) => s + Number(p.amount), 0);
+    return (
+      acc +
+      order.payments.filter((p) => p.method === "CASH").reduce((s, p) => s + Number(p.amount), 0)
+    );
   }, 0);
 
   const systemAmount = cashMovementBalance + cashSalesTotal;
-  const divergence   = input.closingAmount - systemAmount;
+  const divergence = input.closingAmount - systemAmount;
 
   await prisma.$transaction([
     prisma.cashSession.update({
       where: { id: session.id },
       data: {
-        status:        "CLOSED",
+        status: "CLOSED",
         closingAmount: input.closingAmount,
         systemAmount,
         divergence,
-        closedAt:      new Date(),
-        note:          input.note ?? session.note,
+        closedAt: new Date(),
+        note: input.note ?? session.note,
       },
     }),
     prisma.cashMovement.create({
       data: {
         cashSessionId: session.id,
-        type:          "CLOSE",
-        amount:        input.closingAmount,
-        note:          `Fechamento — divergência: ${divergence.toFixed(2)}`,
-        actorId:       input.actorId,
+        type: "CLOSE",
+        amount: input.closingAmount,
+        note: `Fechamento — divergência: ${divergence.toFixed(2)}`,
+        actorId: input.actorId,
       },
     }),
   ]);
 
   await writeAudit({
     organizationId: input.organizationId,
-    actorId:        input.actorId,
-    action:         "cash.closed",
-    resourceType:   "CashSession",
-    resourceId:     session.id,
+    actorId: input.actorId,
+    action: "cash.closed",
+    resourceType: "CashSession",
+    resourceId: session.id,
     after: { closingAmount: input.closingAmount, systemAmount, divergence },
   });
 
@@ -155,11 +154,11 @@ export async function closeCashSession(
 /* ── Sangria ─────────────────────────────────────────────────── */
 
 export async function bleedCash(
-  sessionId:     string,
+  sessionId: string,
   organizationId: string,
-  amount:        number,
-  note:          string,
-  actorId:       string,
+  amount: number,
+  note: string,
+  actorId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await prisma.cashSession.findUnique({ where: { id: sessionId } });
   if (!session || session.organizationId !== organizationId || session.status !== "OPEN") {
@@ -174,9 +173,9 @@ export async function bleedCash(
   await writeAudit({
     organizationId,
     actorId,
-    action:       "cash.bleed",
+    action: "cash.bleed",
     resourceType: "CashSession",
-    resourceId:   sessionId,
+    resourceId: sessionId,
     after: { amount, note },
   });
 
@@ -186,11 +185,11 @@ export async function bleedCash(
 /* ── Suprimento ──────────────────────────────────────────────── */
 
 export async function supplyCash(
-  sessionId:     string,
+  sessionId: string,
   organizationId: string,
-  amount:        number,
-  note:          string,
-  actorId:       string,
+  amount: number,
+  note: string,
+  actorId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await prisma.cashSession.findUnique({ where: { id: sessionId } });
   if (!session || session.organizationId !== organizationId || session.status !== "OPEN") {
@@ -205,9 +204,9 @@ export async function supplyCash(
   await writeAudit({
     organizationId,
     actorId,
-    action:       "cash.supply",
+    action: "cash.supply",
     resourceType: "CashSession",
-    resourceId:   sessionId,
+    resourceId: sessionId,
     after: { amount, note },
   });
 

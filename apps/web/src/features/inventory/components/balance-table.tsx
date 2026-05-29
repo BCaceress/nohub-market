@@ -1,9 +1,12 @@
 "use client";
 
+import { AlertTriangle, Search, SlidersHorizontal } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -12,14 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { AlertTriangle, Search, SlidersHorizontal } from "lucide-react";
 import { updateMinQuantityAction } from "../actions/inventory-actions";
 
 type BalanceRow = {
@@ -33,7 +28,14 @@ type BalanceRow = {
   quantityAvailable: number;
   averageCost: number | null;
   minQuantity: number | null;
-  product: { id: string; name: string; sku: string; unit: string; isActive: boolean; productType: string };
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    unit: string;
+    isActive: boolean;
+    productType: string;
+  };
   variant: { id: string; name: string } | null;
   location: { id: string; name: string };
   lot: { id: string; code: string; expiryDate: Date | null } | null;
@@ -53,7 +55,7 @@ export function BalanceTable({ rows, organizationId }: Props) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const locations = Array.from(
-    new Map(rows.map((r) => [r.location.id, r.location.name])).entries()
+    new Map(rows.map((r) => [r.location.id, r.location.name])).entries(),
   ).map(([id, name]) => ({ id, name }));
 
   const filtered = rows.filter((r) => {
@@ -81,7 +83,7 @@ export function BalanceTable({ rows, organizationId }: Props) {
     setErrorMsg(null);
     startTransition(async () => {
       const val = minQtyValue.trim() === "" ? null : parseFloat(minQtyValue);
-      if (val !== null && isNaN(val)) {
+      if (val !== null && Number.isNaN(val)) {
         setErrorMsg("Valor inválido");
         return;
       }
@@ -120,7 +122,9 @@ export function BalanceTable({ rows, organizationId }: Props) {
           >
             <option value="all">Todos os locais</option>
             {locations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
             ))}
           </select>
         )}
@@ -161,16 +165,24 @@ export function BalanceTable({ rows, organizationId }: Props) {
                   new Date(row.lot.expiryDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
                 return (
-                  <TableRow key={row.id} className={isBelowMin ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}>
+                  <TableRow
+                    key={row.id}
+                    className={isBelowMin ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}
+                  >
                     <TableCell>
                       <div>
                         <p className="text-sm font-medium">
                           {row.product.name}
                           {row.variant && (
-                            <span className="text-muted-foreground font-normal"> · {row.variant.name}</span>
+                            <span className="text-muted-foreground font-normal">
+                              {" "}
+                              · {row.variant.name}
+                            </span>
                           )}
                         </p>
-                        <p className="text-xs text-muted-foreground">{row.product.sku} · {row.product.unit}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {row.product.sku} · {row.product.unit}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -191,23 +203,36 @@ export function BalanceTable({ rows, organizationId }: Props) {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="font-mono text-sm">{row.quantityOnHand.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</span>
+                      <span className="font-mono text-sm">
+                        {row.quantityOnHand.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="font-mono text-sm text-amber-600">{row.quantityReserved.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</span>
+                      <span className="font-mono text-sm text-amber-600">
+                        {row.quantityReserved.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {isBelowMin && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                        <span className={`font-mono text-sm font-medium ${isBelowMin ? "text-amber-600" : "text-green-600 dark:text-green-400"}`}>
-                          {row.quantityAvailable.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                        {isBelowMin && (
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        )}
+                        <span
+                          className={`font-mono text-sm font-medium ${isBelowMin ? "text-amber-600" : "text-green-600 dark:text-green-400"}`}
+                        >
+                          {row.quantityAvailable.toLocaleString("pt-BR", {
+                            maximumFractionDigits: 3,
+                          })}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {row.averageCost !== null ? (
                         <span className="font-mono text-xs text-muted-foreground">
-                          {row.averageCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          {row.averageCost.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -215,7 +240,9 @@ export function BalanceTable({ rows, organizationId }: Props) {
                     </TableCell>
                     <TableCell className="text-right">
                       {row.minQuantity !== null ? (
-                        <span className="font-mono text-xs">{row.minQuantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</span>
+                        <span className="font-mono text-xs">
+                          {row.minQuantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                        </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -265,7 +292,9 @@ export function BalanceTable({ rows, organizationId }: Props) {
             </div>
             {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditRow(null)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setEditRow(null)}>
+                Cancelar
+              </Button>
               <Button onClick={handleSaveThreshold} disabled={isPending}>
                 {isPending ? "Salvando…" : "Salvar"}
               </Button>

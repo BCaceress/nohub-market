@@ -13,37 +13,37 @@ import { applyMovement } from "./apply-movement";
 
 export type ReserveStockInput = {
   organizationId: string;
-  locationId:     string;
-  productId:      string;
-  variantId?:     string | null;
-  lotId?:         string | null;
-  quantity:       number;
-  referenceType:  string;
-  referenceId:    string;
-  expiresAt?:     Date | null;
-  actorId:        string;
-  actorName?:     string | null;
+  locationId: string;
+  productId: string;
+  variantId?: string | null;
+  lotId?: string | null;
+  quantity: number;
+  referenceType: string;
+  referenceId: string;
+  expiresAt?: Date | null;
+  actorId: string;
+  actorName?: string | null;
 };
 
 export type ReserveResult =
-  | { success: true;  reservationId: string }
+  | { success: true; reservationId: string }
   | { success: false; error: string };
 
 export async function reserveStock(input: ReserveStockInput): Promise<ReserveResult> {
   // Criar movimento RESERVATION (reduz disponível sem alterar físico)
   const mvResult = await applyMovement({
     organizationId: input.organizationId,
-    locationId:     input.locationId,
-    productId:      input.productId,
-    variantId:      input.variantId,
-    lotId:          input.lotId,
-    type:           "RESERVATION",
-    quantity:       input.quantity,
-    reason:         "SALE",
-    referenceType:  input.referenceType,
-    referenceId:    input.referenceId,
-    actorId:        input.actorId,
-    actorName:      input.actorName,
+    locationId: input.locationId,
+    productId: input.productId,
+    variantId: input.variantId,
+    lotId: input.lotId,
+    type: "RESERVATION",
+    quantity: input.quantity,
+    reason: "SALE",
+    referenceType: input.referenceType,
+    referenceId: input.referenceId,
+    actorId: input.actorId,
+    actorName: input.actorName,
   });
 
   if (!mvResult.success) {
@@ -54,15 +54,15 @@ export async function reserveStock(input: ReserveStockInput): Promise<ReserveRes
   const reservation = await prisma.stockReservation.create({
     data: {
       organizationId: input.organizationId,
-      locationId:     input.locationId,
-      productId:      input.productId,
-      variantId:      input.variantId ?? null,
-      lotId:          input.lotId ?? null,
-      quantity:       input.quantity,
-      referenceType:  input.referenceType,
-      referenceId:    input.referenceId,
-      status:         "ACTIVE",
-      expiresAt:      input.expiresAt ?? null,
+      locationId: input.locationId,
+      productId: input.productId,
+      variantId: input.variantId ?? null,
+      lotId: input.lotId ?? null,
+      quantity: input.quantity,
+      referenceType: input.referenceType,
+      referenceId: input.referenceId,
+      status: "ACTIVE",
+      expiresAt: input.expiresAt ?? null,
     },
   });
 
@@ -80,21 +80,21 @@ export async function releaseReservation(
     where: { id: reservationId },
   });
 
-  if (!reservation || reservation.status !== "ACTIVE") {
+  if (reservation?.status !== "ACTIVE") {
     return { success: false, error: "Reserva não encontrada ou já encerrada" };
   }
 
   const mvResult = await applyMovement({
     organizationId: reservation.organizationId,
-    locationId:     reservation.locationId,
-    productId:      reservation.productId,
-    variantId:      reservation.variantId,
-    lotId:          reservation.lotId,
-    type:           "RESERVATION_RELEASE",
-    quantity:       Number(reservation.quantity),
-    reason:         "MANUAL",
-    referenceType:  reservation.referenceType,
-    referenceId:    reservation.referenceId,
+    locationId: reservation.locationId,
+    productId: reservation.productId,
+    variantId: reservation.variantId,
+    lotId: reservation.lotId,
+    type: "RESERVATION_RELEASE",
+    quantity: Number(reservation.quantity),
+    reason: "MANUAL",
+    referenceType: reservation.referenceType,
+    referenceId: reservation.referenceId,
     actorId,
     actorName,
   });
@@ -122,22 +122,22 @@ export async function consumeReservation(
     where: { id: reservationId },
   });
 
-  if (!reservation || reservation.status !== "ACTIVE") {
+  if (reservation?.status !== "ACTIVE") {
     return { success: false, error: "Reserva não encontrada ou já encerrada" };
   }
 
   // 1. Liberar reserva (restaura o reservado)
   const releaseResult = await applyMovement({
     organizationId: reservation.organizationId,
-    locationId:     reservation.locationId,
-    productId:      reservation.productId,
-    variantId:      reservation.variantId,
-    lotId:          reservation.lotId,
-    type:           "RESERVATION_RELEASE",
-    quantity:       Number(reservation.quantity),
-    reason:         "SALE",
-    referenceType:  reservation.referenceType,
-    referenceId:    reservation.referenceId,
+    locationId: reservation.locationId,
+    productId: reservation.productId,
+    variantId: reservation.variantId,
+    lotId: reservation.lotId,
+    type: "RESERVATION_RELEASE",
+    quantity: Number(reservation.quantity),
+    reason: "SALE",
+    referenceType: reservation.referenceType,
+    referenceId: reservation.referenceId,
     actorId,
     actorName,
   });
@@ -149,15 +149,15 @@ export async function consumeReservation(
   // 2. Criar OUTBOUND definitivo (baixa o físico)
   const outResult = await applyMovement({
     organizationId: reservation.organizationId,
-    locationId:     reservation.locationId,
-    productId:      reservation.productId,
-    variantId:      reservation.variantId,
-    lotId:          reservation.lotId,
-    type:           "OUTBOUND",
-    quantity:       Number(reservation.quantity),
-    reason:         "SALE",
-    referenceType:  reservation.referenceType,
-    referenceId:    reservation.referenceId,
+    locationId: reservation.locationId,
+    productId: reservation.productId,
+    variantId: reservation.variantId,
+    lotId: reservation.lotId,
+    type: "OUTBOUND",
+    quantity: Number(reservation.quantity),
+    reason: "SALE",
+    referenceType: reservation.referenceType,
+    referenceId: reservation.referenceId,
     actorId,
     actorName,
   });

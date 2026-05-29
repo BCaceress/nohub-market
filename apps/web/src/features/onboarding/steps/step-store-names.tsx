@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Store } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { saveStoreNamesAction } from "../actions";
 import { useOnboarding } from "../store";
 
@@ -52,6 +52,7 @@ export function StepStoreNames({ onNext }: { onNext: () => void }) {
 
       <div className="flex flex-col gap-3">
         {Array.from({ length: s.storeCount }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: slots de loja por posição — o índice é a identidade
           <div key={`store-${i}-${s.storeCount}`} className="flex flex-col gap-1.5">
             <Label htmlFor={`store-${i}`} className="text-xs">
               Loja {i + 1}

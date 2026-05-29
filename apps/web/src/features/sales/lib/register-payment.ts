@@ -5,10 +5,10 @@
  * RN-V12: cartão nunca trafega/armazena no MarketOS.
  */
 
+import type { PaymentMethod } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { enqueueIssuance } from "@/features/fiscal/lib/enqueue-issuance";
 import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
-import type { PaymentMethod } from "@nohub/db";
 import { canTransition } from "./can-transition";
 
 export type RegisterPaymentInput = {

@@ -7,48 +7,48 @@
  * Se quebrar, o módulo está errado.
  */
 
-import { prisma } from "@nohub/db";
 import type { MovementType } from "@nohub/db";
+import { prisma } from "@nohub/db";
 
 export type RebuildInput = {
   organizationId: string;
-  productId:      string;
-  variantId?:     string | null;
-  locationId:     string;
-  lotId?:         string | null;
+  productId: string;
+  variantId?: string | null;
+  locationId: string;
+  lotId?: string | null;
 };
 
 export type RebuildResult = {
-  onHand:      number;
-  reserved:    number;
-  available:   number;
+  onHand: number;
+  reserved: number;
+  available: number;
   averageCost: number | null;
   movementCount: number;
 };
 
 const OUTBOUND_TYPES = new Set<MovementType>(["OUT", "OUTBOUND", "LOSS", "TRANSFER_OUT"]);
-const INBOUND_TYPES  = new Set<MovementType>(["IN",  "INBOUND",  "TRANSFER_IN"]);
+const INBOUND_TYPES = new Set<MovementType>(["IN", "INBOUND", "TRANSFER_IN"]);
 
 export async function rebuildBalance(input: RebuildInput): Promise<RebuildResult> {
   const movements = await prisma.stockMovement.findMany({
     where: {
       organizationId: input.organizationId,
-      productId:      input.productId,
-      variantId:      input.variantId ?? null,
-      locationId:     input.locationId,
-      lotId:          input.lotId ?? null,
+      productId: input.productId,
+      variantId: input.variantId ?? null,
+      locationId: input.locationId,
+      lotId: input.lotId ?? null,
     },
     orderBy: { createdAt: "asc" },
     select: {
-      type:     true,
+      type: true,
       quantity: true,
       unitCost: true,
     },
   });
 
-  let onHand   = 0;
+  let onHand = 0;
   let reserved = 0;
-  let avgCost  = 0;
+  let avgCost = 0;
 
   for (const mv of movements) {
     const qty = Number(mv.quantity);
@@ -85,10 +85,10 @@ export async function rebuildBalance(input: RebuildInput): Promise<RebuildResult
   // Persistir o saldo reconstruído
   const balanceKey = {
     organizationId: input.organizationId,
-    productId:      input.productId,
-    variantId:      input.variantId ?? null,
-    locationId:     input.locationId,
-    lotId:          input.lotId ?? null,
+    productId: input.productId,
+    variantId: input.variantId ?? null,
+    locationId: input.locationId,
+    lotId: input.lotId ?? null,
   };
 
   await prisma.stockBalance.upsert({
@@ -96,23 +96,23 @@ export async function rebuildBalance(input: RebuildInput): Promise<RebuildResult
     where: { organizationId_productId_variantId_locationId_lotId: balanceKey as any },
     create: {
       ...balanceKey,
-      quantityOnHand:   onHand,
+      quantityOnHand: onHand,
       quantityReserved: reserved,
-      averageCost:      avgCost > 0 ? avgCost : null,
+      averageCost: avgCost > 0 ? avgCost : null,
     },
     update: {
-      quantityOnHand:   onHand,
+      quantityOnHand: onHand,
       quantityReserved: reserved,
-      averageCost:      avgCost > 0 ? avgCost : null,
-      updatedAt:        new Date(),
+      averageCost: avgCost > 0 ? avgCost : null,
+      updatedAt: new Date(),
     },
   });
 
   return {
     onHand,
     reserved,
-    available:    Math.max(0, onHand - reserved),
-    averageCost:  avgCost > 0 ? avgCost : null,
+    available: Math.max(0, onHand - reserved),
+    averageCost: avgCost > 0 ? avgCost : null,
     movementCount: movements.length,
   };
 }

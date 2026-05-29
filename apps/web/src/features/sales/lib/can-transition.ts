@@ -4,7 +4,7 @@
  * para esses estados internos — o core nunca conhece estados do iFood.
  */
 
-import type { OrderStatus, OrderChannel } from "@nohub/db";
+import type { OrderChannel, OrderStatus } from "@nohub/db";
 
 // Transições válidas por canal
 // null = qualquer canal
@@ -59,41 +59,35 @@ const TRANSITIONS: Transition[] = [
   },
 ];
 
-export function canTransition(
-  from: OrderStatus,
-  to: OrderStatus,
-  channel: OrderChannel,
-): boolean {
+export function canTransition(from: OrderStatus, to: OrderStatus, channel: OrderChannel): boolean {
   return TRANSITIONS.some(
     (t) =>
-      t.to === to &&
-      t.from.includes(from) &&
-      (t.channels === null || t.channels.includes(channel)),
+      t.to === to && t.from.includes(from) && (t.channels === null || t.channels.includes(channel)),
   );
 }
 
 // Mapeamento de estados externos → interno por canal
 // iFood
 export const IFOOD_STATUS_MAP: Record<string, OrderStatus> = {
-  PLACED:           "CONFIRMED",
-  CONFIRMED:        "CONFIRMED",
-  READY_TO_PICKUP:  "FULFILLED",
-  DISPATCHED:       "FULFILLED",
-  CONCLUDED:        "COMPLETED",
-  CANCELLED:        "CANCELED",
+  PLACED: "CONFIRMED",
+  CONFIRMED: "CONFIRMED",
+  READY_TO_PICKUP: "FULFILLED",
+  DISPATCHED: "FULFILLED",
+  CONCLUDED: "COMPLETED",
+  CANCELLED: "CANCELED",
   CANCELLATION_REQUESTED: "CANCELED",
 };
 
 // Mercado Livre
 export const ML_STATUS_MAP: Record<string, OrderStatus> = {
-  confirmed:  "CONFIRMED",
+  confirmed: "CONFIRMED",
   payment_required: "DRAFT",
   payment_in_process: "DRAFT",
-  paid:       "PAID",
+  paid: "PAID",
   partially_refunded: "PAID",
   pending_cancel: "CANCELED",
-  cancelled:  "CANCELED",
-  invalid:    "CANCELED",
+  cancelled: "CANCELED",
+  invalid: "CANCELED",
 };
 
 export const TERMINAL_STATUSES: OrderStatus[] = ["COMPLETED", "CANCELED"];

@@ -5,9 +5,9 @@
  * Não escreve estoque — isso é feito em confirmReceipt.
  */
 
-import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
 import type { DivergenceType } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 
 export type ReceiptItemInput = {
   purchaseOrderItemId?: string; // null = item extra não pedido

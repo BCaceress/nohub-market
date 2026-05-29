@@ -7,19 +7,24 @@
  * Todas as mutations escrevem AuditLog via as libs.
  */
 
-import { requireSessionWithOrg } from "@/lib/auth-server";
+import type { SupplierReturnReason } from "@nohub/db";
 import { prisma } from "@nohub/db";
-
+import { requireSessionWithOrg } from "@/lib/auth-server";
 import { confirmReceipt } from "../lib/confirm-receipt";
+import type { SuggestionItemOverride } from "../lib/convert-suggestion-to-po";
 import { convertSuggestionToPO } from "../lib/convert-suggestion-to-po";
+import type { PaymentTermsInput, POItemInput } from "../lib/create-purchase-order";
 import { createPurchaseOrder } from "../lib/create-purchase-order";
+import type { QuotationItemInput, SupplierItemResponseInput } from "../lib/create-quotation";
 import {
   createQuotation,
   recordSupplierResponse,
   selectQuotationResponse,
 } from "../lib/create-quotation";
+import type { SupplierReturnItemInput } from "../lib/create-supplier-return";
 import { confirmSupplierReturn, createSupplierReturn } from "../lib/create-supplier-return";
 import { generatePurchaseSuggestion } from "../lib/generate-purchase-suggestion";
+import type { ReceiptItemInput } from "../lib/register-receipt";
 import { registerReceipt } from "../lib/register-receipt";
 import {
   cancelPurchaseOrder,
@@ -27,13 +32,6 @@ import {
   sendPurchaseOrder,
 } from "../lib/transition-purchase-order";
 import { confirmNfeImport, importNfeXml } from "../nfe-import/import-nfe-xml";
-
-import type { SupplierReturnReason } from "@nohub/db";
-import type { SuggestionItemOverride } from "../lib/convert-suggestion-to-po";
-import type { POItemInput, PaymentTermsInput } from "../lib/create-purchase-order";
-import type { QuotationItemInput, SupplierItemResponseInput } from "../lib/create-quotation";
-import type { SupplierReturnItemInput } from "../lib/create-supplier-return";
-import type { ReceiptItemInput } from "../lib/register-receipt";
 import type { NfeItemMapping } from "../nfe-import/nfe-import-adapter";
 
 /* ── PurchaseOrder ──────────────────────────────────────────────── */

@@ -1,6 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpFromLine,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  LockKeyhole,
+  Trash2,
+  TrendingDown,
+} from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,19 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  ArrowLeftRight,
-  Trash2,
-  ClipboardList,
-  LockKeyhole,
-  TrendingDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
 
 type Movement = {
   id: string;
@@ -48,49 +47,65 @@ type Location = { id: string; name: string };
 
 const TYPE_CONFIG: Record<
   string,
-  { label: string; variant: "success" | "destructive" | "info" | "warning" | "secondary"; icon: React.ReactNode }
+  {
+    label: string;
+    variant: "success" | "destructive" | "info" | "warning" | "secondary";
+    icon: React.ReactNode;
+  }
 > = {
-  INBOUND:            { label: "Entrada",        variant: "success",     icon: <ArrowDownToLine className="h-3 w-3" /> },
-  IN:                 { label: "Entrada",        variant: "success",     icon: <ArrowDownToLine className="h-3 w-3" /> },
-  OUTBOUND:           { label: "Saída",          variant: "secondary",   icon: <ArrowUpFromLine className="h-3 w-3" /> },
-  OUT:                { label: "Saída",          variant: "secondary",   icon: <ArrowUpFromLine className="h-3 w-3" /> },
-  LOSS:               { label: "Perda",          variant: "destructive", icon: <Trash2 className="h-3 w-3" /> },
-  TRANSFER_IN:        { label: "Transf. entrada",variant: "info",        icon: <ArrowLeftRight className="h-3 w-3" /> },
-  TRANSFER_OUT:       { label: "Transf. saída",  variant: "info",        icon: <ArrowLeftRight className="h-3 w-3" /> },
-  ADJUSTMENT:         { label: "Ajuste",         variant: "warning",     icon: <ClipboardList className="h-3 w-3" /> },
-  RESERVATION:        { label: "Reserva",        variant: "warning",     icon: <LockKeyhole className="h-3 w-3" /> },
-  RESERVATION_RELEASE:{ label: "Lib. reserva",   variant: "secondary",   icon: <LockKeyhole className="h-3 w-3" /> },
+  INBOUND: { label: "Entrada", variant: "success", icon: <ArrowDownToLine className="h-3 w-3" /> },
+  IN: { label: "Entrada", variant: "success", icon: <ArrowDownToLine className="h-3 w-3" /> },
+  OUTBOUND: { label: "Saída", variant: "secondary", icon: <ArrowUpFromLine className="h-3 w-3" /> },
+  OUT: { label: "Saída", variant: "secondary", icon: <ArrowUpFromLine className="h-3 w-3" /> },
+  LOSS: { label: "Perda", variant: "destructive", icon: <Trash2 className="h-3 w-3" /> },
+  TRANSFER_IN: {
+    label: "Transf. entrada",
+    variant: "info",
+    icon: <ArrowLeftRight className="h-3 w-3" />,
+  },
+  TRANSFER_OUT: {
+    label: "Transf. saída",
+    variant: "info",
+    icon: <ArrowLeftRight className="h-3 w-3" />,
+  },
+  ADJUSTMENT: { label: "Ajuste", variant: "warning", icon: <ClipboardList className="h-3 w-3" /> },
+  RESERVATION: { label: "Reserva", variant: "warning", icon: <LockKeyhole className="h-3 w-3" /> },
+  RESERVATION_RELEASE: {
+    label: "Lib. reserva",
+    variant: "secondary",
+    icon: <LockKeyhole className="h-3 w-3" />,
+  },
 };
 
 const REASON_LABELS: Record<string, string> = {
-  PURCHASE:        "Compra",
-  SALE:            "Venda",
+  PURCHASE: "Compra",
+  SALE: "Venda",
   INVENTORY_COUNT: "Inventário",
-  DAMAGE:          "Avaria",
-  EXPIRY:          "Vencimento",
-  THEFT:           "Furto",
-  TRANSFER:        "Transferência",
-  MANUAL:          "Manual",
-  RETURN:          "Devolução",
-  INITIAL:         "Saldo inicial",
+  DAMAGE: "Avaria",
+  EXPIRY: "Vencimento",
+  THEFT: "Furto",
+  TRANSFER: "Transferência",
+  MANUAL: "Manual",
+  RETURN: "Devolução",
+  INITIAL: "Saldo inicial",
 };
 
 const MOVEMENT_TYPES = [
-  { value: "",                  label: "Todos os tipos"   },
-  { value: "INBOUND",           label: "Entradas"         },
-  { value: "OUTBOUND",          label: "Saídas"           },
-  { value: "LOSS",              label: "Perdas"           },
-  { value: "TRANSFER_IN",       label: "Transf. recebidas"},
-  { value: "TRANSFER_OUT",      label: "Transf. enviadas" },
-  { value: "ADJUSTMENT",        label: "Ajustes"          },
-  { value: "RESERVATION",       label: "Reservas"         },
+  { value: "", label: "Todos os tipos" },
+  { value: "INBOUND", label: "Entradas" },
+  { value: "OUTBOUND", label: "Saídas" },
+  { value: "LOSS", label: "Perdas" },
+  { value: "TRANSFER_IN", label: "Transf. recebidas" },
+  { value: "TRANSFER_OUT", label: "Transf. enviadas" },
+  { value: "ADJUSTMENT", label: "Ajustes" },
+  { value: "RESERVATION", label: "Reservas" },
 ];
 
 function timeAgo(date: Date | string) {
   const d = new Date(date);
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diff < 60)    return "há poucos segundos";
-  if (diff < 3600)  return `há ${Math.floor(diff / 60)} min`;
+  if (diff < 60) return "há poucos segundos";
+  if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
 }
@@ -104,7 +119,7 @@ type Props = {
 };
 
 export function MovementLogExtended({ movements, locations, total, page, take }: Props) {
-  const router  = useRouter();
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
@@ -135,7 +150,9 @@ export function MovementLogExtended({ movements, locations, total, page, take }:
         >
           <option value="">Todos os locais</option>
           {locations.map((l) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
           ))}
         </select>
 
@@ -145,7 +162,9 @@ export function MovementLogExtended({ movements, locations, total, page, take }:
           className="h-8 rounded-md border border-input bg-background px-3 text-sm"
         >
           {MOVEMENT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
           ))}
         </select>
 
@@ -183,7 +202,11 @@ export function MovementLogExtended({ movements, locations, total, page, take }:
               </TableRow>
             ) : (
               movements.map((m) => {
-                const cfg = TYPE_CONFIG[m.type] ?? { label: m.type, variant: "secondary" as const, icon: null };
+                const cfg = TYPE_CONFIG[m.type] ?? {
+                  label: m.type,
+                  variant: "secondary" as const,
+                  icon: null,
+                };
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
@@ -200,13 +223,15 @@ export function MovementLogExtended({ movements, locations, total, page, take }:
                         {cfg.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{m.location.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {m.location.name}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {m.reason ? (REASON_LABELS[m.reason] ?? m.reason) : "—"}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {m.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
-                      {" "}<span className="text-xs text-muted-foreground">{m.product.unit}</span>
+                      {m.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}{" "}
+                      <span className="text-xs text-muted-foreground">{m.product.unit}</span>
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
                       {m.previousQty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
@@ -243,7 +268,12 @@ export function MovementLogExtended({ movements, locations, total, page, take }:
           <span className="text-sm text-muted-foreground">
             Página {page} de {totalPages}
           </span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goPage(page + 1)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => goPage(page + 1)}
+          >
             Próxima
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>

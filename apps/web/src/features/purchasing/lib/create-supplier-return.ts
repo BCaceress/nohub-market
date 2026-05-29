@@ -11,10 +11,10 @@
  *   - productId/variantId resolvidos via goodsReceiptItem (SupplierReturnItem não os tem)
  */
 
+import type { SupplierReturnReason } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { applyMovement } from "@/features/inventory/lib/apply-movement";
 import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
-import type { SupplierReturnReason } from "@nohub/db";
 
 /* ── Tipos ──────────────────────────────────────────────────────── */
 

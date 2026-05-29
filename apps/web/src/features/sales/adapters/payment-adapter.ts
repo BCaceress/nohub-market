@@ -11,65 +11,65 @@
  * Para cartão: o SDK do PSP no browser tokeniza — MarketOS só recebe o token.
  */
 
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 /* ── Tipos canônicos de pagamento ────────────────────────────── */
 
 export type PixChargeRequest = {
   organizationId: string;
-  orderId:        string;
-  amount:         number; // em centavos
-  description?:   string;
+  orderId: string;
+  amount: number; // em centavos
+  description?: string;
   expiresInSeconds?: number; // padrão: 3600 (1h)
-  customerDoc?:   string; // CPF/CNPJ do pagador (opcional)
-  customerName?:  string;
+  customerDoc?: string; // CPF/CNPJ do pagador (opcional)
+  customerName?: string;
 };
 
 export type PixChargeResult =
   | {
       success: true;
-      chargeId:    string; // ID do PSP
-      qrCode:      string; // payload EMVCo (copia-e-cola)
+      chargeId: string; // ID do PSP
+      qrCode: string; // payload EMVCo (copia-e-cola)
       qrCodeImage: string; // base64 ou URL do QR image
-      expiresAt:   Date;
+      expiresAt: Date;
     }
   | { success: false; error: string; retryable?: boolean };
 
 export type CardTokenRequest = {
   organizationId: string;
-  orderId:        string;
-  amount:         number;       // em centavos
-  cardToken:      string;       // token gerado pelo SDK do PSP no browser
-  installments?:  number;       // padrão: 1
-  description?:   string;
+  orderId: string;
+  amount: number; // em centavos
+  cardToken: string; // token gerado pelo SDK do PSP no browser
+  installments?: number; // padrão: 1
+  description?: string;
 };
 
 export type CardChargeResult =
   | {
-      success:       true;
-      chargeId:      string;
+      success: true;
+      chargeId: string;
       authorizationCode: string;
-      nsu:           string; // Número Sequencial Único
-      last4:         string; // últimos 4 dígitos (nunca o número completo)
-      brand:         string; // VISA, MASTERCARD, etc.
+      nsu: string; // Número Sequencial Único
+      last4: string; // últimos 4 dígitos (nunca o número completo)
+      brand: string; // VISA, MASTERCARD, etc.
     }
   | { success: false; error: string; retryable?: boolean; declined?: boolean };
 
 export type PaymentStatusResult =
   | {
-      success:    true;
-      chargeId:   string;
-      paid:       boolean;
-      amount:     number;
-      paidAt?:    Date;
+      success: true;
+      chargeId: string;
+      paid: boolean;
+      amount: number;
+      paidAt?: Date;
       refundedAt?: Date;
     }
   | { success: false; error: string };
 
 export type RefundRequest = {
   chargeId: string;
-  amount?:  number; // undefined = reembolso total
-  reason?:  string;
+  amount?: number; // undefined = reembolso total
+  reason?: string;
 };
 
 export type RefundResult =
@@ -92,18 +92,14 @@ export interface PaymentProvider {
   refund(req: RefundRequest): Promise<RefundResult>;
 
   /** Valida assinatura do webhook do PSP */
-  verifyWebhookSignature(
-    payload: string,
-    headers: Record<string, string>,
-    secret: string,
-  ): boolean;
+  verifyWebhookSignature(payload: string, headers: Record<string, string>, secret: string): boolean;
 
   /** Parseia evento do webhook do PSP */
   parseWebhookEvent(payload: unknown): {
     chargeId: string;
-    event:    "paid" | "expired" | "refunded" | "failed" | string;
-    amount?:  number;
-    paidAt?:  Date;
+    event: "paid" | "expired" | "refunded" | "failed" | string;
+    amount?: number;
+    paidAt?: Date;
   } | null;
 }
 
@@ -118,11 +114,11 @@ export interface PaymentProvider {
  */
 export class PixPaymentProvider implements PaymentProvider {
   private readonly baseUrl: string;
-  private readonly apiKey:  string;
+  private readonly apiKey: string;
 
   constructor(credentials: { baseUrl: string; apiKey: string }) {
     this.baseUrl = credentials.baseUrl;
-    this.apiKey  = credentials.apiKey;
+    this.apiKey = credentials.apiKey;
   }
 
   async createPixCharge(req: PixChargeRequest): Promise<PixChargeResult> {
@@ -131,21 +127,20 @@ export class PixPaymentProvider implements PaymentProvider {
     // Exemplo Gerencianet: POST /v2/cob/{txid}
     console.warn("[PixPaymentProvider.createPixCharge] Modo simulado");
 
-    const expiresAt = new Date(
-      Date.now() + (req.expiresInSeconds ?? 3600) * 1000,
-    );
+    const expiresAt = new Date(Date.now() + (req.expiresInSeconds ?? 3600) * 1000);
 
     // Pix simulado — substituir por resposta real do PSP
     return {
-      success:     true,
-      chargeId:    `PIX_${req.orderId}_${Date.now()}`,
-      qrCode:      `00020126580014br.gov.bcb.pix0136${req.orderId}5204000053039865802BR5925MarketOS6009Sao Paulo62070503***6304ABCD`,
-      qrCodeImage: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      success: true,
+      chargeId: `PIX_${req.orderId}_${Date.now()}`,
+      qrCode: `00020126580014br.gov.bcb.pix0136${req.orderId}5204000053039865802BR5925MarketOS6009Sao Paulo62070503***6304ABCD`,
+      qrCodeImage:
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       expiresAt,
     };
   }
 
-  async chargeCard(req: CardTokenRequest): Promise<CardChargeResult> {
+  async chargeCard(_req: CardTokenRequest): Promise<CardChargeResult> {
     // TODO: Integrar com PSP real para captura de cartão tokenizado
     console.warn("[PixPaymentProvider.chargeCard] Não suportado neste provider");
     return { success: false, error: "Pagamento com cartão não suportado neste provider" };
@@ -155,10 +150,10 @@ export class PixPaymentProvider implements PaymentProvider {
     // TODO: GET /charges/{chargeId} no PSP
     console.warn(`[PixPaymentProvider.getChargeStatus] Simulado para ${chargeId}`);
     return {
-      success:  true,
+      success: true,
       chargeId,
-      paid:     false,
-      amount:   0,
+      paid: false,
+      amount: 0,
     };
   }
 
@@ -189,9 +184,9 @@ export class PixPaymentProvider implements PaymentProvider {
 
   parseWebhookEvent(payload: unknown): {
     chargeId: string;
-    event:    string;
-    amount?:  number;
-    paidAt?:  Date;
+    event: string;
+    amount?: number;
+    paidAt?: Date;
   } | null {
     // TODO: Parsear webhook do PSP
     // Formato varia por provedor
@@ -200,9 +195,9 @@ export class PixPaymentProvider implements PaymentProvider {
 
     return {
       chargeId: String(raw.id),
-      event:    String(raw.event ?? raw.status ?? "unknown"),
-      amount:   raw.value ? Number(raw.value) : undefined,
-      paidAt:   raw.paymentDate ? new Date(String(raw.paymentDate)) : undefined,
+      event: String(raw.event ?? raw.status ?? "unknown"),
+      amount: raw.value ? Number(raw.value) : undefined,
+      paidAt: raw.paymentDate ? new Date(String(raw.paymentDate)) : undefined,
     };
   }
 }
@@ -213,12 +208,10 @@ export class PixPaymentProvider implements PaymentProvider {
  * Retorna o PaymentProvider configurado para a organização.
  * Em produção, buscar credenciais de ChannelIntegration.
  */
-export function getPaymentProvider(
-  credentials: Record<string, unknown>,
-): PaymentProvider {
+export function getPaymentProvider(credentials: Record<string, unknown>): PaymentProvider {
   // Por ora, único provider disponível é Pix
   return new PixPaymentProvider({
     baseUrl: String(credentials.baseUrl ?? "https://api.asaas.com/v3"),
-    apiKey:  String(credentials.apiKey ?? ""),
+    apiKey: String(credentials.apiKey ?? ""),
   });
 }

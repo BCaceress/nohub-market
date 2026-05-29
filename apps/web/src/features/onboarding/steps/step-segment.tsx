@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import type { SegmentType } from "@/lib/capabilities";
-import { cn } from "@/lib/utils";
 import { Beer, ShoppingCart, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import type { SegmentType } from "@/lib/capabilities";
+import { cn } from "@/lib/utils";
 import { selectSegmentAction } from "../actions";
 import { useOnboarding } from "../store";
 

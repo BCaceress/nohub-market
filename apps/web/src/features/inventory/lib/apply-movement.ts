@@ -11,8 +11,8 @@
  * Executa tudo em UMA transação: movimento + saldo nunca divergem.
  */
 
+import type { MovementReason, MovementType } from "@nohub/db";
 import { prisma } from "@nohub/db";
-import type { MovementReason, MovementType, Prisma } from "@nohub/db";
 
 export type MovementInput = {
   organizationId: string;

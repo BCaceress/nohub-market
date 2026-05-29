@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,10 +25,10 @@ export function LossForm({ organizationId, products, locations }: Props) {
 
   const [form, setForm] = useState({
     locationId: "",
-    productId:  "",
-    quantity:   "",
-    reason:     "DAMAGE" as const,
-    note:       "",
+    productId: "",
+    quantity: "",
+    reason: "DAMAGE" as const,
+    note: "",
   });
 
   function set(k: keyof typeof form, v: string) {
@@ -44,16 +44,22 @@ export function LossForm({ organizationId, products, locations }: Props) {
     startTransition(async () => {
       const res = await registerLossAction(organizationId, {
         locationId: form.locationId,
-        productId:  form.productId,
-        quantity:   parseFloat(form.quantity),
-        reason:     form.reason,
-        note:       form.note,
+        productId: form.productId,
+        quantity: parseFloat(form.quantity),
+        reason: form.reason,
+        note: form.note,
       });
       if (!res.success) {
         setError(res.error);
       } else {
         setSuccess(`Perda registrada com sucesso! (ID: ${res.data.movementId.slice(-8)})`);
-        setForm({ locationId: form.locationId, productId: "", quantity: "", reason: "DAMAGE", note: "" });
+        setForm({
+          locationId: form.locationId,
+          productId: "",
+          quantity: "",
+          reason: "DAMAGE",
+          note: "",
+        });
       }
     });
   }
@@ -74,7 +80,9 @@ export function LossForm({ organizationId, products, locations }: Props) {
           >
             <option value="">Selecione o local</option>
             {locations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
             ))}
           </select>
         </div>
@@ -90,7 +98,10 @@ export function LossForm({ organizationId, products, locations }: Props) {
           >
             <option value="">Selecione o produto</option>
             {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — ${p.sku}` : ""}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.sku ? ` — ${p.sku}` : ""}
+              </option>
             ))}
           </select>
         </div>
@@ -142,14 +153,16 @@ export function LossForm({ organizationId, products, locations }: Props) {
         />
       </div>
 
-      {error   && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
       {success && <p className="text-sm text-green-600">{success}</p>}
 
       <div className="flex gap-3">
         <Button
           type="submit"
           variant="destructive"
-          disabled={isPending || !form.locationId || !form.productId || !form.quantity || !form.note}
+          disabled={
+            isPending || !form.locationId || !form.productId || !form.quantity || !form.note
+          }
         >
           {isPending ? "Registrando…" : "Registrar perda"}
         </Button>

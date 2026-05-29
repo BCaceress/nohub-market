@@ -12,82 +12,82 @@
  * Referência: https://developers.mercadolivre.com.br/pt_br/gestao-de-pedidos
  */
 
+import crypto from "node:crypto";
 import type { OrderStatus } from "@nohub/db";
 import { ML_STATUS_MAP } from "../lib/can-transition";
 import type {
+  AdapterResult,
   ChannelAdapter,
   NormalizedOrder,
   NormalizedOrderItem,
-  AdapterResult,
   SyncProduct,
 } from "./channel-adapter";
-import crypto from "crypto";
 
 /* ── Tipos do payload ML (anti-corruption: ficam aqui) ───────── */
 
 interface MlOrderItem {
   item: {
-    id:         string;
-    title:      string;
+    id: string;
+    title: string;
     seller_sku?: string;
   };
-  quantity:        number;
-  unit_price:      number;
+  quantity: number;
+  unit_price: number;
   full_unit_price: number;
-  sale_fee?:       number;
+  sale_fee?: number;
 }
 
 interface MlBuyer {
-  id:        number;
-  nickname:  string;
-  email?:    string;
-  phone?:    { area_code: string; number: string };
+  id: number;
+  nickname: string;
+  email?: string;
+  phone?: { area_code: string; number: string };
   billing_info?: { doc_number?: string };
 }
 
 interface MlShipping {
-  id:            number;
-  status?:       string;
+  id: number;
+  status?: string;
   logistic_type?: "fulfillment" | "self_service" | "not_specified" | string;
   receiver_address?: {
-    street_name?:   string;
+    street_name?: string;
     street_number?: string;
-    zip_code?:      string;
-    city?:          { name: string };
-    state?:         { name: string };
-    comment?:       string;
+    zip_code?: string;
+    city?: { name: string };
+    state?: { name: string };
+    comment?: string;
   };
 }
 
 interface MlPayment {
-  id:             number;
-  status:         string;
+  id: number;
+  status: string;
   payment_method_id: string;
   total_paid_amount: number;
 }
 
 interface MlOrder {
-  id:            number;
-  status:        string;
+  id: number;
+  status: string;
   date_created?: string;
-  date_closed?:  string;
-  total_amount?:  number;
-  order_items:    MlOrderItem[];
-  buyer?:         MlBuyer;
-  shipping?:      MlShipping;
-  payments?:      MlPayment[];
-  tags?:          string[];
+  date_closed?: string;
+  total_amount?: number;
+  order_items: MlOrderItem[];
+  buyer?: MlBuyer;
+  shipping?: MlShipping;
+  payments?: MlPayment[];
+  tags?: string[];
 }
 
 /* ── Webhook notification (diferente do payload de pedido) ────── */
 
 interface MlWebhookNotification {
-  _id?:      string;
-  resource:  string; // "/orders/1234567890"
-  topic:     "orders_v2" | "payments" | "questions" | string;
-  user_id:   number;
+  _id?: string;
+  resource: string; // "/orders/1234567890"
+  topic: "orders_v2" | "payments" | "questions" | string;
+  user_id: number;
   received?: string;
-  sent?:     string;
+  sent?: string;
 }
 
 /* ── Adapter ─────────────────────────────────────────────────── */
@@ -97,11 +97,7 @@ export class MercadoLivreAdapter implements ChannelAdapter {
    * ML usa x-signature header com format: ts=<timestamp>,v1=<hmac>
    * Referência: https://developers.mercadolivre.com.br/pt_br/notificacoes#Validar-notifica%C3%A7%C3%B5es
    */
-  verifySignature(
-    payload: string,
-    headers: Record<string, string>,
-    secret: string,
-  ): boolean {
+  verifySignature(_payload: string, headers: Record<string, string>, secret: string): boolean {
     const sig = headers["x-signature"] ?? headers["X-Signature"];
     if (!sig) return false;
 
@@ -112,8 +108,8 @@ export class MercadoLivreAdapter implements ChannelAdapter {
       if (k && v) parts[k.trim()] = v.trim();
     }
 
-    const ts      = parts["ts"];
-    const v1      = parts["v1"];
+    const ts = parts.ts;
+    const v1 = parts.v1;
     const xDataId = headers["x-request-id"] ?? "";
 
     if (!ts || !v1) return false;
@@ -121,16 +117,10 @@ export class MercadoLivreAdapter implements ChannelAdapter {
     // Template: "id:<dataId>;request-id:<xDataId>;ts:<ts>;"
     // Se não há dataId, usa o payload bruto
     const manifest = `id:;request-id:${xDataId};ts:${ts};`;
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(manifest)
-      .digest("hex");
+    const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 
     try {
-      return crypto.timingSafeEqual(
-        Buffer.from(v1,       "hex"),
-        Buffer.from(expected, "hex"),
-      );
+      return crypto.timingSafeEqual(Buffer.from(v1, "hex"), Buffer.from(expected, "hex"));
     } catch {
       return false;
     }
@@ -175,15 +165,15 @@ export class MercadoLivreAdapter implements ChannelAdapter {
 
     // Detectar regime logístico
     const logisticType = raw.shipping?.logistic_type ?? "not_specified";
-    const isMlFull     = logisticType === "fulfillment"; // FULL: ML gerencia estoque
+    const isMlFull = logisticType === "fulfillment"; // FULL: ML gerencia estoque
 
     const items: NormalizedOrderItem[] = raw.order_items.map((it) => ({
-      externalId:    it.item.id,
-      name:          it.item.title,
-      quantity:      it.quantity,
-      unitPrice:     it.unit_price,
+      externalId: it.item.id,
+      name: it.item.title,
+      quantity: it.quantity,
+      unitPrice: it.unit_price,
       discountAmount: Math.max(0, it.full_unit_price - it.unit_price) * it.quantity,
-      lineTotal:     it.unit_price * it.quantity,
+      lineTotal: it.unit_price * it.quantity,
     }));
 
     const phone = raw.buyer?.phone
@@ -191,43 +181,39 @@ export class MercadoLivreAdapter implements ChannelAdapter {
       : undefined;
 
     const channelMetadata: Record<string, unknown> = {
-      mlOrderId:     raw.id,
-      mlStatus:      raw.status,
+      mlOrderId: raw.id,
+      mlStatus: raw.status,
       logisticType,
-      isMlFull,       // RN-V13: se true, não baixar estoque local
-      shipping:      raw.shipping,
-      payments:      raw.payments,
-      mlTags:        raw.tags,
-      dateClosed:    raw.date_closed,
-      dateCreated:   raw.date_created,
+      isMlFull, // RN-V13: se true, não baixar estoque local
+      shipping: raw.shipping,
+      payments: raw.payments,
+      mlTags: raw.tags,
+      dateClosed: raw.date_closed,
+      dateCreated: raw.date_created,
     };
 
     return {
       success: true,
       data: {
-        externalId:     String(raw.id),
+        externalId: String(raw.id),
         externalStatus: raw.status,
         // RN-V13: FULL → mappedStatus indica que fulfillment é externo
-        mappedStatus:   isMlFull && mappedStatus === "FULFILLED" ? "COMPLETED" : mappedStatus,
+        mappedStatus: isMlFull && mappedStatus === "FULFILLED" ? "COMPLETED" : mappedStatus,
         items,
-        total:          raw.total_amount ?? items.reduce((s, i) => s + i.lineTotal, 0),
+        total: raw.total_amount ?? items.reduce((s, i) => s + i.lineTotal, 0),
         channelMetadata,
-        customerName:   raw.buyer?.nickname,
-        customerPhone:  phone,
-        customerDoc:    raw.buyer?.billing_info?.doc_number,
+        customerName: raw.buyer?.nickname,
+        customerPhone: phone,
+        customerDoc: raw.buyer?.billing_info?.doc_number,
       },
     };
   }
 
-  formatOutbound(order: {
-    id: string;
-    status: OrderStatus;
-    channelMetadata: unknown;
-  }): unknown {
+  formatOutbound(order: { id: string; status: OrderStatus; channelMetadata: unknown }): unknown {
     // ML não recebe push de status desta forma — atualizações são via API de shipping
     return {
       orderId: order.id,
-      status:  order.status,
+      status: order.status,
     };
   }
 
@@ -270,7 +256,7 @@ export class MercadoLivreAdapter implements ChannelAdapter {
     if (!credentials.accessToken) {
       return {
         success: false,
-        error:   "Credenciais ML não configuradas",
+        error: "Credenciais ML não configuradas",
         retryable: true,
       };
     }
@@ -285,15 +271,15 @@ export class MercadoLivreAdapter implements ChannelAdapter {
     const mlAction: Partial<Record<OrderStatus, { endpoint: string; body: unknown }>> = {
       FULFILLED: {
         endpoint: `/shipments/{shippingId}/fulfillment`,
-        body:     { status: "shipped" },
+        body: { status: "shipped" },
       },
       COMPLETED: {
         endpoint: `/shipments/{shippingId}/fulfillment`,
-        body:     { status: "delivered" },
+        body: { status: "delivered" },
       },
       CANCELED: {
         endpoint: `/orders/${externalOrderId}/feedback`,
-        body:     { fulfilled: false },
+        body: { fulfilled: false },
       },
     };
 
@@ -303,11 +289,8 @@ export class MercadoLivreAdapter implements ChannelAdapter {
     // TODO: Chamar API real
     // Substituir {shippingId} pelo ID do envio em metadata
     const shippingId = metadata?.mlShippingId as string | undefined;
-    const url        = action.endpoint.replace("{shippingId}", shippingId ?? "");
-    console.warn(
-      `[MercadoLivreAdapter.pushStatus] Simulado — ${url}`,
-      action.body,
-    );
+    const url = action.endpoint.replace("{shippingId}", shippingId ?? "");
+    console.warn(`[MercadoLivreAdapter.pushStatus] Simulado — ${url}`, action.body);
 
     return { success: true, data: undefined };
   }

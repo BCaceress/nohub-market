@@ -1,35 +1,35 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight } from "lucide-react";
 import { createTransferAction } from "../actions/transfer-actions";
 
-type Product  = { id: string; name: string; sku: string | null; unit: string };
+type Product = { id: string; name: string; sku: string | null; unit: string };
 type Location = { id: string; name: string };
 
 type Props = {
   organizationId: string;
-  products:  Product[];
+  products: Product[];
   locations: Location[];
 };
 
 export function TransferForm({ organizationId, products, locations }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     fromLocationId: "",
-    toLocationId:   "",
-    productId:      "",
-    quantity:       "",
-    note:           "",
+    toLocationId: "",
+    productId: "",
+    quantity: "",
+    note: "",
   });
 
   function set(k: keyof typeof form, v: string) {
@@ -51,10 +51,10 @@ export function TransferForm({ organizationId, products, locations }: Props) {
     startTransition(async () => {
       const res = await createTransferAction(organizationId, {
         fromLocationId: form.fromLocationId,
-        toLocationId:   form.toLocationId,
-        productId:      form.productId,
-        quantity:       parseFloat(form.quantity),
-        note:           form.note || undefined,
+        toLocationId: form.toLocationId,
+        productId: form.productId,
+        quantity: parseFloat(form.quantity),
+        note: form.note || undefined,
       });
       if (!res.success) {
         setError(res.error);
@@ -82,7 +82,9 @@ export function TransferForm({ organizationId, products, locations }: Props) {
           >
             <option value="">Selecione</option>
             {locations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
             ))}
           </select>
         </div>
@@ -104,7 +106,9 @@ export function TransferForm({ organizationId, products, locations }: Props) {
             {locations
               .filter((l) => l.id !== form.fromLocationId)
               .map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
               ))}
           </select>
         </div>
@@ -123,7 +127,10 @@ export function TransferForm({ organizationId, products, locations }: Props) {
           >
             <option value="">Selecione o produto</option>
             {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — ${p.sku}` : ""}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.sku ? ` — ${p.sku}` : ""}
+              </option>
             ))}
           </select>
         </div>
@@ -156,7 +163,7 @@ export function TransferForm({ organizationId, products, locations }: Props) {
         />
       </div>
 
-      {error   && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
       {success && <p className="text-sm text-green-600">{success}</p>}
 
       <div className="flex gap-3">
@@ -165,8 +172,8 @@ export function TransferForm({ organizationId, products, locations }: Props) {
           disabled={
             isPending ||
             !form.fromLocationId ||
-            !form.toLocationId   ||
-            !form.productId      ||
+            !form.toLocationId ||
+            !form.productId ||
             !form.quantity
           }
         >

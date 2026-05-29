@@ -100,7 +100,7 @@ export function parseNfeXml(xmlContent: string): NfeParseResult {
   const idMatch = xmlContent.match(/Id="NFe(\d{44})"/i);
   const accessKey = idMatch?.[1] ?? extractTag(xmlContent, "chNFe") ?? "";
 
-  if (!accessKey || accessKey.length !== 44) {
+  if (accessKey?.length !== 44) {
     return {
       success: false,
       error: "Chave de acesso inválida ou não encontrada",

@@ -8,8 +8,8 @@
  * O processor (outbox/processor.ts) processa os eventos via Vercel Cron.
  */
 
-import { prisma } from "@nohub/db";
 import type { Prisma } from "@nohub/db";
+import { prisma } from "@nohub/db";
 
 export type OutboxEventType =
   | "IFOOD_ACCEPT" // Aceitar pedido iFood (SLA: 10 min)

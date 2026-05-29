@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpFromLine,
+  ClipboardList,
+  Trash2,
+  TrendingDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,14 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  ArrowLeftRight,
-  Trash2,
-  ClipboardList,
-  TrendingDown,
-} from "lucide-react";
 
 type Movement = {
   id: string;
@@ -34,7 +34,11 @@ type Movement = {
 
 const TYPE_CONFIG: Record<
   string,
-  { label: string; variant: "success" | "destructive" | "info" | "warning" | "secondary"; icon: React.ReactNode }
+  {
+    label: string;
+    variant: "success" | "destructive" | "info" | "warning" | "secondary";
+    icon: React.ReactNode;
+  }
 > = {
   IN: {
     label: "Entrada",

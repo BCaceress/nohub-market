@@ -5,8 +5,8 @@
  * Idempotência: idempotencyKey evita duplicatas.
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 
 export type POItemInput = {
   productId: string;

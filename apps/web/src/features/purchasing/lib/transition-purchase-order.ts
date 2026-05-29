@@ -5,9 +5,9 @@
  * cancelPurchaseOrder — qualquer não-terminal → CANCELED (RN-P08)
  */
 
-import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
 import type { PurchaseOrderStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { canTransitionPO } from "./can-transition-po";
 
 async function transitionPO(

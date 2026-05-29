@@ -12,9 +12,9 @@
  * Nunca escreve StockBalance diretamente — tudo via applyMovement.
  */
 
+import { prisma } from "@nohub/db";
 import { applyMovement } from "@/features/inventory/lib/apply-movement";
 import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
 
 export type ConfirmReceiptResult =
   | { success: true; receiptId: string; movementsCreated: number; payablesCreated: number }

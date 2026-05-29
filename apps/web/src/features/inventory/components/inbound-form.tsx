@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { registerInboundAction } from "../actions/inventory-actions";
 
 type Product = { id: string; name: string; sku: string | null; unit: string };
@@ -25,15 +25,15 @@ export function InboundForm({ organizationId, products, locations }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    locationId:      "",
-    productId:       "",
-    quantity:        "",
-    unitCost:        "",
-    lotCode:         "",
-    expiryDate:      "",
+    locationId: "",
+    productId: "",
+    quantity: "",
+    unitCost: "",
+    lotCode: "",
+    expiryDate: "",
     manufactureDate: "",
-    reason:          "PURCHASE" as const,
-    note:            "",
+    reason: "PURCHASE" as const,
+    note: "",
   });
 
   function set(k: keyof typeof form, v: string) {
@@ -48,30 +48,30 @@ export function InboundForm({ organizationId, products, locations }: Props) {
     setSuccess(null);
     startTransition(async () => {
       const res = await registerInboundAction(organizationId, {
-        locationId:      form.locationId,
-        productId:       form.productId,
-        quantity:        parseFloat(form.quantity),
-        unitCost:        form.unitCost ? parseFloat(form.unitCost) : undefined,
-        lotCode:         form.lotCode  || undefined,
-        expiryDate:      form.expiryDate || undefined,
+        locationId: form.locationId,
+        productId: form.productId,
+        quantity: parseFloat(form.quantity),
+        unitCost: form.unitCost ? parseFloat(form.unitCost) : undefined,
+        lotCode: form.lotCode || undefined,
+        expiryDate: form.expiryDate || undefined,
         manufactureDate: form.manufactureDate || undefined,
-        reason:          form.reason,
-        note:            form.note || undefined,
+        reason: form.reason,
+        note: form.note || undefined,
       });
       if (!res.success) {
         setError(res.error);
       } else {
         setSuccess(`Entrada registrada com sucesso! (ID: ${res.data.movementId.slice(-8)})`);
         setForm({
-          locationId:      form.locationId,
-          productId:       "",
-          quantity:        "",
-          unitCost:        "",
-          lotCode:         "",
-          expiryDate:      "",
+          locationId: form.locationId,
+          productId: "",
+          quantity: "",
+          unitCost: "",
+          lotCode: "",
+          expiryDate: "",
           manufactureDate: "",
-          reason:          "PURCHASE",
-          note:            "",
+          reason: "PURCHASE",
+          note: "",
         });
       }
     });
@@ -98,7 +98,9 @@ export function InboundForm({ organizationId, products, locations }: Props) {
               >
                 <option value="">Selecione o local</option>
                 {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -114,7 +116,10 @@ export function InboundForm({ organizationId, products, locations }: Props) {
               >
                 <option value="">Selecione o produto</option>
                 {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}{p.sku ? ` — ${p.sku}` : ""}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.sku ? ` — ${p.sku}` : ""}
+                  </option>
                 ))}
               </select>
             </div>
@@ -217,11 +222,14 @@ export function InboundForm({ organizationId, products, locations }: Props) {
         />
       </div>
 
-      {error   && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
       {success && <p className="text-sm text-green-600">{success}</p>}
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={isPending || !form.locationId || !form.productId || !form.quantity}>
+        <Button
+          type="submit"
+          disabled={isPending || !form.locationId || !form.productId || !form.quantity}
+        >
           {isPending ? "Registrando…" : "Registrar entrada"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.push("/app/inventory")}>

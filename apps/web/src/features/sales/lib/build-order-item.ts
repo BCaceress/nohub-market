@@ -6,8 +6,8 @@
  * O snapshot sobrevive a alterações futuras no produto — o passado não muda.
  */
 
-import { prisma } from "@nohub/db";
 import type { OrderChannel } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { resolvePrice, resolveTax } from "@nohub/db/catalog";
 
 export type BuildOrderItemInput = {
