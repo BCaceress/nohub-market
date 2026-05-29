@@ -46,9 +46,9 @@ export function calcMargin(cost: number, price: number): number | null {
   return ((price - cost) / price) * 100;
 }
 
+// Temperatura e +18 NÃO são mais herdados da subcategoria — viram campos do
+// produto preenchidos pela busca/IA. Subcategoria herda apenas validade e lote.
 export type InheritedProfile = {
-  hasAgeRestriction: boolean;
-  storageTemperature: "AMBIENTE" | "REFRIGERADO" | "CONGELADO" | null;
   controlsExpiry: boolean;
   controlsLot: boolean;
 };
@@ -73,32 +73,18 @@ export function resolveInheritedProfile(
     return null;
   };
   return {
-    hasAgeRestriction: chain.some((c) => c.hasAgeRestriction),
-    storageTemperature: firstDefined((c) => c.storageTemperature),
     controlsExpiry: firstDefined((c) => c.controlsExpiry) ?? false,
     controlsLot: firstDefined((c) => c.controlsLot) ?? false,
   };
 }
 
-export type InheritedBadgeKind =
-  | "age"
-  | "ambiente"
-  | "refrigerado"
-  | "congelado"
-  | "expiry"
-  | "lot";
+export type InheritedBadgeKind = "expiry" | "lot";
 
 export type InheritedBadge = { kind: InheritedBadgeKind; label: string };
 
 /** Badges do perfil herdado — `kind` mapeia para ícone lucide na UI. */
 export function inheritedBadges(profile: InheritedProfile): InheritedBadge[] {
   const out: InheritedBadge[] = [];
-  if (profile.hasAgeRestriction) out.push({ kind: "age", label: "+18" });
-  if (profile.storageTemperature === "AMBIENTE") out.push({ kind: "ambiente", label: "Ambiente" });
-  else if (profile.storageTemperature === "REFRIGERADO")
-    out.push({ kind: "refrigerado", label: "Refrigerado" });
-  else if (profile.storageTemperature === "CONGELADO")
-    out.push({ kind: "congelado", label: "Congelado" });
   if (profile.controlsExpiry) out.push({ kind: "expiry", label: "Controla validade" });
   if (profile.controlsLot) out.push({ kind: "lot", label: "Controla lote" });
   return out;

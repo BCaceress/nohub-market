@@ -607,6 +607,7 @@ model Product {
   brandId        String?     // FK → Brand
 
   name             String
+  posName          String?   // nome curto p/ PDV e cupom fiscal (≤40 chars)
   description      String?
   brand            String?   // legacy plain-text brand — still writable
 

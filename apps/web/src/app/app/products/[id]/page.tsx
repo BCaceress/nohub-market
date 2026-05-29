@@ -1,3 +1,7 @@
+import { prisma } from "@nohub/db";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
 import { listProductPackagesAction } from "@/features/catalog/actions/package-actions";
@@ -7,14 +11,10 @@ import {
 } from "@/features/catalog/actions/product-actions";
 import { KitEditor } from "@/features/catalog/components/kit-editor";
 import { PackagesEditor } from "@/features/catalog/components/packages-editor";
-import { ProductWizard } from "@/features/catalog/components/product-wizard";
+import { ProductQuickCreate } from "@/features/catalog/components/product-quick-create";
 import { TaxEditor } from "@/features/catalog/components/tax-editor";
 import { VariantEditor } from "@/features/catalog/components/variant-editor";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
 import { ProductTabs } from "./product-tabs";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -99,12 +99,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           />
         }
         dadosContent={
-          <ProductWizard
+          <ProductQuickCreate
             organizationId={member.organizationId}
             categories={categories as never}
             suppliers={suppliers}
             taxRegime={org?.taxRegime ?? null}
             product={product as never}
+            initialPackages={packages}
           />
         }
         variantesContent={

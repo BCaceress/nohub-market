@@ -67,6 +67,7 @@ export type CategoryInput = z.infer<typeof categorySchema>;
 
 export const productSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(200),
+  posName: z.string().max(40).optional().or(z.literal("")), // nome curto p/ PDV/cupom
   description: z.string().max(2000).optional().or(z.literal("")),
   brand: z.string().max(100).optional().or(z.literal("")),
   brandId: z.string().cuid().optional().or(z.literal("")),
@@ -115,6 +116,8 @@ export const productSchema = z.object({
   hasAgeRestriction: z.boolean().default(false),
   minAge: z.coerce.number().int().min(0).max(99).optional(),
   expiryDays: z.coerce.number().int().min(1).optional(),
+  // Armazenagem própria do produto (não herda mais da subcategoria)
+  storageTemperature: z.enum(["AMBIENTE", "REFRIGERADO", "CONGELADO"]).optional().or(z.literal("")),
 });
 export type ProductInput = z.infer<typeof productSchema>;
 

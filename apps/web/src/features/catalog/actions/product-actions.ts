@@ -1,10 +1,10 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 import { type ProductInput, productSchema } from "../schemas";
 
 /* ── RBAC ────────────────────────────────────────────────────── */
@@ -175,6 +175,7 @@ export async function createProductAction(
     data: {
       organizationId,
       name: d.name,
+      posName: d.posName || null,
       description: d.description || null,
       brand: d.brand || null,
       brandId: d.brandId || null,
@@ -204,6 +205,7 @@ export async function createProductAction(
       hasAgeRestriction: d.hasAgeRestriction,
       minAge: d.hasAgeRestriction ? (d.minAge ?? null) : null,
       expiryDays: d.expiryDays ?? null,
+      storageTemperature: d.storageTemperature || null,
     },
   });
 
@@ -302,6 +304,7 @@ export async function updateProductAction(
     where: { id: productId, organizationId },
     data: {
       name: d.name,
+      posName: d.posName || null,
       description: d.description || null,
       brand: d.brand || null,
       sku: d.sku || null,
@@ -328,6 +331,7 @@ export async function updateProductAction(
       hasAgeRestriction: d.hasAgeRestriction,
       minAge: d.hasAgeRestriction ? (d.minAge ?? null) : null,
       expiryDays: d.expiryDays ?? null,
+      storageTemperature: d.storageTemperature || null,
     },
   });
 
@@ -636,6 +640,64 @@ export async function findProductByBarcodeAction(
     return { id, name, imageUrl, sku };
   }
   return null;
+}
+
+/* ── Catalog autocomplete (anti-duplicado) ───────────────────── */
+
+export interface CatalogMatch {
+  id: string;
+  name: string;
+  brand: string | null;
+  sku: string | null;
+  barcode: string | null;
+  imageUrl: string | null;
+  categoryName: string | null;
+}
+
+/** Busca produtos da org por nome/SKU/EAN — usado no autocomplete do cadastro. */
+export async function searchCatalogAction(
+  organizationId: string,
+  query: string,
+): Promise<CatalogMatch[]> {
+  const session = await getSession();
+  if (!session) return [];
+
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const rows = await prisma.product.findMany({
+    where: {
+      organizationId,
+      deletedAt: null,
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+        { barcode: { contains: q.replace(/\D/g, "") || q } },
+        { brand: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      brand: true,
+      sku: true,
+      barcode: true,
+      imageUrl: true,
+      category: { select: { name: true } },
+    },
+    orderBy: { name: "asc" },
+    take: 8,
+  });
+
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    sku: p.sku,
+    barcode: p.barcode,
+    imageUrl: p.imageUrl,
+    categoryName: p.category?.name ?? null,
+  }));
 }
 
 /* ── Product search for Kit composer ─────────────────────────── */

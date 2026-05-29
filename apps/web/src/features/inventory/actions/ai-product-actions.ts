@@ -1,8 +1,8 @@
 "use server";
 
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
+import { getSession } from "@/lib/auth-server";
 
 /* ─────────────────────────────────────────────────────────────────────
    Public interface — returned to client
@@ -28,6 +28,21 @@ export interface OpenFoodFactsProduct {
   barcode: string;
   confidence: "high" | "medium" | "low";
   source: "cosmos_br" | "gemini";
+  // derived attributes (auto-fill)
+  volume?: number; // numeric content (ex: 2)
+  volumeUnit?: string; // L | ML
+  flavor?: string; // ex: Guaraná
+  containsAlcohol?: boolean;
+  minimumAge?: number; // 0 | 18 → age restriction
+  isPerishable?: boolean;
+  requiresRefrigeration?: boolean;
+  shelfLifeDays?: number; // validade típica em dias → expiryDays
+  // PDV / armazenagem / comercial
+  shortName?: string; // ≤40 chars — display PDV / cupom fiscal
+  storageTemperature?: "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
+  suggestedPrice?: number; // preço médio mercado (Cosmos) → preço de venda inicial
+  // embalagens de compra (fardo/caixa) com EAN + total de unidades
+  packagingLevels?: { label: string; barcode: string; totalUnits: number }[];
   // unit suggestions
   suggestedUnit?: string; // UN | KG | G | L | ML | CX | PCT | FARDO | DZ | BANDEJA
   suggestedPackUnit?: string; // fardo / caixa unit
@@ -98,6 +113,17 @@ interface GeminiFullResult {
   unit?: string;
   packUnit?: string;
   packSize?: number;
+  // derived attributes
+  volume?: number;
+  volumeUnit?: string;
+  flavor?: string;
+  containsAlcohol?: boolean;
+  minimumAge?: number;
+  isPerishable?: boolean;
+  requiresRefrigeration?: boolean;
+  shelfLifeDays?: number;
+  shortName?: string;
+  storageTemperature?: "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
   // fiscal
   ncm?: string;
   cest?: string;
@@ -111,6 +137,37 @@ interface GeminiFullResult {
 }
 
 const UA = "NoHubMarket/1.0 (https://nohub.com.br; contact@nohub.com.br) Node.js";
+
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"] as const;
+const GEMINI_JSON_CONFIG = {
+  responseMimeType: "application/json",
+  thinkingConfig: { thinkingBudget: 0 },
+} as const;
+
+async function geminiGenerateJson(apiKey: string, prompt: string): Promise<string | null> {
+  const { GoogleGenAI } = await import("@google/genai");
+  const ai = new GoogleGenAI({ apiKey });
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: GEMINI_JSON_CONFIG,
+      });
+      const text = (response.text ?? "").trim();
+      if (text) return text;
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      if (status === 503 || status === 429) {
+        console.warn(`[barcode] ${model} unavailable (${status}), trying fallback`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  return null;
+}
 
 /* ─────────────────────────────────────────────────────────────────────
    Cosmos Bluesoft
@@ -128,6 +185,35 @@ const COSMOS_PKG_MAP: Record<string, string> = {
   LT: "L",
   ML: "ML",
 };
+
+// Human label for packaging unit enum (used in pack hierarchy UI)
+const PKG_LEVEL_LABEL: Record<string, string> = {
+  FARDO: "Fardo",
+  CX: "Caixa",
+  PCT: "Pacote",
+  DZ: "Dúzia",
+  BANDEJA: "Bandeja",
+};
+
+/** Build pack hierarchy (fardo/caixa) from Cosmos gtins — excludes the unit-level EAN */
+function cosmosPackagingLevels(
+  cosmos: CosmosResult,
+): { label: string; barcode: string; totalUnits: number }[] {
+  return cosmos.gtins
+    .filter(
+      (g) =>
+        g.gtin &&
+        g.gtin !== cosmos.barcode &&
+        g.typePackaging !== "UN" &&
+        (g.quantityPackaging ?? 0) > 1,
+    )
+    .map((g) => ({
+      label: PKG_LEVEL_LABEL[g.typePackaging ?? ""] ?? g.typePackaging ?? "Embalagem",
+      barcode: g.gtin,
+      totalUnits: g.quantityPackaging ?? 0,
+    }))
+    .sort((a, b) => a.totalUnits - b.totalUnits);
+}
 
 async function fetchFromCosmosBr(barcode: string): Promise<CosmosResult | null> {
   const token = process.env.COSMOS_API_TOKEN;
@@ -237,6 +323,11 @@ function cosmosToProduct(cosmos: CosmosResult): OpenFoodFactsProduct {
     suggestedUnit,
     suggestedPackUnit: packGtin?.typePackaging,
     suggestedPackSize: packGtin?.quantityPackaging,
+    suggestedPrice: cosmos.avgPrice || undefined,
+    packagingLevels: (() => {
+      const lvls = cosmosPackagingLevels(cosmos);
+      return lvls.length ? lvls : undefined;
+    })(),
     confidence: "high",
     source: "cosmos_br",
   };
@@ -260,9 +351,6 @@ async function enrichWithGeminiContext(params: {
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
 
   try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-
     const catList = categories
       .slice(0, 80)
       .map((c) =>
@@ -321,6 +409,16 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
   "unit": "unidade de estoque: UN | KG | G | L | ML (baseado no tipo de produto — líquidos→L/ML, peso→KG/G, unitário→UN)",
   "packUnit": "unidade da embalagem de compra se houver fardo/caixa: CX | FARDO | PCT | DZ ou null",
   "packSize": número de unidades no fardo/caixa ou null,
+  "volume": número do conteúdo se líquido (ex: 2 para 2L, 350 para 350ml) ou null,
+  "volumeUnit": "L ou ML se líquido, senão null",
+  "flavor": "sabor/variedade se houver (ex: Guaraná, Morango, Original) ou null",
+  "containsAlcohol": true se bebida alcoólica senão false,
+  "minimumAge": 18 se alcoólico/tabaco/restrito senão 0,
+  "isPerishable": true se perecível (laticínios, carnes, frios, hortifruti, pães) senão false,
+  "requiresRefrigeration": true se precisa refrigeração/congelamento senão false,
+  "shelfLifeDays": validade típica em dias a partir da fabricação (ex: leite 7, refrigerante 180, enlatado 730) ou null,
+  "shortName": "nome curto p/ cupom fiscal e PDV, MÁXIMO 40 caracteres, em CAIXA ALTA (ex: REFRIG FANTA GUARANA 2L)",
+  "storageTemperature": "AMBIENTE | REFRIGERADO | CONGELADO conforme exigência de armazenagem",
   "categoryId": "ID exato da categoria da lista acima que melhor se encaixa, ou null",
   "category": "nome da categoria escolhida ou null",
   "suggestedTagIds": ["IDs de tags existentes relevantes (0–8)"],
@@ -341,13 +439,7 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
   "cofinsCst": "${isSimples ? "07" : "01"}"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: { responseMimeType: "application/json" },
-    });
-
-    const text = (response.text ?? "").trim();
+    const text = await geminiGenerateJson(apiKey, prompt);
     if (!text) return null;
 
     const data = JSON.parse(text) as GeminiFullResult & { unknown?: boolean };
@@ -366,7 +458,8 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
     }
 
     return data;
-  } catch {
+  } catch (err) {
+    console.error("[barcode] Gemini enrichment error:", err);
     return null;
   }
 }
@@ -380,9 +473,6 @@ async function lookupWithGeminiBarcode(barcode: string): Promise<OpenFoodFactsPr
   if (!apiKey) return null;
 
   try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-
     const prompt = `Você é especialista em produtos de varejo brasileiro.
 Com base no código EAN ${barcode}, identifique o produto.
 Se não conhecer, retorne: {"unknown": true}
@@ -401,13 +491,7 @@ Retorne JSON:
 
 Retorne APENAS JSON válido, sem markdown.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: { responseMimeType: "application/json" },
-    });
-
-    const text = (response.text ?? "").trim();
+    const text = await geminiGenerateJson(apiKey, prompt);
     if (!text) return null;
 
     const data = JSON.parse(text) as {
@@ -436,7 +520,8 @@ Retorne APENAS JSON válido, sem markdown.`;
       confidence: "medium",
       source: "gemini",
     };
-  } catch {
+  } catch (err) {
+    console.error("[barcode] Gemini barcode-only error:", err);
     return null;
   }
 }
@@ -488,6 +573,8 @@ export async function lookupProductByBarcodeAction(
   const tags: ContextTag[] = orgContext ? orgContext[1] : [];
   const taxRegime = orgContext ? (orgContext[2]?.taxRegime ?? null) : null;
 
+  console.log("[barcode] Cosmos result:", JSON.stringify(cosmosData, null, 2));
+
   // ── Path 1: Cosmos + Gemini full context ─────────────────────
   if (cosmosData && hasGemini) {
     const geminiResult = await enrichWithGeminiContext({
@@ -497,6 +584,8 @@ export async function lookupProductByBarcodeAction(
       tags,
       taxRegime,
     });
+
+    console.log("[barcode] Gemini result:", JSON.stringify(geminiResult, null, 2));
 
     if (geminiResult?.name) {
       const existingTagNames = (geminiResult.suggestedTagIds ?? [])
@@ -529,6 +618,22 @@ export async function lookupProductByBarcodeAction(
           suggestedUnit: geminiResult.unit || undefined,
           suggestedPackUnit: geminiResult.packUnit || undefined,
           suggestedPackSize: geminiResult.packSize || undefined,
+          // derived attributes
+          volume: geminiResult.volume || undefined,
+          volumeUnit: geminiResult.volumeUnit || undefined,
+          flavor: geminiResult.flavor || undefined,
+          containsAlcohol: geminiResult.containsAlcohol ?? undefined,
+          minimumAge: geminiResult.minimumAge ?? undefined,
+          isPerishable: geminiResult.isPerishable ?? undefined,
+          requiresRefrigeration: geminiResult.requiresRefrigeration ?? undefined,
+          shelfLifeDays: geminiResult.shelfLifeDays || undefined,
+          shortName: geminiResult.shortName?.slice(0, 40) || undefined,
+          storageTemperature: geminiResult.storageTemperature || undefined,
+          suggestedPrice: cosmosData.avgPrice || undefined,
+          packagingLevels: (() => {
+            const lvls = cosmosPackagingLevels(cosmosData);
+            return lvls.length ? lvls : undefined;
+          })(),
           confidence: "high",
           source: "gemini",
           // fiscal — Gemini confirms/corrects Cosmos values
@@ -555,6 +660,7 @@ export async function lookupProductByBarcodeAction(
   // ── Path 3: Gemini barcode-only (no Cosmos token or not found) ─
   if (hasGemini) {
     const geminiOnly = await lookupWithGeminiBarcode(cleaned);
+    console.log("[barcode] Gemini barcode-only result:", JSON.stringify(geminiOnly, null, 2));
     if (geminiOnly) return { success: true, data: geminiOnly };
   }
 
@@ -562,4 +668,72 @@ export async function lookupProductByBarcodeAction(
     success: false,
     error: "Produto não encontrado. Verifique o token COSMOS_API_TOKEN ou preencha manualmente.",
   };
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Busca online por NOME — retorna candidatos (usuário escolhe → enriquece)
+───────────────────────────────────────────────────────────────────── */
+
+export interface OnlineProductCandidate {
+  barcode: string;
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+}
+
+/**
+ * Pesquisa produtos por nome no Cosmos (busca textual). Retorna candidatos com
+ * EAN; o cliente escolhe um e chama lookupProductByBarcodeAction para enriquecer.
+ */
+export async function searchProductsByNameAction(
+  query: string,
+): Promise<Result<OnlineProductCandidate[]>> {
+  const session = await getSession();
+  if (!session) return { success: false, error: "Não autenticado" };
+
+  const q = query.trim();
+  if (q.length < 3) return { success: true, data: [] };
+
+  const token = process.env.COSMOS_API_TOKEN;
+  if (!token) return { success: false, error: "Busca online indisponível (sem COSMOS_API_TOKEN)" };
+
+  try {
+    const res = await fetch(
+      `https://api.cosmos.bluesoft.com.br/products?query=${encodeURIComponent(q)}`,
+      {
+        headers: {
+          "User-Agent": UA,
+          Accept: "application/json",
+          "X-Cosmos-Token": token,
+        },
+        signal: AbortSignal.timeout(7000),
+        next: { revalidate: 3600 },
+      },
+    );
+    if (!res.ok) return { success: true, data: [] };
+
+    const json = (await res.json()) as {
+      products?: Array<{
+        description?: string;
+        gtin?: string | number;
+        thumbnail?: string;
+        brand?: { name?: string };
+      }>;
+    };
+
+    const candidates: OnlineProductCandidate[] = (json.products ?? [])
+      .map((p) => ({
+        barcode: String(p.gtin ?? "").replace(/\D/g, ""),
+        name: String(p.description ?? "").trim(),
+        brand: String(p.brand?.name ?? "").trim() || undefined,
+        imageUrl: String(p.thumbnail ?? "").trim() || undefined,
+      }))
+      .filter((c) => c.barcode.length >= 8 && c.name)
+      .slice(0, 8);
+
+    return { success: true, data: candidates };
+  } catch (err) {
+    console.error("[name-search] error:", err);
+    return { success: true, data: [] };
+  }
 }

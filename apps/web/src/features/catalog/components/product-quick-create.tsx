@@ -1,5 +1,31 @@
 "use client";
 
+import {
+  ArrowLeft,
+  Boxes,
+  CalendarClock,
+  Camera,
+  Check,
+  ChevronDown,
+  Copy,
+  FileText,
+  FolderPlus,
+  ImagePlus,
+  Loader2,
+  type LucideIcon,
+  Package,
+  Plus,
+  PlusCircle,
+  Receipt,
+  RefreshCw,
+  ScanLine,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,68 +51,97 @@ import {
   createCategoryAction,
   suggestSubcategoryTaxAction,
 } from "@/features/catalog/actions/category-actions";
-import { upsertProductPackageAction } from "@/features/catalog/actions/package-actions";
+import {
+  deleteProductPackageAction,
+  type ProductPackage,
+  upsertProductPackageAction,
+} from "@/features/catalog/actions/package-actions";
 import {
   createProductAction,
   findProductByBarcodeAction,
   generateNextSkuAction,
   generateSkuAction,
   setProductSuppliersAction,
+  updateProductAction,
 } from "@/features/catalog/actions/product-actions";
 import { setProductTaxAction } from "@/features/catalog/actions/tax-actions";
 import { BarcodeScanner } from "@/features/catalog/components/barcode-scanner";
+import { BarcodeSearchStep } from "@/features/catalog/components/barcode-search-step";
 import {
   type CategoryLite,
-  type InheritedBadgeKind,
   calcMargin,
+  type InheritedBadgeKind,
   inheritedBadges,
   normalizeBrandName,
   resolveInheritedProfile,
 } from "@/features/catalog/lib/product-helpers";
 import type { ProductInput } from "@/features/catalog/schemas";
 import {
-  type OpenFoodFactsProduct,
   lookupProductByBarcodeAction,
+  type OpenFoodFactsProduct,
 } from "@/features/inventory/actions/ai-product-actions";
-import { MAX_IMAGE_BYTES, isCloudinaryConfigured, uploadImageToCloudinary } from "@/lib/cloudinary";
+import { isCloudinaryConfigured, MAX_IMAGE_BYTES, uploadImageToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
-import {
-  ArrowLeft,
-  Boxes,
-  CalendarClock,
-  Camera,
-  Check,
-  ChevronDown,
-  Copy,
-  FileText,
-  FolderPlus,
-  ImagePlus,
-  Loader2,
-  type LucideIcon,
-  Package,
-  Plus,
-  PlusCircle,
-  Receipt,
-  RefreshCw,
-  ScanLine,
-  ShieldAlert,
-  Snowflake,
-  Sparkles,
-  Thermometer,
-  Trash2,
-  X,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 interface Props {
   organizationId: string;
   categories: CategoryLite[];
-  initialSku: string;
+  initialSku?: string;
   suppliers: { id: string; name: string }[];
   taxRegime: string | null;
+  product?: ExistingProduct;
+  initialPackages?: ProductPackage[];
 }
+
+type ExistingTaxData = {
+  ncm: string;
+  cest: string | null;
+  cfopInternal: string | null;
+  cfopInterstate: string | null;
+  origin: string;
+  icmsCst: string | null;
+  icmsCsosn: string | null;
+  icmsRate: { toString(): string } | null;
+  pisCst: string | null;
+  pisRate: { toString(): string } | null;
+  cofinsCst: string | null;
+  cofinsRate: { toString(): string } | null;
+};
+
+type ExistingProduct = {
+  id: string;
+  name: string;
+  posName: string | null;
+  description: string | null;
+  brand: string | null;
+  sku: string | null;
+  barcode: string | null;
+  tags?: string[];
+  productType: string;
+  unit: string;
+  saleUnit: string;
+  conversionFactor: { toString(): string };
+  packUnit: string | null;
+  packSize: number | null;
+  price: { toString(): string };
+  costPrice: { toString(): string } | null;
+  imageUrl: string | null;
+  weight: { toString(): string } | null;
+  height: { toString(): string } | null;
+  width: { toString(): string } | null;
+  length: { toString(): string } | null;
+  stockMin: { toString(): string } | null;
+  stockIdeal: { toString(): string } | null;
+  location: string | null;
+  isActive: boolean;
+  categoryId: string | null;
+  supplierId: string | null;
+  hasAgeRestriction: boolean;
+  minAge: number | null;
+  expiryDays: number | null;
+  storageTemperature: "AMBIENTE" | "REFRIGERADO" | "CONGELADO" | null;
+  taxData?: ExistingTaxData[];
+};
 
 const UNIT_SELECT = [
   { value: "UN", label: "Unidade (un)" },
@@ -173,7 +228,12 @@ const EMPTY_TAX: TaxForm = {
   cofinsRate: "",
 };
 
-const TEMP_OPTIONS: {
+const BADGE_ICON: Record<InheritedBadgeKind, LucideIcon> = {
+  expiry: CalendarClock,
+  lot: Boxes,
+};
+
+const TEMP_PRODUCT_OPTIONS: {
   value: "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
   label: string;
   emoji: string;
@@ -183,19 +243,11 @@ const TEMP_OPTIONS: {
   { value: "CONGELADO", label: "Congelado", emoji: "🧊" },
 ];
 
-const BADGE_ICON: Record<InheritedBadgeKind, LucideIcon> = {
-  age: ShieldAlert,
-  ambiente: Thermometer,
-  refrigerado: Snowflake,
-  congelado: Snowflake,
-  expiry: CalendarClock,
-  lot: Boxes,
-};
-
 type Form = {
   sku: string;
   barcode: string;
   name: string;
+  shortName: string;
   subcategoryId: string;
   brand: string;
   costPrice: string;
@@ -218,6 +270,7 @@ type Form = {
   description: string;
   isActive: boolean;
   hasAgeRestriction: boolean;
+  storageTemperature: "" | "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
   expiryDays: string;
   expiryUnit: "days" | "months" | "years" | "none";
 };
@@ -225,6 +278,7 @@ type Form = {
 const EMPTY: Omit<Form, "sku"> = {
   barcode: "",
   name: "",
+  shortName: "",
   subcategoryId: "",
   brand: "",
   costPrice: "",
@@ -245,6 +299,7 @@ const EMPTY: Omit<Form, "sku"> = {
   description: "",
   isActive: true,
   hasAgeRestriction: false,
+  storageTemperature: "",
   expiryDays: "",
   expiryUnit: "days",
 };
@@ -302,13 +357,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 /* ── Image card ─────────────────────────────────────────────── */
 
-function ImageCard({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function ImageCard({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -339,6 +388,7 @@ function ImageCard({
   return (
     <div className="flex flex-col gap-2">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: dropzone com botão interno acessível */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: dropzone com botão interno acessível */}
       <div
         onClick={() => cloudOn && !uploading && inputRef.current?.click()}
         onDragOver={(e) => {
@@ -518,9 +568,84 @@ function BrandCombobox({
 
 type BcStatus = "idle" | "loading" | "found" | "duplicate" | "not_found";
 
-type PackLevel = { id: string; label: string; barcode: string; qtyPerParent: string };
+type PackLevel = {
+  id: string;
+  packageId?: string;
+  label: string;
+  barcode: string;
+  qtyPerParent: string;
+};
 
 const PACK_LABEL_SUGGESTIONS = ["Fardo", "Caixa", "Pallet"];
+
+function productToForm(product: ExistingProduct, fallbackSku: string): Form {
+  return {
+    sku: product.sku ?? fallbackSku,
+    barcode: product.barcode ?? "",
+    name: product.name,
+    shortName: product.posName ?? "",
+    subcategoryId: product.categoryId ?? "",
+    brand: product.brand ?? "",
+    costPrice: product.costPrice?.toString() ?? "",
+    price: product.price?.toString() ?? "",
+    imageUrl: product.imageUrl ?? "",
+    unit: product.unit,
+    saleUnit: product.saleUnit,
+    conversionFactor: product.conversionFactor?.toString() ?? "1",
+    packUnit: product.packUnit ?? "",
+    packSize: product.packSize?.toString() ?? "",
+    stockMin: product.stockMin?.toString() ?? "",
+    stockIdeal: product.stockIdeal?.toString() ?? "",
+    location: product.location ?? "",
+    weight: product.weight?.toString() ?? "",
+    height: product.height?.toString() ?? "",
+    width: product.width?.toString() ?? "",
+    length: product.length?.toString() ?? "",
+    description: product.description ?? "",
+    isActive: product.isActive,
+    hasAgeRestriction: product.hasAgeRestriction,
+    storageTemperature: product.storageTemperature ?? "",
+    expiryDays: product.expiryDays?.toString() ?? "",
+    expiryUnit: product.expiryDays ? "days" : "none",
+  };
+}
+
+function taxDataToForm(taxData?: ExistingTaxData[]): TaxForm {
+  const tax = taxData?.[0];
+  if (!tax) return EMPTY_TAX;
+  return {
+    ncm: tax.ncm ?? "",
+    cest: tax.cest ?? "",
+    cfopInternal: tax.cfopInternal ?? "",
+    cfopInterstate: tax.cfopInterstate ?? "",
+    origin: tax.origin ?? "NACIONAL",
+    icmsCst: tax.icmsCst ?? "",
+    icmsCsosn: tax.icmsCsosn ?? "",
+    icmsRate: tax.icmsRate?.toString() ?? "",
+    pisCst: tax.pisCst ?? "",
+    pisRate: tax.pisRate?.toString() ?? "",
+    cofinsCst: tax.cofinsCst ?? "",
+    cofinsRate: tax.cofinsRate?.toString() ?? "",
+  };
+}
+
+function packagesToLevels(packages: ProductPackage[], unitBarcode?: string | null): PackLevel[] {
+  let previousFactor = 1;
+  return packages
+    .filter((pkg) => pkg.factor > 1 || pkg.barcode !== unitBarcode)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.factor - b.factor)
+    .map((pkg, index) => {
+      const qty = pkg.factor > 0 ? pkg.factor / previousFactor : 0;
+      previousFactor = pkg.factor || previousFactor;
+      return {
+        id: pkg.id,
+        packageId: pkg.id,
+        label: pkg.label ?? PACK_LABEL_SUGGESTIONS[index] ?? "Embalagem",
+        barcode: pkg.barcode,
+        qtyPerParent: Number.isFinite(qty) && qty > 0 ? String(qty) : "",
+      };
+    });
+}
 
 export function ProductQuickCreate({
   organizationId,
@@ -528,22 +653,39 @@ export function ProductQuickCreate({
   initialSku,
   suppliers,
   taxRegime,
+  product,
+  initialPackages = [],
 }: Props) {
   const router = useRouter();
   const ids = useId();
   const [isPending, startTransition] = useTransition();
+  const isEdit = Boolean(product);
   const [categories, setCategories] = useState<CategoryLite[]>(initialCategories);
-  const [form, setForm] = useState<Form>({ sku: initialSku, ...EMPTY });
-  const [tax, setTax] = useState<TaxForm>(EMPTY_TAX);
-  const [supplierIds, setSupplierIds] = useState<string[]>([]);
-  const [packLevels, setPackLevels] = useState<PackLevel[]>([]);
+  const [form, setForm] = useState<Form>(() =>
+    product ? productToForm(product, initialSku ?? "") : { sku: "", ...EMPTY },
+  );
+  const [tax, setTax] = useState<TaxForm>(() => taxDataToForm(product?.taxData));
+  const [supplierIds, setSupplierIds] = useState<string[]>(() =>
+    product?.supplierId ? [product.supplierId] : [],
+  );
+  const [packLevels, setPackLevels] = useState<PackLevel[]>(() =>
+    packagesToLevels(initialPackages, product?.barcode),
+  );
   const [tab, setTab] = useState("basico");
   const [aiTaxLoading, setAiTaxLoading] = useState(false);
   const [skuLoading, setSkuLoading] = useState(false);
   const [bcStatus, setBcStatus] = useState<BcStatus>("idle");
   const [bcSuggest, setBcSuggest] = useState<OpenFoodFactsProduct | null>(null);
+  const [tags, setTags] = useState<string[]>(() => product?.tags ?? []);
+  // Etapa 1 = busca scan-first; Etapa 2 = formulário. Edição entra direto no form.
+  const [step, setStep] = useState<"search" | "form">(isEdit ? "form" : "search");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [diffUnitOpen, setDiffUnitOpen] = useState(false);
+  const [diffUnitOpen, setDiffUnitOpen] = useState(
+    Boolean(
+      product &&
+        (product.saleUnit !== product.unit || product.conversionFactor?.toString() !== "1"),
+    ),
+  );
 
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
 
@@ -586,10 +728,6 @@ export function ProductQuickCreate({
   const [subcatDialogOpen, setSubcatDialogOpen] = useState(false);
   const [newSubcatParent, setNewSubcatParent] = useState("");
   const [newSubcatName, setNewSubcatName] = useState("");
-  const [newSubcatTemp, setNewSubcatTemp] = useState<"" | "AMBIENTE" | "REFRIGERADO" | "CONGELADO">(
-    "",
-  );
-  const [newSubcatAge, setNewSubcatAge] = useState(false);
   const [newSubcatExpiry, setNewSubcatExpiry] = useState(false);
   const [newSubcatLot, setNewSubcatLot] = useState(false);
   const [creatingSubcat, setCreatingSubcat] = useState(false);
@@ -609,32 +747,23 @@ export function ProductQuickCreate({
     ? inheritedBadges(resolveInheritedProfile(categories, form.subcategoryId))
     : [];
 
-  /* ── barcode lookup (debounced) ── */
+  /* ── barcode (lookup manual via botão; busca automática vive na Etapa 1) ── */
   const cleanBarcode = form.barcode.replace(/\D/g, "");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dispara apenas ao digitar o código
-  useEffect(() => {
-    if (cleanBarcode.length < 8 || cleanBarcode.length > 14) return;
-    if (bcStatus === "found" || bcStatus === "duplicate") return;
-    const t = setTimeout(() => doLookup(cleanBarcode), 600);
-    return () => clearTimeout(t);
-  }, [form.barcode]);
 
-  /* ── SKU + herança de perfil ao trocar subcategoria ── */
+  /* ── SKU ao trocar subcategoria (temp/+18 não herdam mais) ── */
   // biome-ignore lint/correctness/useExhaustiveDependencies: regenera ao trocar subcategoria
   useEffect(() => {
     if (!form.subcategoryId) return;
     let cancelled = false;
 
-    // Aplica perfil herdado (age restriction, etc.)
-    const profile = resolveInheritedProfile(categories, form.subcategoryId);
-    if (profile.hasAgeRestriction) set("hasAgeRestriction", true);
-
-    setSkuLoading(true);
-    generateSkuAction(organizationId, form.subcategoryId).then((r) => {
-      if (cancelled) return;
-      setSkuLoading(false);
-      if (r.success) set("sku", r.sku);
-    });
+    if (!isEdit) {
+      setSkuLoading(true);
+      generateSkuAction(organizationId, form.subcategoryId).then((r) => {
+        if (cancelled) return;
+        setSkuLoading(false);
+        if (r.success) set("sku", r.sku);
+      });
+    }
     return () => {
       cancelled = true;
     };
@@ -644,14 +773,20 @@ export function ProductQuickCreate({
     setBcStatus("loading");
     setBcSuggest(null);
     const existing = await findProductByBarcodeAction(organizationId, code);
-    if (existing) {
+    console.log("[barcode] DB check:", existing);
+    if (existing && existing.id !== product?.id) {
       setBcStatus("duplicate");
       toast.error(`Já cadastrado: ${existing.name}`, {
         action: { label: "Abrir", onClick: () => router.push(`/app/products/${existing.id}`) },
       });
       return;
     }
+    if (existing && existing.id === product?.id) {
+      setBcStatus("idle");
+      return;
+    }
     const res = await lookupProductByBarcodeAction(code, organizationId);
+    console.log("[barcode] API/AI result:", res);
     if (res.success) {
       setBcSuggest(res.data);
       setBcStatus("found");
@@ -662,15 +797,92 @@ export function ProductQuickCreate({
   }
 
   function applySuggestion(p: OpenFoodFactsProduct) {
+    // Peso: Cosmos retorna gramas (peso líquido). Form usa kg.
+    const weightKg =
+      p.weight && p.weight > 0 ? (p.weight / 1000).toFixed(3).replace(/\.?0+$/, "") : undefined;
+
     setForm((f) => ({
       ...f,
       name: p.name || f.name,
+      shortName: p.shortName || f.shortName,
       brand: p.brand ?? f.brand,
       imageUrl: p.imageUrl ?? f.imageUrl,
+      subcategoryId: p.categoryId || f.subcategoryId,
+      description: p.description || f.description,
+      // estoque / embalagem de compra
+      unit: p.suggestedUnit || f.unit,
+      packUnit: p.suggestedPackUnit || f.packUnit,
+      packSize: p.suggestedPackSize ? String(p.suggestedPackSize) : f.packSize,
+      weight: weightKg ?? f.weight,
+      // preço de venda sugerido (média de mercado) — só se vazio
+      price: f.price || (p.suggestedPrice ? p.suggestedPrice.toFixed(2) : f.price),
     }));
+
+    // Embalagens de compra (fardo/caixa) → níveis com EAN + qtd
+    if (p.packagingLevels?.length) {
+      let prevTotal = 1;
+      const levels: PackLevel[] = p.packagingLevels.map((lvl) => {
+        const qty = prevTotal > 0 ? Math.round(lvl.totalUnits / prevTotal) : lvl.totalUnits;
+        prevTotal = lvl.totalUnits;
+        return {
+          id: Math.random().toString(36).slice(2),
+          label: lvl.label,
+          barcode: lvl.barcode,
+          qtyPerParent: qty > 0 ? String(qty) : "",
+        };
+      });
+      setPackLevels(levels);
+    }
+
+    // Temperatura de armazenagem → badge + pré-preenche dialog de nova subcategoria
+    if (p.storageTemperature) setSuggestedTemp(p.storageTemperature);
+
+    // Fiscal: NCM/CEST/CFOP/origem/CST — só preenche campos vazios ou vindos da busca
+    setTax((t) => ({
+      ...t,
+      ncm: (p.ncm ?? "").replace(/\D/g, "").slice(0, 8) || t.ncm,
+      cest: (p.cest ?? "").replace(/\D/g, "").slice(0, 7) || t.cest,
+      cfopInternal: (p.cfopInternal ?? "").replace(/\D/g, "").slice(0, 4) || t.cfopInternal,
+      cfopInterstate: (p.cfopInterstate ?? "").replace(/\D/g, "").slice(0, 4) || t.cfopInterstate,
+      origin: p.origin || t.origin,
+      // respeita regime: Simples → CSOSN, Normal → CST
+      icmsCsosn: isSimples ? p.icmsCsosn || t.icmsCsosn : t.icmsCsosn,
+      icmsCst: isSimples ? t.icmsCst : p.icmsCst || t.icmsCst,
+      pisCst: p.pisCst || t.pisCst,
+      cofinsCst: p.cofinsCst || t.cofinsCst,
+    }));
+
+    // Regras de venda / armazenagem derivadas (agora campos do próprio produto)
+    if (p.minimumAge && p.minimumAge >= 18) set("hasAgeRestriction", true);
+    if (p.storageTemperature) set("storageTemperature", p.storageTemperature);
+    if (p.shelfLifeDays && p.shelfLifeDays > 0 && form.expiryUnit === "none") {
+      set("expiryUnit", "days");
+      set("expiryDays", String(p.shelfLifeDays));
+    }
+
+    // Tags: existentes sugeridas + novas + atributos derivados (sabor)
+    const derived = [
+      ...(p.tags ?? []),
+      p.flavor,
+      p.containsAlcohol === false ? "Não Alcoólico" : p.containsAlcohol ? "Alcoólico" : undefined,
+    ].filter((t): t is string => Boolean(t?.trim()));
+    if (derived.length) {
+      setTags((prev) => Array.from(new Set([...prev, ...derived])));
+    }
+
     setBcSuggest(null);
     setBcStatus("idle");
-    toast.success("Preenchido pela busca. Revise antes de salvar.");
+    const extras = [
+      p.ncm && "fiscal",
+      p.packagingLevels?.length && "embalagens",
+      p.suggestedPrice && "preço",
+      tags.length && "tags",
+    ].filter(Boolean);
+    toast.success(
+      extras.length
+        ? `Preenchido (incl. ${extras.join(", ")}). Revise antes de salvar.`
+        : "Preenchido pela busca. Revise antes de salvar.",
+    );
   }
 
   async function regenerateSku() {
@@ -717,8 +929,6 @@ export function ProductQuickCreate({
     const root = categories.find((c) => c.id === form.subcategoryId)?.parentId ?? "";
     setNewSubcatParent(root || roots[0]?.id || "");
     setNewSubcatName("");
-    setNewSubcatTemp("");
-    setNewSubcatAge(false);
     setNewSubcatExpiry(false);
     setNewSubcatLot(false);
     setSubcatDialogOpen(true);
@@ -732,8 +942,6 @@ export function ProductQuickCreate({
       const res = await createCategoryAction(organizationId, {
         name: newSubcatName.trim(),
         parentId: newSubcatParent,
-        hasAgeRestriction: newSubcatAge,
-        storageTemperature: newSubcatTemp || undefined,
         controlsExpiry: newSubcatExpiry,
         controlsLot: newSubcatLot,
       });
@@ -745,8 +953,6 @@ export function ProductQuickCreate({
         id: res.data.id,
         name: newSubcatName.trim(),
         parentId: newSubcatParent,
-        hasAgeRestriction: newSubcatAge,
-        storageTemperature: newSubcatTemp || null,
         controlsExpiry: newSubcatExpiry,
         controlsLot: newSubcatLot,
       };
@@ -781,13 +987,15 @@ export function ProductQuickCreate({
       if (brand) await upsertBrandAction(organizationId, brand);
 
       let sku = form.sku;
+      const productType = (product?.productType ?? "SIMPLE") as ProductInput["productType"];
       const build = (s: string): ProductInput => ({
         name: form.name.trim(),
+        posName: form.shortName.trim() || undefined,
         brand: brand || undefined,
         sku: s || undefined,
         barcode: cleanBarcode,
-        tags: [],
-        productType: "SIMPLE",
+        tags,
+        productType,
         unit: form.unit as ProductInput["unit"],
         saleUnit: form.saleUnit as ProductInput["saleUnit"],
         conversionFactor: Number(form.conversionFactor) || 1,
@@ -805,9 +1013,11 @@ export function ProductQuickCreate({
         location: form.location || undefined,
         description: form.description || undefined,
         categoryId: form.subcategoryId,
+        supplierId: supplierIds[0] || undefined,
         isActive: form.isActive,
         hasAgeRestriction: form.hasAgeRestriction,
         minAge: form.hasAgeRestriction ? 18 : undefined,
+        storageTemperature: form.storageTemperature || undefined,
         expiryDays: (() => {
           if (form.expiryUnit === "none" || !form.expiryDays) return undefined;
           const n = Number(form.expiryDays);
@@ -818,9 +1028,11 @@ export function ProductQuickCreate({
         })(),
       });
 
-      let res = await createProductAction(organizationId, build(sku));
+      let res = isEdit
+        ? await updateProductAction(organizationId, product?.id ?? "", build(sku))
+        : await createProductAction(organizationId, build(sku));
       // SKU colidiu (corrida) → regenera e tenta 1×
-      if (!res.success && /SKU/i.test(res.error)) {
+      if (!isEdit && !res.success && /SKU/i.test(res.error)) {
         const r = form.subcategoryId
           ? await generateSkuAction(organizationId, form.subcategoryId)
           : await generateNextSkuAction(organizationId);
@@ -835,10 +1047,12 @@ export function ProductQuickCreate({
       }
 
       // Fiscal opcional — só grava se NCM (8 dígitos) preenchido
+      const productId = isEdit ? (product?.id ?? "") : res.data.id;
+
       const ncmDigits = tax.ncm.replace(/\D/g, "");
       if (ncmDigits.length === 8) {
         const tres = await setProductTaxAction(organizationId, {
-          productId: res.data.id,
+          productId,
           ncm: ncmDigits,
           cest: tax.cest || undefined,
           cfopInternal: tax.cfopInternal || undefined,
@@ -860,7 +1074,7 @@ export function ProductQuickCreate({
 
       // Fornecedores (multi) — 1º vira o principal
       if (supplierIds.length > 0) {
-        await setProductSuppliersAction(organizationId, res.data.id, supplierIds, {
+        await setProductSuppliersAction(organizationId, productId, supplierIds, {
           code: sku || cleanBarcode,
           name: form.name.trim(),
         });
@@ -875,7 +1089,8 @@ export function ProductQuickCreate({
         const bc = lvl.barcode.replace(/\D/g, "");
         cumulative *= qty;
         if (qty > 0 && bc.length >= 8 && cumulative > 0) {
-          await upsertProductPackageAction(organizationId, res.data.id, {
+          await upsertProductPackageAction(organizationId, productId, {
+            id: lvl.packageId,
             barcode: bc,
             label: lvl.label.trim() || `Nível ${i + 1}`,
             factor: cumulative,
@@ -884,21 +1099,36 @@ export function ProductQuickCreate({
         }
       }
 
+      if (isEdit) {
+        const keptPackageIds = new Set(packLevels.map((lvl) => lvl.packageId).filter(Boolean));
+        for (const pkg of initialPackages) {
+          const isUnitBarcode = pkg.factor <= 1 && pkg.barcode === product?.barcode;
+          if (!isUnitBarcode && !keptPackageIds.has(pkg.id)) {
+            await deleteProductPackageAction(pkg.id);
+          }
+        }
+
+        toast.success("Produto atualizado.");
+        router.refresh();
+        return;
+      }
+
       toast.success("Produto criado.");
       if (mode === "ficha") {
-        router.push(`/app/products/${res.data.id}`);
+        router.push(`/app/products/${productId}`);
         return;
       }
       if (mode === "new") {
         const next = await generateNextSkuAction(organizationId);
         setForm({ sku: next.success ? next.sku : "", ...EMPTY });
         setTax(EMPTY_TAX);
+        setTags([]);
         setSupplierIds([]);
         setPackLevels([]);
         setTab("basico");
         setBcStatus("idle");
         setBcSuggest(null);
-        nameRef.current?.focus();
+        setStep("search");
         return;
       }
       router.push("/app/products");
@@ -907,12 +1137,48 @@ export function ProductQuickCreate({
 
   const isLoading = bcStatus === "loading";
 
-  /* ── render ── */
+  /* ── Etapa 1: busca scan-first ── */
+  if (step === "search") {
+    return (
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/app/products")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-surface-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Voltar para produtos"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h1 className="flex-1 text-lg font-semibold tracking-tight">Novo Produto</h1>
+        </div>
+
+        <BarcodeSearchStep
+          organizationId={organizationId}
+          onOpenExisting={(id) => router.push(`/app/products/${id}`)}
+          onUse={(p) => {
+            set("barcode", p.barcode);
+            applySuggestion(p);
+            setStep("form");
+            setTab("basico");
+          }}
+          onManual={(bc) => {
+            if (bc) set("barcode", bc);
+            setStep("form");
+            setTab("basico");
+            setTimeout(() => nameRef.current?.focus(), 50);
+          }}
+        />
+      </div>
+    );
+  }
+
+  /* ── Etapa 2: formulário (revisão) ── */
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        submit("list");
+        submit(isEdit ? "ficha" : "list");
       }}
       className="mx-auto flex w-full max-w-7xl flex-col gap-6"
     >
@@ -920,13 +1186,18 @@ export function ProductQuickCreate({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => router.push("/app/products")}
+          onClick={() => {
+            if (isEdit && product) router.push(`/app/products/${product.id}`);
+            else setStep("search");
+          }}
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-surface-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Voltar para produtos"
+          aria-label={isEdit ? "Voltar para a ficha" : "Voltar para a busca"}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="flex-1 text-lg font-semibold tracking-tight">Novo Produto</h1>
+        <h1 className="flex-1 text-lg font-semibold tracking-tight">
+          {isEdit ? "Editar Produto" : "Novo Produto"}
+        </h1>
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="gap-0">
@@ -1042,6 +1313,11 @@ export function ProductQuickCreate({
                             {bcSuggest.brand}
                           </p>
                         )}
+                        {bcSuggest.category && (
+                          <p className="truncate text-xs text-muted-foreground/70">
+                            {bcSuggest.category}
+                          </p>
+                        )}
                       </div>
                       <Button type="button" size="sm" onClick={() => applySuggestion(bcSuggest)}>
                         Usar
@@ -1074,6 +1350,32 @@ export function ProductQuickCreate({
                       onChange={(v) => set("brand", v)}
                     />
                   </div>
+                </div>
+
+                {/* Nome curto (PDV / cupom) */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`${ids}-shortname`}>Nome curto (PDV / cupom)</Label>
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        form.shortName.length > 40
+                          ? "text-destructive"
+                          : "text-muted-foreground/60",
+                      )}
+                    >
+                      {form.shortName.length}/40
+                    </span>
+                  </div>
+                  <Input
+                    id={`${ids}-shortname`}
+                    value={form.shortName}
+                    onChange={(e) => set("shortName", e.target.value.slice(0, 40))}
+                    placeholder="Ex: COCA-COLA LT 350ML"
+                    autoComplete="off"
+                    maxLength={40}
+                    className="font-mono uppercase"
+                  />
                 </div>
 
                 {/* Subcategoria + SKU — mesma linha */}
@@ -1157,9 +1459,6 @@ export function ProductQuickCreate({
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Gerado automaticamente — editável.
-                    </p>
                   </div>
                 </div>
 
@@ -1729,6 +2028,73 @@ export function ProductQuickCreate({
             />
           </section>
 
+          <section className="flex flex-col gap-3">
+            <SectionTitle>Tags</SectionTitle>
+            <p className="text-xs text-muted-foreground">
+              Usadas em busca, filtros e promoções. A busca por EAN sugere automaticamente.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 py-1 text-sm"
+                >
+                  {t}
+                  <button
+                    type="button"
+                    onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                    className="text-muted-foreground transition hover:text-destructive"
+                    aria-label={`Remover tag ${t}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <Input
+                id={`${ids}-tag`}
+                placeholder="Adicionar tag + Enter"
+                autoComplete="off"
+                className="h-8 w-44"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const v = e.currentTarget.value.trim();
+                    if (v) setTags((prev) => Array.from(new Set([...prev, v])));
+                    e.currentTarget.value = "";
+                  }
+                }}
+              />
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <SectionTitle>Armazenagem</SectionTitle>
+            <p className="text-xs text-muted-foreground">
+              Temperatura própria do produto (preenchida pela busca, editável).
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+              {TEMP_PRODUCT_OPTIONS.map((opt) => {
+                const active = form.storageTemperature === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set("storageTemperature", active ? "" : opt.value)}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm transition-colors",
+                      active
+                        ? "border-primary bg-primary/10 font-medium text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/40",
+                    )}
+                  >
+                    <span>{opt.emoji}</span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="flex flex-col gap-5">
             <SectionTitle>Regras de venda</SectionTitle>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1813,53 +2179,61 @@ export function ProductQuickCreate({
           type="button"
           variant="outline"
           disabled={isPending}
-          onClick={() => router.push("/app/products")}
+          onClick={() =>
+            router.push(isEdit && product ? `/app/products/${product.id}` : "/app/products")
+          }
         >
           Cancelar
         </Button>
 
         {/* Split-button: ação primária + dropdown com alternativas */}
         <div className="flex items-stretch">
-          <Button type="submit" disabled={isPending} className="gap-1.5 rounded-r-none">
+          <Button
+            type="submit"
+            disabled={isPending}
+            className={cn("gap-1.5", !isEdit && "rounded-r-none")}
+          >
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Check className="h-4 w-4" />
             )}
-            Salvar produto
+            {isEdit ? "Salvar alterações" : "Salvar produto"}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                disabled={isPending}
-                aria-label="Mais opções de salvamento"
-                className="rounded-l-none border-l border-primary-foreground/20 px-2"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onSelect={() => submit("ficha")} className="cursor-pointer gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col">
-                  <span>Salvar e abrir ficha completa</span>
-                  <span className="text-xs text-muted-foreground">
-                    Estoque, fiscal, fornecedor e mais
-                  </span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => submit("new")} className="cursor-pointer gap-2">
-                <PlusCircle className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col">
-                  <span>Salvar e cadastrar outro</span>
-                  <span className="text-xs text-muted-foreground">
-                    Limpa o formulário e gera novo SKU
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!isEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  disabled={isPending}
+                  aria-label="Mais opções de salvamento"
+                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem onSelect={() => submit("ficha")} className="cursor-pointer gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>Salvar e abrir ficha completa</span>
+                    <span className="text-xs text-muted-foreground">
+                      Estoque, fiscal, fornecedor e mais
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => submit("new")} className="cursor-pointer gap-2">
+                  <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>Salvar e cadastrar outro</span>
+                    <span className="text-xs text-muted-foreground">
+                      Limpa o formulário e gera novo SKU
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -1927,48 +2301,10 @@ export function ProductQuickCreate({
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                 Perfil herdável pelos produtos
               </p>
-
-              {/* Temperatura de armazenagem */}
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Temperatura de armazenagem</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {TEMP_OPTIONS.map((opt) => {
-                    const active = newSubcatTemp === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setNewSubcatTemp(active ? "" : opt.value)}
-                        className={cn(
-                          "flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm transition-colors",
-                          active
-                            ? "border-primary bg-primary/10 font-medium text-foreground"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted/40",
-                        )}
-                      >
-                        <span>{opt.emoji}</span>
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Restrição de idade (+18) */}
-              <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
-                <input
-                  type="checkbox"
-                  checked={newSubcatAge}
-                  onChange={(e) => setNewSubcatAge(e.target.checked)}
-                  className="h-4 w-4 rounded border border-input accent-primary"
-                />
-                <div>
-                  <p className="text-sm font-medium leading-none">Restrição de idade (+18)</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Exige verificação de maioridade na venda
-                  </p>
-                </div>
-              </label>
+              <p className="-mt-1 text-xs text-muted-foreground/70">
+                Temperatura e +18 agora são definidos por produto (pela busca), não pela
+                subcategoria.
+              </p>
 
               {/* Controla validade */}
               <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">

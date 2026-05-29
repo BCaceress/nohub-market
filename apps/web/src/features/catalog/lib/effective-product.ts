@@ -95,9 +95,11 @@ export async function getProdutoEfetivo(productId: string, organizationId: strin
     return null;
   };
 
+  // Temperatura e +18 NÃO herdam mais da subcategoria — são próprios do produto.
+  // Validade e lote continuam herdáveis.
   const operational: OperationalEffective = {
-    hasAgeRestriction: product.hasAgeRestriction || chain.some((c) => c.hasAgeRestriction),
-    storageTemperature: product.storageTemperature ?? firstDefined((c) => c.storageTemperature),
+    hasAgeRestriction: product.hasAgeRestriction,
+    storageTemperature: product.storageTemperature ?? null,
     controlsExpiry: product.controlsExpiry ?? firstDefined((c) => c.controlsExpiry) ?? false,
     controlsLot: product.controlsLot ?? firstDefined((c) => c.controlsLot) ?? false,
   };
