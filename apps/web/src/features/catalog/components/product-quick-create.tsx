@@ -834,9 +834,6 @@ export function ProductQuickCreate({
       setPackLevels(levels);
     }
 
-    // Temperatura de armazenagem → badge + pré-preenche dialog de nova subcategoria
-    if (p.storageTemperature) setSuggestedTemp(p.storageTemperature);
-
     // Fiscal: NCM/CEST/CFOP/origem/CST — só preenche campos vazios ou vindos da busca
     setTax((t) => ({
       ...t,
