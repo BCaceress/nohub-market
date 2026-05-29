@@ -1,10 +1,10 @@
+import { prisma } from "@nohub/db";
+import { Radio } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getChannelsAction } from "@/features/app/actions/channel-actions";
 import { ChannelsManager } from "@/features/app/channels-manager";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { Radio } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Canais de venda — NoHub Market" };
 

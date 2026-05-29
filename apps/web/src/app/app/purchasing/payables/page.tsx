@@ -2,9 +2,9 @@
  * Contas a Pagar — listagem com filtro de status e vencidas.
  */
 
+import { redirect } from "next/navigation";
 import { listAccountPayablesAction } from "@/features/purchasing/actions/purchasing-actions";
 import { getSession } from "@/lib/auth-server";
-import { redirect } from "next/navigation";
 import { PayablesClient } from "./payables-client";
 
 export const metadata = { title: "Contas a Pagar — NoHub Market" };

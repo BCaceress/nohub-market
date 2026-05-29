@@ -2,9 +2,9 @@
  * Detalhe do Pedido de Compra — itens, histórico e ações.
  */
 
+import { notFound, redirect } from "next/navigation";
 import { getPurchaseOrderAction } from "@/features/purchasing/actions/purchasing-actions";
 import { getSession } from "@/lib/auth-server";
-import { notFound, redirect } from "next/navigation";
 import { PurchaseOrderDetailClient } from "./po-detail-client";
 
 export const metadata = { title: "Pedido de Compra — NoHub Market" };

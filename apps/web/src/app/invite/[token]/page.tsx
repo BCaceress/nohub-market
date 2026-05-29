@@ -14,16 +14,9 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: "Visualizador",
 };
 
-export default async function InvitePage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const [session, invitation] = await Promise.all([
-    getSession(),
-    getInvitationAction(token),
-  ]);
+  const [session, invitation] = await Promise.all([getSession(), getInvitationAction(token)]);
 
   if (!invitation) {
     return (
@@ -31,12 +24,12 @@ export default async function InvitePage({
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Convite inválido</CardTitle>
-            <CardDescription>
-              Este convite não existe, foi revogado ou já expirou.
-            </CardDescription>
+            <CardDescription>Este convite não existe, foi revogado ou já expirou.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild><Link href="/">Voltar ao início</Link></Button>
+            <Button asChild>
+              <Link href="/">Voltar ao início</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -63,7 +56,9 @@ export default async function InvitePage({
           {expired || alreadyUsed ? (
             <>
               <p className="text-sm text-center text-muted-foreground">
-                {alreadyUsed ? "Este convite já foi utilizado ou revogado." : "Este convite expirou."}
+                {alreadyUsed
+                  ? "Este convite já foi utilizado ou revogado."
+                  : "Este convite expirou."}
               </p>
               <Button asChild variant="outline" className="w-full">
                 <Link href="/">Voltar ao início</Link>

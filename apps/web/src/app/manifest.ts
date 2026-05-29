@@ -4,8 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "NoHub Market",
     short_name: "NoHub",
-    description:
-      "Mercados autônomos, conveniências e vendas online em uma só plataforma.",
+    description: "Mercados autônomos, conveniências e vendas online em uma só plataforma.",
     start_url: "/app",
     display: "standalone",
     background_color: "#ffffff",

@@ -7,8 +7,8 @@
  * iFood requer resposta < 5s. O processamento real é feito pelo outbox.
  */
 
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@nohub/db";
+import { type NextRequest, NextResponse } from "next/server";
 import { ifoodAdapter } from "@/features/sales/adapters/ifood-adapter";
 import { enqueueIfoodAccept } from "@/features/sales/outbox/producer";
 
@@ -17,7 +17,9 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
   const headers: Record<string, string> = {};
-  req.headers.forEach((v, k) => { headers[k] = v; });
+  req.headers.forEach((v, k) => {
+    headers[k] = v;
+  });
 
   // Identificar organização pela slug ou pelo header merchantId
   // Em produção: query ChannelIntegration por merchantId/slug no header
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const integration = await prisma.channelIntegration.findFirst({
     where: {
       channel: "IFOOD",
-      status:  "CONNECTED",
+      status: "CONNECTED",
     },
     include: { organization: true },
   });
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Verificar assinatura
   const credentials = integration.credentials as Record<string, unknown> | null;
-  const secret      = String(credentials?.webhookSecret ?? "");
+  const secret = String(credentials?.webhookSecret ?? "");
   if (secret && !ifoodAdapter.verifySignature(rawBody, headers, secret)) {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
@@ -58,8 +60,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   for (const event of events) {
     const externalEventId = String(
       (event as Record<string, unknown>).id ??
-      (event as Record<string, unknown>).orderId ??
-      Date.now(),
+        (event as Record<string, unknown>).orderId ??
+        Date.now(),
     );
 
     // Idempotência: ignorar se já processamos este evento
@@ -72,9 +74,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await prisma.inboundEvent.create({
       data: {
         organizationId: integration.organizationId,
-        channel:        "IFOOD",
+        channel: "IFOOD",
         externalEventId,
-        payload:        event as never,
+        payload: event as never,
       },
     });
 

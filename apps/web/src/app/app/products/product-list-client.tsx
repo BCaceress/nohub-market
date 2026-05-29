@@ -1,5 +1,32 @@
 "use client";
 
+import {
+  AlertTriangle,
+  Barcode,
+  Boxes,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  GitBranch,
+  Hash,
+  ImageOff,
+  Layers,
+  MoreVertical,
+  Package,
+  Pencil,
+  Power,
+  PowerOff,
+  Scissors,
+  Search,
+  ShieldCheck,
+  Store,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,35 +54,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { setProductActiveAction } from "@/features/catalog/actions/product-actions";
-import {
-  AlertTriangle,
-  Barcode,
-  Boxes,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  FolderOpen,
-  GitBranch,
-  Hash,
-  ImageOff,
-  Layers,
-  MoreVertical,
-  Package,
-  Pencil,
-  Power,
-  PowerOff,
-  Scissors,
-  Search,
-  ShieldCheck,
-  Store,
-  Tag,
-  X,
-} from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
 
 type TypeConfigEntry = {
   label: string;
@@ -572,6 +570,7 @@ export function ProductListClient({
                             ? "bg-emerald-500 ring-emerald-500/20"
                             : "bg-rose-500 ring-rose-500/20"
                         }`}
+                        role="img"
                         aria-label={p.isActive ? "Ativo" : "Inativo"}
                         title={p.isActive ? "Ativo" : "Inativo"}
                       />
@@ -625,6 +624,7 @@ export function ProductListClient({
                       {hasLocationPrice && (
                         <span className="group/storeprice relative inline-flex">
                           <span
+                            role="img"
                             aria-label={`${p._count.prices} preço(s) por loja`}
                             className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-info/15 text-info"
                           >
@@ -733,6 +733,7 @@ export function ProductListClient({
                           )}
                           {p.stockEntries.length > 1 && (
                             <span
+                              role="img"
                               aria-label={`Estoque em ${p.stockEntries.length} loja(s)`}
                               className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-info/15 text-info"
                             >
@@ -793,6 +794,7 @@ export function ProductListClient({
                     {hasTax ? (
                       <span className="group/fiscal relative inline-flex">
                         <span
+                          role="img"
                           aria-label="Fiscal OK"
                           className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success/15 text-success"
                         >

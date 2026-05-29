@@ -25,9 +25,7 @@ export default function AppError({
           {error.message || "Ocorreu um erro inesperado. Tente novamente."}
         </p>
         {error.digest && (
-          <p className="text-xs text-muted-foreground/60 mt-2 font-mono">
-            ID: {error.digest}
-          </p>
+          <p className="text-xs text-muted-foreground/60 mt-2 font-mono">ID: {error.digest}</p>
         )}
       </div>
       <Button onClick={reset} variant="outline">

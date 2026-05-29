@@ -1,11 +1,11 @@
+import { prisma } from "@nohub/db";
+import { Building2 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getOrgAction } from "@/features/app/actions/org-actions";
 import { SettingsOrgForm } from "@/features/app/settings-org-form";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { Building2 } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Organização — NoHub Market" };
 

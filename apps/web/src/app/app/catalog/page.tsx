@@ -1,12 +1,12 @@
+import { prisma } from "@nohub/db";
+import { Package, Pencil, Plus, Search, X } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getProductsAction } from "@/features/app/actions/product-actions";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { Package, Pencil, Plus, Search, X } from "lucide-react";
-import Link from "next/link";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Catálogo — NoHub Market" };
 

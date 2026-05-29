@@ -1,8 +1,8 @@
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
 import { getSession } from "@/lib/auth-server";
 import { getCapabilities } from "@/lib/capabilities";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 import { NewProductClient } from "./new-product-client";
 
 export const metadata = { title: "Novo produto — NoHub Market" };

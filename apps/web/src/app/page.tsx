@@ -1,15 +1,15 @@
+import {
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Globe,
+  Rocket,
+  ScrollText,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  Rocket,
-  Building2,
-  SlidersHorizontal,
-  ShieldCheck,
-  Globe,
-  ScrollText,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "NoHub Market — O sistema que cresce com seu negócio",
@@ -125,7 +125,8 @@ export default function LandingPage() {
             <span
               className="bg-clip-text text-transparent"
               style={{
-                backgroundImage: "linear-gradient(135deg, var(--foreground) 30%, var(--accent) 100%)",
+                backgroundImage:
+                  "linear-gradient(135deg, var(--foreground) 30%, var(--accent) 100%)",
               }}
             >
               com seu negócio
@@ -134,8 +135,8 @@ export default function LandingPage() {
 
           {/* Subheadline */}
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Mercados autônomos, conveniências e vendas online em uma só plataforma.
-            Configure em minutos, opere com confiança.
+            Mercados autônomos, conveniências e vendas online em uma só plataforma. Configure em
+            minutos, opere com confiança.
           </p>
 
           {/* CTAs */}
@@ -170,9 +171,7 @@ export default function LandingPage() {
       {/* ── Features ────────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-14 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Tudo que sua operação precisa
-          </h2>
+          <h2 className="text-3xl font-bold tracking-tight">Tudo que sua operação precisa</h2>
           <p className="mt-3 text-muted-foreground">
             Uma plataforma completa, do cadastro ao omnichannel.
           </p>
@@ -184,7 +183,9 @@ export default function LandingPage() {
               key={title}
               className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
             >
-              <div className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
+              <div
+                className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg ${color}`}
+              >
                 <Icon className="h-5 w-5" />
               </div>
               <h3 className="font-semibold text-foreground">{title}</h3>
@@ -201,8 +202,8 @@ export default function LandingPage() {
             Pronto para configurar seu negócio?
           </h2>
           <p className="mt-4 max-w-lg text-sm leading-relaxed text-primary-foreground/70">
-            Crie sua conta e tenha a operação no ar em menos de 10 minutos.
-            Sem cartão de crédito, sem contrato de fidelidade.
+            Crie sua conta e tenha a operação no ar em menos de 10 minutos. Sem cartão de crédito,
+            sem contrato de fidelidade.
           </p>
           <Link
             href="/signup"

@@ -2,13 +2,13 @@
  * Gestão de Caixa — sessão de caixa, sangria, suprimento.
  */
 
+import { prisma } from "@nohub/db";
+import { Wallet } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getSession } from "@/lib/auth-server";
 import { ALL_LOCATIONS } from "@/lib/selected-location";
 import { readSelectedLocation } from "@/lib/selected-location-server";
-import { prisma } from "@nohub/db";
-import { Wallet } from "lucide-react";
-import { redirect } from "next/navigation";
 import { CashClient } from "./cash-client";
 
 export const metadata = { title: "Caixa — NoHub Market" };

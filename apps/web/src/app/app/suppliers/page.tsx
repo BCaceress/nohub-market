@@ -1,11 +1,11 @@
+import { prisma } from "@nohub/db";
+import { Truck } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
 import { SuppliersManager } from "@/features/app/suppliers-manager";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { Truck } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Fornecedores — NoHub Market" };
 

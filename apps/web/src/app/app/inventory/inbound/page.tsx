@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
 import { InboundForm } from "@/features/inventory/components/inbound-form";
+import { getSession } from "@/lib/auth-server";
 
 export const metadata = { title: "Entrada de Estoque — NoHub Market" };
 

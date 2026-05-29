@@ -2,12 +2,12 @@
  * Notas Fiscais — listagem com filtro de status.
  */
 
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { listInvoicesAction } from "@/features/fiscal/actions/fiscal-actions";
 import { getSession } from "@/lib/auth-server";
 import { ALL_LOCATIONS } from "@/lib/selected-location";
 import { readSelectedLocation } from "@/lib/selected-location-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 import { InvoicesClient } from "./invoices-client";
 
 export const metadata = { title: "Notas Fiscais — NoHub Market" };

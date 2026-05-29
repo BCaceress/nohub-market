@@ -1,3 +1,5 @@
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
 import {
   generateNextSkuAction,
@@ -5,8 +7,6 @@ import {
 } from "@/features/catalog/actions/product-actions";
 import { ProductQuickCreate } from "@/features/catalog/components/product-quick-create";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Novo produto — NoHub Market" };
 

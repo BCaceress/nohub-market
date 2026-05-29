@@ -1,7 +1,7 @@
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { NextResponse } from "next/server";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 
 // LGPD — direito ao esquecimento. Respeita RN-03 (owner único não sai).
 export async function POST() {

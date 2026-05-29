@@ -1,63 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { AlertTriangle, DollarSign, Plus, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button }    from "@/components/ui/button";
-import { Input }     from "@/components/ui/input";
-import { Label }     from "@/components/ui/label";
-import { Badge }     from "@/components/ui/badge";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Separator }   from "@/components/ui/separator";
-import { DollarSign, TrendingDown, TrendingUp, X, Plus, AlertTriangle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import {
-  openCashSessionAction,
-  closeCashSessionAction,
   bleedCashAction,
+  closeCashSessionAction,
+  openCashSessionAction,
   supplyCashAction,
 } from "@/features/sales/actions/cash-actions";
 
-type Location   = { id: string; name: string };
-type Movement   = { id: string; type: string; amount: number; note: string | null; createdAt: string };
+type Location = { id: string; name: string };
+type Movement = {
+  id: string;
+  type: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+};
 type OpenSession = {
-  id:            string;
-  locationId:    string;
-  location:      { name: string };
+  id: string;
+  locationId: string;
+  location: { name: string };
   openingAmount: number;
   closingAmount: number | null;
-  systemAmount:  number | null;
-  divergence:    number | null;
-  status:        string;
-  openedAt:      string;
-  movements:     Movement[];
-  _count:        { orders: number };
+  systemAmount: number | null;
+  divergence: number | null;
+  status: string;
+  openedAt: string;
+  movements: Movement[];
+  _count: { orders: number };
 };
 type ClosedSession = {
-  id:            string;
-  locationId:    string;
-  location:      { name: string };
+  id: string;
+  locationId: string;
+  location: { name: string };
   openingAmount: number;
   closingAmount: number | null;
-  systemAmount:  number | null;
-  divergence:    number | null;
-  status:        string;
-  openedAt:      string;
-  closedAt:      string | null;
+  systemAmount: number | null;
+  divergence: number | null;
+  status: string;
+  openedAt: string;
+  closedAt: string | null;
 };
 
 type Props = {
-  locations:      Location[];
-  openSessions:   OpenSession[];
-  recentClosed:   ClosedSession[];
+  locations: Location[];
+  openSessions: OpenSession[];
+  recentClosed: ClosedSession[];
   organizationId: string;
-  actorId:        string;
+  actorId: string;
 };
 
 export function CashClient({
@@ -68,29 +74,32 @@ export function CashClient({
   actorId,
 }: Props) {
   const router = useRouter();
-  const [openDialog,     setOpenDialog]     = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
   const [closeSessionId, setCloseSessionId] = useState<string | null>(null);
-  const [movementDialog, setMovementDialog] = useState<{ sessionId: string; type: "BLEED" | "SUPPLY" } | null>(null);
-  const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
+  const [movementDialog, setMovementDialog] = useState<{
+    sessionId: string;
+    type: "BLEED" | "SUPPLY";
+  } | null>(null);
+  const [_confirmDisconnect, _setConfirmDisconnect] = useState<string | null>(null);
 
   // Open form
   const [openLocationId, setOpenLocationId] = useState(locations[0]?.id ?? "");
-  const [openingAmount,  setOpeningAmount]  = useState("");
-  const [openNote,       setOpenNote]       = useState("");
-  const [openLoading,    setOpenLoading]    = useState(false);
-  const [openError,      setOpenError]      = useState<string | null>(null);
+  const [openingAmount, setOpeningAmount] = useState("");
+  const [openNote, setOpenNote] = useState("");
+  const [openLoading, setOpenLoading] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
 
   // Close form
-  const [closingAmount,  setClosingAmount]  = useState("");
-  const [closeNote,      setCloseNote]      = useState("");
-  const [closeLoading,   setCloseLoading]   = useState(false);
-  const [closeError,     setCloseError]     = useState<string | null>(null);
+  const [closingAmount, setClosingAmount] = useState("");
+  const [closeNote, setCloseNote] = useState("");
+  const [closeLoading, setCloseLoading] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   // Movement form
   const [movementAmount, setMovementAmount] = useState("");
-  const [movementNote,   setMovementNote]   = useState("");
+  const [movementNote, setMovementNote] = useState("");
   const [movementLoading, setMovementLoading] = useState(false);
-  const [movementError,  setMovementError]  = useState<string | null>(null);
+  const [movementError, setMovementError] = useState<string | null>(null);
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -99,13 +108,16 @@ export function CashClient({
     setOpenError(null);
     const result = await openCashSessionAction({
       organizationId,
-      locationId:    openLocationId,
-      operatorId:    actorId,
+      locationId: openLocationId,
+      operatorId: actorId,
       openingAmount: Number(openingAmount),
-      note:          openNote || undefined,
+      note: openNote || undefined,
     });
     setOpenLoading(false);
-    if (!result.success) { setOpenError(result.error); return; }
+    if (!result.success) {
+      setOpenError(result.error);
+      return;
+    }
     setOpenDialog(false);
     setOpeningAmount("");
     setOpenNote("");
@@ -118,13 +130,16 @@ export function CashClient({
     setCloseError(null);
     const result = await closeCashSessionAction({
       organizationId,
-      sessionId:     closeSessionId,
+      sessionId: closeSessionId,
       closingAmount: Number(closingAmount),
       actorId,
-      note:          closeNote || undefined,
+      note: closeNote || undefined,
     });
     setCloseLoading(false);
-    if (!result.success) { setCloseError(result.error); return; }
+    if (!result.success) {
+      setCloseError(result.error);
+      return;
+    }
     setCloseSessionId(null);
     setClosingAmount("");
     setCloseNote("");
@@ -137,14 +152,17 @@ export function CashClient({
     setMovementError(null);
     const fn = movementDialog.type === "BLEED" ? bleedCashAction : supplyCashAction;
     const result = await fn({
-      sessionId:      movementDialog.sessionId,
+      sessionId: movementDialog.sessionId,
       organizationId,
-      amount:         Number(movementAmount),
-      note:           movementNote,
+      amount: Number(movementAmount),
+      note: movementNote,
       actorId,
     });
     setMovementLoading(false);
-    if (!result.success) { setMovementError(result.error ?? "Erro desconhecido"); return; }
+    if (!result.success) {
+      setMovementError(result.error ?? "Erro desconhecido");
+      return;
+    }
     setMovementDialog(null);
     setMovementAmount("");
     setMovementNote("");
@@ -156,7 +174,8 @@ export function CashClient({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {openSessions.length} caixa{openSessions.length !== 1 ? "s" : ""} aberto{openSessions.length !== 1 ? "s" : ""}
+            {openSessions.length} caixa{openSessions.length !== 1 ? "s" : ""} aberto
+            {openSessions.length !== 1 ? "s" : ""}
           </p>
           <Button onClick={() => setOpenDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -182,7 +201,10 @@ export function CashClient({
                   <p className="text-xs text-muted-foreground">
                     Aberto em{" "}
                     {new Date(session.openedAt).toLocaleString("pt-BR", {
-                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                     {" · "}
                     {session._count.orders} venda{session._count.orders !== 1 ? "s" : ""}
@@ -199,7 +221,12 @@ export function CashClient({
                       size="sm"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => { setMovementDialog({ sessionId: session.id, type: "BLEED" }); setMovementAmount(""); setMovementNote(""); setMovementError(null); }}
+                      onClick={() => {
+                        setMovementDialog({ sessionId: session.id, type: "BLEED" });
+                        setMovementAmount("");
+                        setMovementNote("");
+                        setMovementError(null);
+                      }}
                     >
                       <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
                       Sangria
@@ -208,7 +235,12 @@ export function CashClient({
                       size="sm"
                       variant="outline"
                       className="flex-1"
-                      onClick={() => { setMovementDialog({ sessionId: session.id, type: "SUPPLY" }); setMovementAmount(""); setMovementNote(""); setMovementError(null); }}
+                      onClick={() => {
+                        setMovementDialog({ sessionId: session.id, type: "SUPPLY" });
+                        setMovementAmount("");
+                        setMovementNote("");
+                        setMovementError(null);
+                      }}
                     >
                       <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
                       Suprimento
@@ -217,7 +249,12 @@ export function CashClient({
                       size="sm"
                       variant="destructive"
                       className="flex-1"
-                      onClick={() => { setCloseSessionId(session.id); setClosingAmount(""); setCloseNote(""); setCloseError(null); }}
+                      onClick={() => {
+                        setCloseSessionId(session.id);
+                        setClosingAmount("");
+                        setCloseNote("");
+                        setCloseError(null);
+                      }}
                     >
                       <X className="mr-1 h-3 w-3" />
                       Fechar
@@ -231,7 +268,9 @@ export function CashClient({
 
         {recentClosed.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Fechamentos recentes</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+              Fechamentos recentes
+            </h2>
             <div className="rounded-lg border divide-y">
               {recentClosed.map((session) => (
                 <div key={session.id} className="flex items-center gap-4 px-4 py-3 text-sm">
@@ -244,7 +283,9 @@ export function CashClient({
                   <div className="text-right">
                     <p className="font-medium">{fmt(session.closingAmount ?? 0)}</p>
                     {session.divergence !== null && session.divergence !== 0 && (
-                      <p className={`text-xs flex items-center gap-1 justify-end ${session.divergence < 0 ? "text-red-500" : "text-green-600"}`}>
+                      <p
+                        className={`text-xs flex items-center gap-1 justify-end ${session.divergence < 0 ? "text-red-500" : "text-green-600"}`}
+                      >
                         <AlertTriangle className="h-3 w-3" />
                         {session.divergence > 0 ? "+" : ""}
                         {fmt(session.divergence)}
@@ -270,12 +311,11 @@ export function CashClient({
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>Local</Label>
-              <Select
-                value={openLocationId}
-                onChange={(e) => setOpenLocationId(e.target.value)}
-              >
+              <Select value={openLocationId} onChange={(e) => setOpenLocationId(e.target.value)}>
                 {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -299,11 +339,15 @@ export function CashClient({
               />
             </div>
             {openError && (
-              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">{openError}</p>
+              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {openError}
+              </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleOpen} disabled={openLoading}>
               {openLoading ? "Abrindo…" : "Abrir Caixa"}
             </Button>
@@ -312,7 +356,12 @@ export function CashClient({
       </Dialog>
 
       {/* Dialog — Fechar Caixa */}
-      <Dialog open={!!closeSessionId} onOpenChange={(open) => { if (!open) setCloseSessionId(null); }}>
+      <Dialog
+        open={!!closeSessionId}
+        onOpenChange={(open) => {
+          if (!open) setCloseSessionId(null);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Fechar Caixa</DialogTitle>
@@ -339,11 +388,15 @@ export function CashClient({
               />
             </div>
             {closeError && (
-              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">{closeError}</p>
+              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {closeError}
+              </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCloseSessionId(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setCloseSessionId(null)}>
+              Cancelar
+            </Button>
             <Button variant="destructive" onClick={handleClose} disabled={closeLoading}>
               {closeLoading ? "Fechando…" : "Confirmar Fechamento"}
             </Button>
@@ -352,12 +405,15 @@ export function CashClient({
       </Dialog>
 
       {/* Dialog — Sangria / Suprimento */}
-      <Dialog open={!!movementDialog} onOpenChange={(open) => { if (!open) setMovementDialog(null); }}>
+      <Dialog
+        open={!!movementDialog}
+        onOpenChange={(open) => {
+          if (!open) setMovementDialog(null);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {movementDialog?.type === "BLEED" ? "Sangria" : "Suprimento"}
-            </DialogTitle>
+            <DialogTitle>{movementDialog?.type === "BLEED" ? "Sangria" : "Suprimento"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
@@ -381,11 +437,15 @@ export function CashClient({
               />
             </div>
             {movementError && (
-              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">{movementError}</p>
+              <p className="rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {movementError}
+              </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMovementDialog(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setMovementDialog(null)}>
+              Cancelar
+            </Button>
             <Button onClick={handleMovement} disabled={movementLoading}>
               {movementLoading ? "Salvando…" : "Confirmar"}
             </Button>

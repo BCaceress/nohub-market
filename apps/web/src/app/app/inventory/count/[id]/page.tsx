@@ -1,19 +1,15 @@
-import Link from "next/link";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
-import { redirect, notFound } from "next/navigation";
-import { getInventoryCountDetailAction } from "@/features/inventory/actions/inventory-count-actions";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { getInventoryCountDetailAction } from "@/features/inventory/actions/inventory-count-actions";
+import { getSession } from "@/lib/auth-server";
 import { CountSessionClient } from "./count-session-client";
 
 export const metadata = { title: "Contagem Física — NoHub Market" };
 
-export default async function CountDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function CountDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect("/signin");
@@ -49,9 +45,7 @@ export default async function CountDetailPage({
                   Encerrada
                 </Badge>
               )}
-              {count.status === "IN_PROGRESS" && (
-                <Badge variant="warning">Em andamento</Badge>
-              )}
+              {count.status === "IN_PROGRESS" && <Badge variant="warning">Em andamento</Badge>}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Iniciada em{" "}

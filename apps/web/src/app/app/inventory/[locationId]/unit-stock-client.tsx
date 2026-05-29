@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowLeftRight,
+  CalendarClock,
+  Package,
+  Search,
+} from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,14 +23,6 @@ import {
 } from "@/components/ui/table";
 import { ReceiveStockDialog } from "@/features/inventory/receive-stock-dialog";
 import { TransferDialog } from "@/features/inventory/transfer-dialog";
-import {
-  ArrowDownToLine,
-  ArrowLeftRight,
-  Search,
-  Package,
-  AlertTriangle,
-  CalendarClock,
-} from "lucide-react";
 
 type Product = { id: string; name: string; unit: string };
 
@@ -76,18 +76,25 @@ export function UnitStockClient({
       (e.product.sku ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (e.product.barcode ?? "").includes(search);
     const matchLow =
-      !showLowOnly ||
-      (e.minQuantity !== null && Number(e.quantity) <= Number(e.minQuantity));
+      !showLowOnly || (e.minQuantity !== null && Number(e.quantity) <= Number(e.minQuantity));
     return matchSearch && matchLow;
   });
 
   function handleReceive(entry?: StockEntry) {
-    setSelectedProduct(entry ? { id: entry.product.id, name: entry.product.name, unit: entry.product.unit } : undefined);
+    setSelectedProduct(
+      entry
+        ? { id: entry.product.id, name: entry.product.name, unit: entry.product.unit }
+        : undefined,
+    );
     setReceiveOpen(true);
   }
 
   function handleTransfer(entry?: StockEntry) {
-    setSelectedProduct(entry ? { id: entry.product.id, name: entry.product.name, unit: entry.product.unit } : undefined);
+    setSelectedProduct(
+      entry
+        ? { id: entry.product.id, name: entry.product.name, unit: entry.product.unit }
+        : undefined,
+    );
     setTransferOpen(true);
   }
 
@@ -172,9 +179,7 @@ export function UnitStockClient({
                 <TableRow key={entry.id} data-selected={low ? "true" : undefined}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      {low && (
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                      )}
+                      {low && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
                       <div>
                         <p className="font-medium text-sm leading-snug">{entry.product.name}</p>
                         {entry.product.sku && (
@@ -200,9 +205,7 @@ export function UnitStockClient({
                         maximumFractionDigits: 3,
                       })}
                     </span>
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      {entry.product.unit}
-                    </span>
+                    <span className="ml-1 text-xs text-muted-foreground">{entry.product.unit}</span>
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs text-muted-foreground">
                     {entry.minQuantity !== null
@@ -221,7 +224,9 @@ export function UnitStockClient({
                     {entry.expiryDate ? (
                       <div className="flex items-center gap-1.5">
                         {exp && <CalendarClock className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                        <span className={`text-xs ${exp ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
+                        <span
+                          className={`text-xs ${exp ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}
+                        >
                           {new Date(entry.expiryDate).toLocaleDateString("pt-BR")}
                         </span>
                       </div>

@@ -1,12 +1,12 @@
 "use client";
 
+import { PencilLine, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductForm, type ProductFormInitialValues } from "@/features/app/product-form";
 import { AiProductLookup } from "@/features/catalog/ai-product-lookup";
 import type { OpenFoodFactsProduct } from "@/features/inventory/actions/ai-product-actions";
-import { Sparkles, PencilLine } from "lucide-react";
 
 type Supplier = { id: string; name: string };
 type Capability = { key: string };
@@ -61,8 +61,8 @@ export function NewProductClient({ organizationId, suppliers, capabilities }: Pr
             <CardHeader>
               <CardTitle>Busca por código de barras</CardTitle>
               <CardDescription>
-                Digite ou escaneie o código EAN do produto. Os dados serão buscados
-                automaticamente na base Open Food Facts.
+                Digite ou escaneie o código EAN do produto. Os dados serão buscados automaticamente
+                na base Open Food Facts.
               </CardDescription>
             </CardHeader>
             <CardContent>

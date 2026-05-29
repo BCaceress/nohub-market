@@ -1,9 +1,9 @@
+import { Globe, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
-import { ShieldCheck, Zap, Globe } from "lucide-react";
 
 const HIGHLIGHTS = [
-  { icon: Zap,         text: "Onboarding em 10 minutos com auto-preenchimento de CNPJ e CEP" },
-  { icon: Globe,       text: "Omnichannel: iFood, WhatsApp, Mercado Livre e e-commerce próprio" },
+  { icon: Zap, text: "Onboarding em 10 minutos com auto-preenchimento de CNPJ e CEP" },
+  { icon: Globe, text: "Omnichannel: iFood, WhatsApp, Mercado Livre e e-commerce próprio" },
   { icon: ShieldCheck, text: "Conformidade LGPD com exportação e exclusão de dados integradas" },
 ];
 
@@ -44,12 +44,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           >
             O sistema que cresce com o seu negócio
           </h2>
-          <p
-            className="text-sm leading-relaxed"
-            style={{ color: "var(--sidebar-foreground)" }}
-          >
-            Mercados autônomos, conveniências e vendas online em uma só
-            plataforma. Configure em minutos, opere com confiança.
+          <p className="text-sm leading-relaxed" style={{ color: "var(--sidebar-foreground)" }}>
+            Mercados autônomos, conveniências e vendas online em uma só plataforma. Configure em
+            minutos, opere com confiança.
           </p>
         </div>
 
@@ -59,7 +56,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div
               key={text}
               className="flex items-start gap-3 rounded-xl p-3.5 text-sm"
-              style={{ background: "rgb(255 255 255 / 0.05)", borderColor: "rgb(255 255 255 / 0.07)", border: "1px solid" }}
+              style={{
+                background: "rgb(255 255 255 / 0.05)",
+                borderColor: "rgb(255 255 255 / 0.07)",
+                border: "1px solid",
+              }}
             >
               <div
                 className="mt-px flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
@@ -73,10 +74,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Footer note */}
-        <p
-          className="text-[11px]"
-          style={{ color: "var(--sidebar-foreground)", opacity: 0.3 }}
-        >
+        <p className="text-[11px]" style={{ color: "var(--sidebar-foreground)", opacity: 0.3 }}>
           © {new Date().getFullYear()} NoHub Market
         </p>
       </div>

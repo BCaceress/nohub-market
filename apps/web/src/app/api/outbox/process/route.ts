@@ -7,7 +7,7 @@
  * Protegido por CRON_SECRET para evitar chamadas externas.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { processOutboxBatch } from "@/features/sales/outbox/processor";
 
 export const runtime = "nodejs";

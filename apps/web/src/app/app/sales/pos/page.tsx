@@ -3,11 +3,11 @@
  * Server Component: carrega produtos e sessão de caixa; renderiza POSClient.
  */
 
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
 import { ALL_LOCATIONS } from "@/lib/selected-location";
 import { readSelectedLocation } from "@/lib/selected-location-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 import { POSClient } from "./pos-client";
 
 export const metadata = { title: "PDV — NoHub Market" };

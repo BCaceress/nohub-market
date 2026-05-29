@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { MovementLog } from "@/features/inventory/movement-log";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Movement = {
   id: string;
@@ -114,12 +114,7 @@ export function MovementsClient({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-3 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => goPage(page - 1)}
-          >
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goPage(page - 1)}>
             <ChevronLeft className="h-4 w-4" />
             Anterior
           </Button>

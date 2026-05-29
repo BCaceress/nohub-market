@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
 import { LossForm } from "@/features/inventory/components/loss-form";
+import { getSession } from "@/lib/auth-server";
 
 export const metadata = { title: "Perda de Estoque — NoHub Market" };
 
@@ -44,16 +44,12 @@ export default async function LossPage() {
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">Registrar perda</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Registre avarias, vencimentos, furtos ou outras baixas não planejadas.
-          O sistema utilizará FEFO para alocar as saídas por lote automaticamente.
+          Registre avarias, vencimentos, furtos ou outras baixas não planejadas. O sistema utilizará
+          FEFO para alocar as saídas por lote automaticamente.
         </p>
       </div>
 
-      <LossForm
-        organizationId={member.organizationId}
-        products={products}
-        locations={locations}
-      />
+      <LossForm organizationId={member.organizationId} products={products} locations={locations} />
     </div>
   );
 }

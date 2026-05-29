@@ -7,8 +7,8 @@
  * Referência: https://developers.mercadolivre.com.br/pt_br/notificacoes
  */
 
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@nohub/db";
+import { type NextRequest, NextResponse } from "next/server";
 import { mercadolivreAdapter } from "@/features/sales/adapters/mercadolivre-adapter";
 
 export const runtime = "nodejs";
@@ -16,7 +16,9 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
   const headers: Record<string, string> = {};
-  req.headers.forEach((v, k) => { headers[k] = v; });
+  req.headers.forEach((v, k) => {
+    headers[k] = v;
+  });
 
   let payload: unknown;
   try {
@@ -25,10 +27,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const notification = payload as { user_id?: number; topic?: string; resource?: string; _id?: string };
+  const notification = payload as {
+    user_id?: number;
+    topic?: string;
+    resource?: string;
+    _id?: string;
+  };
 
   // Encontrar integração ML pelo seller_id (user_id do ML)
-  const sellerId = String(notification.user_id ?? "");
+  const _sellerId = String(notification.user_id ?? "");
   const integration = await prisma.channelIntegration.findFirst({
     where: { channel: "MERCADO_LIVRE", status: "CONNECTED" },
   });
@@ -39,7 +46,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Verificar assinatura
   const credentials = integration.credentials as Record<string, unknown> | null;
-  const secret      = String(credentials?.clientSecret ?? "");
+  const secret = String(credentials?.clientSecret ?? "");
   if (secret && !mercadolivreAdapter.verifySignature(rawBody, headers, secret)) {
     console.warn("[ML webhook] Assinatura inválida — ignorando");
     return NextResponse.json({ ok: true });
@@ -60,9 +67,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await prisma.inboundEvent.create({
       data: {
         organizationId: integration.organizationId,
-        channel:        "MERCADO_LIVRE",
+        channel: "MERCADO_LIVRE",
         externalEventId,
-        payload:        notification as never,
+        payload: notification as never,
       },
     });
   }

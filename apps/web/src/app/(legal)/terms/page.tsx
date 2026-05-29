@@ -15,8 +15,8 @@ export default function TermsPage() {
 
       <Section title="1. Aceitação dos Termos">
         <p>
-          Ao acessar ou utilizar a plataforma <strong>NoHub Market</strong> ("Plataforma"), você concorda
-          com estes Termos de Uso e com nossa{" "}
+          Ao acessar ou utilizar a plataforma <strong>NoHub Market</strong> ("Plataforma"), você
+          concorda com estes Termos de Uso e com nossa{" "}
           <a href="/privacy" className="text-primary underline underline-offset-4 hover:opacity-80">
             Política de Privacidade
           </a>
@@ -26,25 +26,25 @@ export default function TermsPage() {
 
       <Section title="2. Descrição do Serviço">
         <p>
-          O NoHub Market é um sistema de gestão para mercados autônomos, conveniências e vendas online.
-          A Plataforma oferece funcionalidades de cadastro de produtos, gestão de canais de venda,
-          controle de fornecedores, unidades e relatórios operacionais.
+          O NoHub Market é um sistema de gestão para mercados autônomos, conveniências e vendas
+          online. A Plataforma oferece funcionalidades de cadastro de produtos, gestão de canais de
+          venda, controle de fornecedores, unidades e relatórios operacionais.
         </p>
       </Section>
 
       <Section title="3. Elegibilidade">
         <p>
           Para utilizar a Plataforma, você deve: (a) ter pelo menos 18 anos de idade; (b) ter
-          capacidade legal para celebrar contratos; (c) representar uma pessoa jurídica ou atuar como
-          profissional autônomo com CNPJ ou CPF válido.
+          capacidade legal para celebrar contratos; (c) representar uma pessoa jurídica ou atuar
+          como profissional autônomo com CNPJ ou CPF válido.
         </p>
       </Section>
 
       <Section title="4. Cadastro e Conta">
         <p>
           Você é responsável por manter a confidencialidade de suas credenciais de acesso. Qualquer
-          atividade realizada sob sua conta é de sua responsabilidade. Notifique-nos imediatamente em
-          caso de acesso não autorizado.
+          atividade realizada sob sua conta é de sua responsabilidade. Notifique-nos imediatamente
+          em caso de acesso não autorizado.
         </p>
         <p>
           Ao se cadastrar, você fornece informações verdadeiras, precisas e completas. A criação de
@@ -60,29 +60,37 @@ export default function TermsPage() {
         </p>
         <ul className="list-disc list-inside flex flex-col gap-1 ml-2">
           <li>A cobrança é realizada antecipadamente pelo período contratado.</li>
-          <li>Cancelamentos não geram reembolso proporcional, salvo disposição legal em contrário.</li>
+          <li>
+            Cancelamentos não geram reembolso proporcional, salvo disposição legal em contrário.
+          </li>
           <li>O não pagamento pode resultar na suspensão do acesso.</li>
         </ul>
       </Section>
 
       <Section title="6. Uso Permitido">
         <p>
-          É permitido utilizar a Plataforma para fins lícitos relacionados à sua atividade comercial.
-          É expressamente proibido:
+          É permitido utilizar a Plataforma para fins lícitos relacionados à sua atividade
+          comercial. É expressamente proibido:
         </p>
         <ul className="list-disc list-inside flex flex-col gap-1 ml-2">
           <li>Realizar engenharia reversa, decompilação ou tentativa de obter o código-fonte.</li>
-          <li>Utilizar a Plataforma para atividades ilegais, fraudulentas ou que violem direitos de terceiros.</li>
+          <li>
+            Utilizar a Plataforma para atividades ilegais, fraudulentas ou que violem direitos de
+            terceiros.
+          </li>
           <li>Revender ou sublicenciar o acesso à Plataforma sem autorização expressa.</li>
           <li>Introduzir vírus, malware ou qualquer código malicioso.</li>
-          <li>Sobrecarregar deliberadamente a infraestrutura da Plataforma (DDoS, scraping abusivo etc.).</li>
+          <li>
+            Sobrecarregar deliberadamente a infraestrutura da Plataforma (DDoS, scraping abusivo
+            etc.).
+          </li>
         </ul>
       </Section>
 
       <Section title="7. Propriedade Intelectual">
         <p>
-          Todo o conteúdo da Plataforma — software, marcas, logos, textos, gráficos e interfaces —
-          é propriedade exclusiva do NoHub Market ou de seus licenciadores, protegido pelas leis
+          Todo o conteúdo da Plataforma — software, marcas, logos, textos, gráficos e interfaces — é
+          propriedade exclusiva do NoHub Market ou de seus licenciadores, protegido pelas leis
           brasileiras (Lei nº 9.279/1996 e Lei nº 9.610/1998).
         </p>
         <p>
@@ -121,8 +129,8 @@ export default function TermsPage() {
       <Section title="11. Legislação Aplicável e Foro">
         <p>
           Estes Termos são regidos pelas leis da República Federativa do Brasil. As partes elegem o
-          foro da comarca de São Paulo/SP para dirimir quaisquer controvérsias, com renúncia expressa
-          a qualquer outro.
+          foro da comarca de São Paulo/SP para dirimir quaisquer controvérsias, com renúncia
+          expressa a qualquer outro.
         </p>
       </Section>
 
@@ -137,7 +145,10 @@ export default function TermsPage() {
       <Section title="13. Contato">
         <p>
           Em caso de dúvidas:{" "}
-          <a href="mailto:legal@nohub.com.br" className="text-primary underline underline-offset-4 hover:opacity-80">
+          <a
+            href="mailto:legal@nohub.com.br"
+            className="text-primary underline underline-offset-4 hover:opacity-80"
+          >
             legal@nohub.com.br
           </a>
         </p>

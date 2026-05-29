@@ -2,10 +2,10 @@
  * Configurações Fiscais — cert upload, CSC, série, provider, ambiente.
  */
 
-import { getFiscalSettingsAction } from "@/features/fiscal/actions/fiscal-actions";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
+import { getFiscalSettingsAction } from "@/features/fiscal/actions/fiscal-actions";
+import { getSession } from "@/lib/auth-server";
 import { FiscalSettingsClient } from "./fiscal-settings-client";
 
 export const metadata = { title: "Config Fiscal — NoHub Market" };

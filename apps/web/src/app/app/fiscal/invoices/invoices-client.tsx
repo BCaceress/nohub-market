@@ -1,8 +1,8 @@
 "use client";
 
-import type { InvoiceListItem } from "@/features/fiscal/actions/fiscal-actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import type { InvoiceListItem } from "@/features/fiscal/actions/fiscal-actions";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendente",

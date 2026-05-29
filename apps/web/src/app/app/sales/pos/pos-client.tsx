@@ -1,20 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
-import { Select } from "@/components/ui/select";
-import { findProductByBarcodeWithPackageAction } from "@/features/catalog/actions/package-actions";
-import { quickSaleAction } from "@/features/sales/actions/order-actions";
-import { cn } from "@/lib/utils";
 import {
   Banknote,
   CheckCircle2,
@@ -33,6 +18,21 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
+import { Select } from "@/components/ui/select";
+import { findProductByBarcodeWithPackageAction } from "@/features/catalog/actions/package-actions";
+import { quickSaleAction } from "@/features/sales/actions/order-actions";
+import { cn } from "@/lib/utils";
 
 type Product = {
   id: string;

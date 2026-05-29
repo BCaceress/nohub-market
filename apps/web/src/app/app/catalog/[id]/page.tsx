@@ -1,19 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProductForm } from "@/features/app/product-form";
-import { getProductAction } from "@/features/app/actions/product-actions";
-import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
-import { getSession } from "@/lib/auth-server";
-import { getCapabilities } from "@/lib/capabilities";
 import { prisma } from "@nohub/db";
 import { notFound, redirect } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getProductAction } from "@/features/app/actions/product-actions";
+import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
+import { ProductForm } from "@/features/app/product-form";
+import { getSession } from "@/lib/auth-server";
+import { getCapabilities } from "@/lib/capabilities";
 
 export const metadata = { title: "Editar produto — NoHub Market" };
 
-export default async function EditProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect("/signin");

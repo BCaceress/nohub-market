@@ -1,12 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import {
   convertSuggestionToPOAction,
   dismissSuggestionAction,
   generatePurchaseSuggestionAction,
 } from "@/features/purchasing/actions/purchasing-actions";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
 
 type SuggestionItem = {
   id: string;

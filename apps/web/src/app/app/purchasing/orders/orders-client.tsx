@@ -1,13 +1,12 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useState, useTransition } from "react";
 import {
   cancelPurchaseOrderAction,
   confirmPurchaseOrderAction,
-  createPurchaseOrderAction,
   sendPurchaseOrderAction,
 } from "@/features/purchasing/actions/purchasing-actions";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Rascunho",

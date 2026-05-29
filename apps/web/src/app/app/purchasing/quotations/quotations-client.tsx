@@ -66,7 +66,7 @@ export function QuotationsClient({ quotations }: Props) {
         <div className="space-y-4">
           {quotations.map((q) => {
             const respondedCount = q.supplierResponses.filter((r) => r.receivedAt).length;
-            const selected = q.supplierResponses.find((r) => r.selected);
+            const _selected = q.supplierResponses.find((r) => r.selected);
 
             return (
               <div

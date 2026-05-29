@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  confirmNfeImportAction,
-  importNfeXmlAction,
-} from "@/features/purchasing/actions/purchasing-actions";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { importNfeXmlAction } from "@/features/purchasing/actions/purchasing-actions";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendente",

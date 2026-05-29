@@ -8,10 +8,10 @@
  * RN-F05: atualização de status ocorre no worker de webhook.
  */
 
-import { getProvider } from "@/features/fiscal/providers";
-import { prisma } from "@nohub/db";
 import type { FiscalProviderEnum } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { type NextRequest, NextResponse } from "next/server";
+import { getProvider } from "@/features/fiscal/providers";
 
 const SUPPORTED_PROVIDERS = ["focus_nfe", "tecnospeed"] as const;
 

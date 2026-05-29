@@ -1,8 +1,8 @@
 "use client";
 
-import { inutilizeRangeAction } from "@/features/fiscal/actions/fiscal-actions";
-import type { NumberSkipItem } from "@/features/fiscal/actions/fiscal-actions";
 import { useState, useTransition } from "react";
+import type { NumberSkipItem } from "@/features/fiscal/actions/fiscal-actions";
+import { inutilizeRangeAction } from "@/features/fiscal/actions/fiscal-actions";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   REQUESTED: { label: "Aguardando", color: "bg-yellow-100 text-yellow-700" },

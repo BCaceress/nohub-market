@@ -1,6 +1,6 @@
+import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResetPasswordForm } from "@/features/auth/reset-password-form";
-import { Suspense } from "react";
 
 export default function ResetPasswordPage() {
   return (

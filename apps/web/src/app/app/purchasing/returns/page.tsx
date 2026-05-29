@@ -2,9 +2,9 @@
  * Devoluções ao Fornecedor — listagem.
  */
 
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth-server";
 import { ReturnsClient } from "./returns-client";
 
 export const metadata = { title: "Devoluções ao Fornecedor — NoHub Market" };

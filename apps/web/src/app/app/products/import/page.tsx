@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getFiscalTemplatesAction } from "@/features/catalog/actions/tax-actions";
 import { ImportWizard } from "@/features/catalog/components/import-wizard";
+import { getSession } from "@/lib/auth-server";
 
 export default async function ImportPage() {
   const session = await getSession();
@@ -30,14 +30,12 @@ export default async function ImportPage() {
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">Importar produtos</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Três formas de adicionar produtos em massa: template fiscal, planilha CSV ou código de barras.
+          Três formas de adicionar produtos em massa: template fiscal, planilha CSV ou código de
+          barras.
         </p>
       </div>
 
-      <ImportWizard
-        organizationId={member.organizationId}
-        templates={templates}
-      />
+      <ImportWizard organizationId={member.organizationId} templates={templates} />
     </div>
   );
 }

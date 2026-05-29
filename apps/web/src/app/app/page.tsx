@@ -1,10 +1,3 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Stat } from "@/components/ui/stat";
-import { getSession } from "@/lib/auth-server";
-import { ALL_LOCATIONS } from "@/lib/selected-location";
-import { readSelectedLocation } from "@/lib/selected-location-server";
 import { prisma } from "@nohub/db";
 import {
   ArrowRight,
@@ -20,6 +13,13 @@ import {
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Stat } from "@/components/ui/stat";
+import { getSession } from "@/lib/auth-server";
+import { ALL_LOCATIONS } from "@/lib/selected-location";
+import { readSelectedLocation } from "@/lib/selected-location-server";
 
 export const metadata = { title: "Dashboard — NoHub Market" };
 
@@ -486,8 +486,8 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {criticalStock.slice(0, 5).map((s, idx) => (
-                  <li key={`${s.productId}-${idx}`} className="flex items-center gap-3 px-5 py-3">
+                {criticalStock.slice(0, 5).map((s) => (
+                  <li key={s.productId} className="flex items-center gap-3 px-5 py-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-destructive-soft text-destructive">
                       <Triangle className="h-3.5 w-3.5" />
                     </span>

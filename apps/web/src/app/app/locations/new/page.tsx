@@ -1,8 +1,8 @@
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationForm } from "@/features/app/location-form";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Nova unidade — NoHub Market" };
 
@@ -28,9 +28,7 @@ export default async function NewLocationPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Dados da unidade</CardTitle>
-          <CardDescription>
-            O endereço é opcional e pode ser preenchido depois.
-          </CardDescription>
+          <CardDescription>O endereço é opcional e pode ser preenchido depois.</CardDescription>
         </CardHeader>
         <CardContent>
           <LocationForm organizationId={member.organizationId} />

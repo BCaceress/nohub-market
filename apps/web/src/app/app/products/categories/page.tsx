@@ -1,8 +1,8 @@
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { getCategoriesAction } from "@/features/catalog/actions/category-actions";
 import { CategoriesPageClient } from "@/features/catalog/components/categories-page-client";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Categorias — NoHub Market" };
 

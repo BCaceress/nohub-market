@@ -1,17 +1,13 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LocationForm } from "@/features/app/location-form";
-import { getLocationAction } from "@/features/app/actions/location-actions";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { notFound, redirect } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getLocationAction } from "@/features/app/actions/location-actions";
+import { LocationForm } from "@/features/app/location-form";
+import { getSession } from "@/lib/auth-server";
 
 export const metadata = { title: "Editar unidade — NoHub Market" };
 
-export default async function EditLocationPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditLocationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
   if (!session) redirect("/signin");

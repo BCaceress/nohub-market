@@ -2,12 +2,12 @@
  * Importação de NFe — upload de XML, mapeamento de itens e confirmação.
  */
 
+import { redirect } from "next/navigation";
 import {
   listLocationsAction,
   listNfeImportsAction,
 } from "@/features/purchasing/actions/purchasing-actions";
 import { getSession } from "@/lib/auth-server";
-import { redirect } from "next/navigation";
 import { NfeImportClient } from "./nfe-import-client";
 
 export const metadata = { title: "Importar NFe — NoHub Market" };

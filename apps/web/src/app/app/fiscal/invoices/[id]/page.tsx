@@ -2,19 +2,15 @@
  * Detalhes de uma Nota Fiscal — timeline, DANFE, ações.
  */
 
-import { getInvoiceAction } from "@/features/fiscal/actions/fiscal-actions";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { notFound, redirect } from "next/navigation";
+import { getInvoiceAction } from "@/features/fiscal/actions/fiscal-actions";
+import { getSession } from "@/lib/auth-server";
 import { InvoiceDetailClient } from "./invoice-detail-client";
 
 export const metadata = { title: "Nota Fiscal — NoHub Market" };
 
-export default async function InvoiceDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/signin");
 

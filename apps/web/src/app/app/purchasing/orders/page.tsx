@@ -2,9 +2,9 @@
  * Pedidos de Compra — listagem com filtro de status.
  */
 
+import { redirect } from "next/navigation";
 import { listPurchaseOrdersAction } from "@/features/purchasing/actions/purchasing-actions";
 import { getSession } from "@/lib/auth-server";
-import { redirect } from "next/navigation";
 import { PurchaseOrdersClient } from "./orders-client";
 
 export const metadata = { title: "Pedidos de Compra — NoHub Market" };

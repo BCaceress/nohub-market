@@ -1,15 +1,10 @@
+import { prisma } from "@nohub/db";
+import { AlertTriangle, ArrowLeft, CalendarClock } from "lucide-react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  AlertTriangle,
-  CalendarClock,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getLocationStockAction } from "@/features/inventory/actions/stock-actions";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { notFound, redirect } from "next/navigation";
 import { UnitStockClient } from "./unit-stock-client";
 
 export const metadata = { title: "Estoque da unidade — NoHub Market" };
@@ -102,9 +97,7 @@ export default async function UnitStockPage({
           </div>
           <div className="flex gap-2 shrink-0">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/app/inventory/movements?locationId=${locationId}`}>
-                Histórico
-              </Link>
+              <Link href={`/app/inventory/movements?locationId=${locationId}`}>Histórico</Link>
             </Button>
           </div>
         </div>

@@ -1,21 +1,28 @@
-import Link from "next/link";
-import { ArrowLeft, Plus, ClipboardList, CheckCircle, Clock } from "lucide-react";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { ArrowLeft, CheckCircle, ClipboardList, Clock } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { getInventoryCountsAction } from "@/features/inventory/actions/inventory-count-actions";
 import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { getSession } from "@/lib/auth-server";
 import { StartCountButton } from "./start-count-button";
 
 export const metadata = { title: "Contagens de Estoque — NoHub Market" };
 
 const STATUS_CONFIG = {
-  DRAFT:       { label: "Rascunho",    variant: "secondary" as const, icon: <Clock className="h-3 w-3" /> },
-  IN_PROGRESS: { label: "Em andamento",variant: "warning"   as const, icon: <Clock className="h-3 w-3" /> },
-  CLOSED:      { label: "Encerrada",   variant: "success"   as const, icon: <CheckCircle className="h-3 w-3" /> },
+  DRAFT: { label: "Rascunho", variant: "secondary" as const, icon: <Clock className="h-3 w-3" /> },
+  IN_PROGRESS: {
+    label: "Em andamento",
+    variant: "warning" as const,
+    icon: <Clock className="h-3 w-3" />,
+  },
+  CLOSED: {
+    label: "Encerrada",
+    variant: "success" as const,
+    icon: <CheckCircle className="h-3 w-3" />,
+  },
 };
 
 export default async function CountPage() {
@@ -53,10 +60,7 @@ export default async function CountPage() {
               Inventário físico com ajuste automático de divergências (RN-E13).
             </p>
           </div>
-          <StartCountButton
-            organizationId={member.organizationId}
-            locations={locations}
-          />
+          <StartCountButton organizationId={member.organizationId} locations={locations} />
         </div>
       </div>
 
@@ -98,7 +102,9 @@ export default async function CountPage() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {new Date(count.startedAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit", month: "short", year: "numeric",
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
                     })}
                     {" · "}
                     {counted}/{total} itens contados

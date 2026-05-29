@@ -1,3 +1,6 @@
+import { prisma } from "@nohub/db";
+import { Package } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getLocationsAction } from "@/features/app/actions/location-actions";
 import {
@@ -8,9 +11,6 @@ import { getFiscalTemplatesAction } from "@/features/catalog/actions/tax-actions
 import { BrandSheetTrigger } from "@/features/catalog/components/brand-sheet";
 import { CategorySheetTrigger } from "@/features/catalog/components/category-sheet";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { Package } from "lucide-react";
-import { redirect } from "next/navigation";
 import { ImportModalButton } from "./import-modal-button";
 import { NewProductDropdown } from "./new-product-dropdown";
 import { ProductListClient } from "./product-list-client";

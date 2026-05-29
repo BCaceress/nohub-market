@@ -1,3 +1,6 @@
+import { prisma } from "@nohub/db";
+import { History } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { History } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Auditoria — NoHub Market" };
 

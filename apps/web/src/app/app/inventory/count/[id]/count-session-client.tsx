@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { AlertTriangle, CheckCircle2, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -13,19 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-} from "lucide-react";
 import {
   addCountItemAction,
   closeInventoryCountAction,
@@ -72,13 +61,13 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
     ...item,
     countedQuantity: item.id in localCounted ? localCounted[item.id]! : item.countedQuantity,
     divergence:
-      item.id in localCounted
-        ? localCounted[item.id]! - item.systemQuantity
-        : item.divergence,
+      item.id in localCounted ? localCounted[item.id]! - item.systemQuantity : item.divergence,
   }));
 
-  const countedCount  = items.filter((i) => i.countedQuantity !== null).length;
-  const divergentCount = items.filter((i) => i.divergence !== null && Math.abs(i.divergence) >= 0.001).length;
+  const countedCount = items.filter((i) => i.countedQuantity !== null).length;
+  const divergentCount = items.filter(
+    (i) => i.divergence !== null && Math.abs(i.divergence) >= 0.001,
+  ).length;
 
   function openEdit(item: CountItem) {
     setEditItem(item);
@@ -90,7 +79,7 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
   function handleSaveCount() {
     if (!editItem) return;
     const qty = parseFloat(inputValue);
-    if (isNaN(qty) || qty < 0) {
+    if (Number.isNaN(qty) || qty < 0) {
       setError("Valor inválido.");
       return;
     }
@@ -98,10 +87,10 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
 
     startTransition(async () => {
       const res = await addCountItemAction(organizationId, count.id, {
-        productId:       editItem.productId,
-        variantId:       editItem.variantId ?? undefined,
-        lotId:           editItem.lotId    ?? undefined,
-        systemQuantity:  editItem.systemQuantity,
+        productId: editItem.productId,
+        variantId: editItem.variantId ?? undefined,
+        lotId: editItem.lotId ?? undefined,
+        systemQuantity: editItem.systemQuantity,
         countedQuantity: qty,
       });
       if (!res.success) {
@@ -142,7 +131,9 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
         </div>
         <div className="h-10 w-px bg-border" />
         <div className="text-center">
-          <p className={`text-2xl font-bold ${divergentCount > 0 ? "text-amber-600" : "text-green-600 dark:text-green-400"}`}>
+          <p
+            className={`text-2xl font-bold ${divergentCount > 0 ? "text-amber-600" : "text-green-600 dark:text-green-400"}`}
+          >
             {divergentCount}
           </p>
           <p className="text-xs text-muted-foreground">Divergências</p>
@@ -161,9 +152,7 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
         )}
       </div>
 
-      {closeError && (
-        <p className="text-sm text-red-500">{closeError}</p>
-      )}
+      {closeError && <p className="text-sm text-red-500">{closeError}</p>}
 
       {/* Items table */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
@@ -181,7 +170,7 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
           <TableBody>
             {items.map((item) => {
               const counted = item.countedQuantity;
-              const div     = item.divergence;
+              const div = item.divergence;
 
               return (
                 <TableRow
@@ -190,14 +179,16 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
                     counted === null
                       ? ""
                       : div !== null && Math.abs(div) >= 0.001
-                      ? "bg-amber-50/40 dark:bg-amber-950/10"
-                      : "bg-green-50/20 dark:bg-green-950/5"
+                        ? "bg-amber-50/40 dark:bg-amber-950/10"
+                        : "bg-green-50/20 dark:bg-green-950/5"
                   }
                 >
                   <TableCell>
                     <div>
                       <p className="text-sm font-medium">{item.product.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.product.sku} · {item.product.unit}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.product.sku} · {item.product.unit}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs font-mono text-muted-foreground">
@@ -212,7 +203,9 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
                         {counted.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
                       </span>
                     ) : (
-                      <Badge variant="secondary" className="text-[10px]">Pendente</Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        Pendente
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -230,8 +223,8 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
                             Math.abs(div) < 0.001
                               ? "text-muted-foreground"
                               : div > 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-red-600 dark:text-red-400"
                           }`}
                         >
                           {div > 0 ? "+" : ""}
@@ -257,7 +250,9 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
                   )}
                   {isClosed && item.adjustmentMovementId && (
                     <TableCell>
-                      <span title="Ajuste gerado"><AlertTriangle className="h-3.5 w-3.5 text-amber-500" /></span>
+                      <span title="Ajuste gerado">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                      </span>
                     </TableCell>
                   )}
                 </TableRow>
@@ -278,7 +273,9 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
               <div>
                 <p className="text-sm font-medium">{editItem.product.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Saldo no sistema: {editItem.systemQuantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {editItem.product.unit}
+                  Saldo no sistema:{" "}
+                  {editItem.systemQuantity.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}{" "}
+                  {editItem.product.unit}
                 </p>
               </div>
               <Input
@@ -287,13 +284,18 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
                 step="0.001"
                 placeholder="Quantidade contada"
                 value={inputValue}
-                onChange={(e) => { setInputValue(e.target.value); setError(null); }}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  setError(null);
+                }}
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && handleSaveCount()}
               />
               {error && <p className="text-xs text-red-500">{error}</p>}
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setEditItem(null)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => setEditItem(null)}>
+                  Cancelar
+                </Button>
                 <Button onClick={handleSaveCount} disabled={isPending}>
                   {isPending ? "Salvando…" : "Confirmar"}
                 </Button>
@@ -311,9 +313,8 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              O sistema irá gerar ajustes automáticos para os{" "}
-              <strong>{divergentCount}</strong> item(ns) com divergência.
-              Esta ação não pode ser desfeita.
+              O sistema irá gerar ajustes automáticos para os <strong>{divergentCount}</strong>{" "}
+              item(ns) com divergência. Esta ação não pode ser desfeita.
             </p>
             {countedCount < items.length && (
               <p className="text-xs text-amber-600">
@@ -323,7 +324,9 @@ export function CountSessionClient({ organizationId, count, isClosed }: Props) {
             )}
             {closeError && <p className="text-xs text-red-500">{closeError}</p>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setCloseConfirm(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setCloseConfirm(false)}>
+                Cancelar
+              </Button>
               <Button onClick={handleClose} disabled={isPending}>
                 {isPending ? "Encerrando…" : "Confirmar encerramento"}
               </Button>

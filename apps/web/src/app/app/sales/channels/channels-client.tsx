@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { Plug, PlugZap, RefreshCw, Unplug } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button }  from "@/components/ui/button";
-import { Input }   from "@/components/ui/input";
-import { Label }   from "@/components/ui/label";
-import { Badge }   from "@/components/ui/badge";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Plug, PlugZap, RefreshCw, Unplug } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   connectChannelAction,
   disconnectChannelAction,
@@ -23,54 +23,77 @@ import {
 } from "@/features/sales/actions/channel-actions";
 
 type Integration = {
-  id:           string;
-  channel:      string;
-  status:       string;
-  settings:     unknown;
-  lastSyncAt:   Date | string | null;
-  lastErrorAt:  Date | string | null;
+  id: string;
+  channel: string;
+  status: string;
+  settings: unknown;
+  lastSyncAt: Date | string | null;
+  lastErrorAt: Date | string | null;
   lastErrorMsg: string | null;
-  createdAt:    Date | string;
-  updatedAt:    Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 };
 
 type Props = {
-  integrations:   Integration[];
+  integrations: Integration[];
   organizationId: string;
-  actorId:        string;
+  actorId: string;
 };
 
-const CHANNEL_INFO: Record<string, {
-  name:        string;
-  description: string;
-  fields:      Array<{ key: string; label: string; type: "text" | "password"; placeholder: string }>;
-}> = {
+const CHANNEL_INFO: Record<
+  string,
+  {
+    name: string;
+    description: string;
+    fields: Array<{ key: string; label: string; type: "text" | "password"; placeholder: string }>;
+  }
+> = {
   IFOOD: {
-    name:        "iFood",
+    name: "iFood",
     description: "Receba pedidos do iFood automaticamente. Requer homologação junto ao iFood.",
     fields: [
-      { key: "accessToken",   label: "Access Token",   type: "password", placeholder: "Token OAuth iFood" },
-      { key: "merchantId",    label: "Merchant ID",    type: "text",     placeholder: "ID do restaurante" },
-      { key: "webhookSecret", label: "Webhook Secret", type: "password", placeholder: "Segredo do webhook" },
+      {
+        key: "accessToken",
+        label: "Access Token",
+        type: "password",
+        placeholder: "Token OAuth iFood",
+      },
+      { key: "merchantId", label: "Merchant ID", type: "text", placeholder: "ID do restaurante" },
+      {
+        key: "webhookSecret",
+        label: "Webhook Secret",
+        type: "password",
+        placeholder: "Segredo do webhook",
+      },
     ],
   },
   WHATSAPP: {
-    name:        "WhatsApp Business",
+    name: "WhatsApp Business",
     description: "Receba pedidos via WhatsApp (Meta Cloud API). Catálogo de produtos integrado.",
     fields: [
-      { key: "accessToken",   label: "Access Token",    type: "password", placeholder: "Token da Meta"    },
-      { key: "phoneNumberId", label: "Phone Number ID", type: "text",     placeholder: "ID do número"     },
-      { key: "catalogId",     label: "Catalog ID",      type: "text",     placeholder: "ID do catálogo"   },
-      { key: "appSecret",     label: "App Secret",      type: "password", placeholder: "Segredo do app"   },
+      { key: "accessToken", label: "Access Token", type: "password", placeholder: "Token da Meta" },
+      { key: "phoneNumberId", label: "Phone Number ID", type: "text", placeholder: "ID do número" },
+      { key: "catalogId", label: "Catalog ID", type: "text", placeholder: "ID do catálogo" },
+      { key: "appSecret", label: "App Secret", type: "password", placeholder: "Segredo do app" },
     ],
   },
   MERCADO_LIVRE: {
-    name:        "Mercado Livre",
+    name: "Mercado Livre",
     description: "Sincronize produtos e receba pedidos do ML. Suporta FLEX e CLASSIC.",
     fields: [
-      { key: "accessToken",  label: "Access Token",  type: "password", placeholder: "Token OAuth ML" },
-      { key: "sellerId",     label: "Seller ID",     type: "text",     placeholder: "ID do vendedor" },
-      { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "Segredo do app" },
+      {
+        key: "accessToken",
+        label: "Access Token",
+        type: "password",
+        placeholder: "Token OAuth ML",
+      },
+      { key: "sellerId", label: "Seller ID", type: "text", placeholder: "ID do vendedor" },
+      {
+        key: "clientSecret",
+        label: "Client Secret",
+        type: "password",
+        placeholder: "Segredo do app",
+      },
     ],
   },
 };
@@ -81,19 +104,18 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
   const router = useRouter();
 
   const [connectChannel, setConnectChannel] = useState<string | null>(null);
-  const [credentials,    setCredentials]    = useState<Record<string, string>>({});
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [connectLoading, setConnectLoading] = useState(false);
-  const [connectError,   setConnectError]   = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
   const [disconnectLoading, setDisconnectLoading] = useState(false);
 
   const [syncChannel, setSyncChannel] = useState<string | null>(null);
   const [syncLoading, setSyncLoading] = useState(false);
-  const [syncResult,  setSyncResult]  = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
-  const getIntegration = (channel: string) =>
-    integrations.find((i) => i.channel === channel);
+  const getIntegration = (channel: string) => integrations.find((i) => i.channel === channel);
 
   const handleConnect = async () => {
     if (!connectChannel) return;
@@ -101,12 +123,15 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
     setConnectError(null);
     const result = await connectChannelAction({
       organizationId,
-      channel:     connectChannel as "IFOOD" | "WHATSAPP" | "MERCADO_LIVRE" | "POS" | "SELF_SERVICE",
+      channel: connectChannel as "IFOOD" | "WHATSAPP" | "MERCADO_LIVRE" | "POS" | "SELF_SERVICE",
       credentials,
       actorId,
     });
     setConnectLoading(false);
-    if (!result.success) { setConnectError(result.error); return; }
+    if (!result.success) {
+      setConnectError(result.error);
+      return;
+    }
     setConnectChannel(null);
     setCredentials({});
     router.refresh();
@@ -146,9 +171,9 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
 
       <div className="grid gap-6 md:grid-cols-3">
         {ALL_CHANNELS.map((channel) => {
-          const info        = CHANNEL_INFO[channel];
+          const info = CHANNEL_INFO[channel];
           const integration = getIntegration(channel);
-          const connected   = integration?.status === "CONNECTED";
+          const connected = integration?.status === "CONNECTED";
 
           return (
             <Card key={channel} className={connected ? "border-green-200" : ""}>
@@ -174,7 +199,10 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
                   <p className="text-xs text-muted-foreground">
                     Última sync:{" "}
                     {new Date(integration.lastSyncAt).toLocaleString("pt-BR", {
-                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </p>
                 )}
@@ -200,7 +228,9 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
                         disabled={syncLoading && syncChannel === channel}
                         onClick={() => handleSync(channel)}
                       >
-                        <RefreshCw className={`mr-1 h-3 w-3 ${syncLoading && syncChannel === channel ? "animate-spin" : ""}`} />
+                        <RefreshCw
+                          className={`mr-1 h-3 w-3 ${syncLoading && syncChannel === channel ? "animate-spin" : ""}`}
+                        />
                         Sincronizar
                       </Button>
                       <Button
@@ -224,7 +254,9 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
       {/* Dialog — Conectar */}
       <Dialog
         open={!!connectChannel}
-        onOpenChange={(open) => { if (!open) setConnectChannel(null); }}
+        onOpenChange={(open) => {
+          if (!open) setConnectChannel(null);
+        }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -257,7 +289,9 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConnectChannel(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setConnectChannel(null)}>
+              Cancelar
+            </Button>
             <Button onClick={handleConnect} disabled={connectLoading}>
               {connectLoading ? "Conectando…" : "Salvar Credenciais"}
             </Button>
@@ -268,23 +302,23 @@ export function ChannelsClient({ integrations, organizationId, actorId }: Props)
       {/* Dialog — Confirmar Desconexão */}
       <Dialog
         open={!!disconnectTarget}
-        onOpenChange={(open) => { if (!open) setDisconnectTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDisconnectTarget(null);
+        }}
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Desconectar canal?</DialogTitle>
             <DialogDescription>
-              As credenciais serão removidas. Pedidos em andamento não serão afetados.
-              Você poderá reconectar a qualquer momento.
+              As credenciais serão removidas. Pedidos em andamento não serão afetados. Você poderá
+              reconectar a qualquer momento.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisconnectTarget(null)}>Cancelar</Button>
-            <Button
-              variant="destructive"
-              onClick={handleDisconnect}
-              disabled={disconnectLoading}
-            >
+            <Button variant="outline" onClick={() => setDisconnectTarget(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDisconnect} disabled={disconnectLoading}>
               {disconnectLoading ? "Desconectando…" : "Desconectar"}
             </Button>
           </DialogFooter>

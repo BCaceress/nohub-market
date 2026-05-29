@@ -1,11 +1,11 @@
+import { prisma } from "@nohub/db";
+import { ShieldCheck, User } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountActions } from "@/features/app/account-actions";
 import { TwoFactorSetup } from "@/features/auth/two-factor-setup";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { ShieldCheck, User } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export const metadata = { title: "Minha conta — NoHub Market" };
 

@@ -2,12 +2,12 @@
  * Canais — conectar/desconectar iFood, WhatsApp, Mercado Livre.
  */
 
-import { PageHeader } from "@/components/page-header";
-import { getChannelIntegrationsAction } from "@/features/sales/actions/channel-actions";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { Link2 } from "lucide-react";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { getChannelIntegrationsAction } from "@/features/sales/actions/channel-actions";
+import { getSession } from "@/lib/auth-server";
 import { ChannelsClient } from "./channels-client";
 
 export const metadata = { title: "Canais — NoHub Market" };

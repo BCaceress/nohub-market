@@ -1,12 +1,12 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import type { FiscalSettingsData } from "@/features/fiscal/actions/fiscal-actions";
 import {
   promoteToProductionAction,
   updateFiscalConfigAction,
   uploadCertificateAction,
 } from "@/features/fiscal/actions/fiscal-actions";
-import type { FiscalSettingsData } from "@/features/fiscal/actions/fiscal-actions";
-import { useState, useTransition } from "react";
 
 type Props = {
   config: FiscalSettingsData["config"];

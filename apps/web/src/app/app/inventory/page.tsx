@@ -1,17 +1,3 @@
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Stat } from "@/components/ui/stat";
-import {
-  getAlertsAction,
-  getBalanceSummaryAction,
-} from "@/features/inventory/actions/inventory-actions";
-import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
-import { BalanceTable } from "@/features/inventory/components/balance-table";
-import { getSession } from "@/lib/auth-server";
-import { ALL_LOCATIONS } from "@/lib/selected-location";
-import { readSelectedLocation } from "@/lib/selected-location-server";
 import { prisma } from "@nohub/db";
 import {
   AlertTriangle,
@@ -28,6 +14,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Stat } from "@/components/ui/stat";
+import {
+  getAlertsAction,
+  getBalanceSummaryAction,
+} from "@/features/inventory/actions/inventory-actions";
+import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
+import { BalanceTable } from "@/features/inventory/components/balance-table";
+import { getSession } from "@/lib/auth-server";
+import { ALL_LOCATIONS } from "@/lib/selected-location";
+import { readSelectedLocation } from "@/lib/selected-location-server";
 
 export const metadata = { title: "Estoque — NoHub Market" };
 

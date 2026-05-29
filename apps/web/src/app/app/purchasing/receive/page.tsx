@@ -2,9 +2,9 @@
  * Recebimento de Mercadorias — fluxo guiado: seleciona PO → registra itens → confirma.
  */
 
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth-server";
 import { ReceiveClient } from "./receive-client";
 
 export const metadata = { title: "Receber Mercadorias — NoHub Market" };

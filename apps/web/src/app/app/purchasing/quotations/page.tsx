@@ -2,9 +2,9 @@
  * Cotações — lista e comparação de respostas de fornecedores.
  */
 
+import { redirect } from "next/navigation";
 import { listQuotationsAction } from "@/features/purchasing/actions/purchasing-actions";
 import { getSession } from "@/lib/auth-server";
-import { redirect } from "next/navigation";
 import { QuotationsClient } from "./quotations-client";
 
 export const metadata = { title: "Cotações — NoHub Market" };

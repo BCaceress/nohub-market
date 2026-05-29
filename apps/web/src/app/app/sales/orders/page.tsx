@@ -2,15 +2,15 @@
  * Lista de Pedidos — todos os canais.
  */
 
+import type { OrderChannel, OrderStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { Receipt } from "lucide-react";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getOrdersAction } from "@/features/sales/actions/order-actions";
 import { getSession } from "@/lib/auth-server";
 import { ALL_LOCATIONS } from "@/lib/selected-location";
 import { readSelectedLocation } from "@/lib/selected-location-server";
-import { prisma } from "@nohub/db";
-import type { OrderChannel, OrderStatus } from "@nohub/db";
-import { Receipt } from "lucide-react";
-import { redirect } from "next/navigation";
 import { OrdersClient } from "./orders-client";
 
 export const metadata = { title: "Pedidos — NoHub Market" };

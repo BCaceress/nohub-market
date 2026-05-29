@@ -5,21 +5,21 @@
  * Meta Cloud API: https://developers.facebook.com/docs/whatsapp/cloud-api
  */
 
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@nohub/db";
-import { whatsappAdapter, WhatsAppAdapter } from "@/features/sales/adapters/whatsapp-adapter";
+import { type NextRequest, NextResponse } from "next/server";
+import { WhatsAppAdapter, whatsappAdapter } from "@/features/sales/adapters/whatsapp-adapter";
 
 export const runtime = "nodejs";
 
 /** Verificação do webhook Meta (GET) */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
-  const mode      = searchParams.get("hub.mode");
-  const token     = searchParams.get("hub.verify_token");
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN ?? "";
-  const result      = WhatsAppAdapter.verifyWebhook(mode, token, challenge, verifyToken);
+  const result = WhatsAppAdapter.verifyWebhook(mode, token, challenge, verifyToken);
 
   if (result !== null) {
     return new NextResponse(result, { status: 200 });
@@ -31,7 +31,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const rawBody = await req.text();
   const headers: Record<string, string> = {};
-  req.headers.forEach((v, k) => { headers[k] = v; });
+  req.headers.forEach((v, k) => {
+    headers[k] = v;
+  });
 
   const integration = await prisma.channelIntegration.findFirst({
     where: { channel: "WHATSAPP", status: "CONNECTED" },
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const credentials = integration.credentials as Record<string, unknown> | null;
-  const secret      = String(credentials?.appSecret ?? "");
+  const secret = String(credentials?.appSecret ?? "");
 
   if (secret && !whatsappAdapter.verifySignature(rawBody, headers, secret)) {
     // Meta pode reenviar — logar mas não bloquear
@@ -69,9 +71,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await prisma.inboundEvent.create({
       data: {
         organizationId: integration.organizationId,
-        channel:        "WHATSAPP",
+        channel: "WHATSAPP",
         externalEventId: msg.id,
-        payload:        msg as never,
+        payload: msg as never,
       },
     });
   }

@@ -1,11 +1,11 @@
-import Link from "next/link";
+import { prisma } from "@nohub/db";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getMovementsAction } from "@/features/inventory/actions/inventory-actions";
 import { getLocationsAction } from "@/features/inventory/actions/transfer-actions";
-import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 import { MovementLogExtended } from "@/features/inventory/components/movement-log-extended";
+import { getSession } from "@/lib/auth-server";
 
 export const metadata = { title: "Movimentações — NoHub Market" };
 
@@ -31,7 +31,7 @@ export default async function MovementsPage({
   const [{ total, movements }, locations] = await Promise.all([
     getMovementsAction(member.organizationId, {
       locationId: sp.locationId,
-      type:       sp.type,
+      type: sp.type,
       take,
       skip,
     }),

@@ -1,10 +1,10 @@
 "use client";
 
+import { ArrowDownToLine, ArrowLeftRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ReceiveStockDialog } from "@/features/inventory/receive-stock-dialog";
 import { TransferDialog } from "@/features/inventory/transfer-dialog";
-import { ArrowDownToLine, ArrowLeftRight } from "lucide-react";
 
 type Location = { id: string; name: string };
 type Product = { id: string; name: string; unit: string };

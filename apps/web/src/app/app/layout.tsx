@@ -1,3 +1,5 @@
+import { prisma } from "@nohub/db";
+import { redirect } from "next/navigation";
 import { AppTopbar } from "@/components/app-topbar";
 import { NavSidebar } from "@/components/nav-sidebar";
 import { CapabilitiesProvider } from "@/features/app/capabilities-provider";
@@ -5,8 +7,6 @@ import { getSession } from "@/lib/auth-server";
 import { getCapabilities } from "@/lib/capabilities";
 import { ALL_LOCATIONS } from "@/lib/selected-location";
 import { readSelectedLocation } from "@/lib/selected-location-server";
-import { prisma } from "@nohub/db";
-import { redirect } from "next/navigation";
 
 function getInitials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     orderBy: { createdAt: "desc" },
   });
 
-  if (!member || !member.organization.onboardingCompleted) {
+  if (!member?.organization.onboardingCompleted) {
     redirect("/onboarding");
   }
 

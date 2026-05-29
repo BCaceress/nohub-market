@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
 import { startInventoryCountAction } from "@/features/inventory/actions/inventory-count-actions";
 
 type Location = { id: string; name: string };
@@ -25,10 +25,16 @@ export function StartCountButton({ organizationId, locations }: Props) {
   const [note, setNote] = useState("");
 
   function handleStart() {
-    if (!locationId) { setError("Selecione um local."); return; }
+    if (!locationId) {
+      setError("Selecione um local.");
+      return;
+    }
     setError(null);
     startTransition(async () => {
-      const res = await startInventoryCountAction(organizationId, { locationId, note: note || undefined });
+      const res = await startInventoryCountAction(organizationId, {
+        locationId,
+        note: note || undefined,
+      });
       if (!res.success) {
         setError(res.error);
       } else {
@@ -57,11 +63,16 @@ export function StartCountButton({ organizationId, locations }: Props) {
                 id="loc"
                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                 value={locationId}
-                onChange={(e) => { setLocationId(e.target.value); setError(null); }}
+                onChange={(e) => {
+                  setLocationId(e.target.value);
+                  setError(null);
+                }}
               >
                 <option value="">Selecione o local</option>
                 {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -77,7 +88,9 @@ export function StartCountButton({ organizationId, locations }: Props) {
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
               <Button onClick={handleStart} disabled={isPending || !locationId}>
                 {isPending ? "Iniciando…" : "Iniciar contagem"}
               </Button>

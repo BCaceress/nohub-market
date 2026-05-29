@@ -1,7 +1,7 @@
-import { OnboardingWizard } from "@/features/onboarding/wizard";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import { redirect } from "next/navigation";
+import { OnboardingWizard } from "@/features/onboarding/wizard";
+import { getSession } from "@/lib/auth-server";
 
 export default async function OnboardingPage() {
   const session = await getSession();

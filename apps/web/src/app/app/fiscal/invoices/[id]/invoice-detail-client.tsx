@@ -1,8 +1,8 @@
 "use client";
 
-import { cancelInvoiceAction } from "@/features/fiscal/actions/fiscal-actions";
-import type { InvoiceDetail } from "@/features/fiscal/actions/fiscal-actions";
 import { useState, useTransition } from "react";
+import type { InvoiceDetail } from "@/features/fiscal/actions/fiscal-actions";
+import { cancelInvoiceAction } from "@/features/fiscal/actions/fiscal-actions";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendente",

@@ -1,9 +1,11 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Badge }  from "@/components/ui/badge";
+import { useCallback, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input }  from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -13,62 +15,60 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { useCallback, useState } from "react";
 
 type Order = {
-  id:         string;
-  channel:    string;
-  status:     string;
-  total:      number;
+  id: string;
+  channel: string;
+  status: string;
+  total: number;
   externalId: string | null;
-  createdAt:  Date | string;
-  customer:   { name: string | null; phone: string | null } | null;
-  payments:   Array<{ method: string; amount: number; status: string }>;
-  items:      Array<{ productNameSnapshot: string; quantity: number; lineTotal: number }>;
-  _count:     { items: number };
+  createdAt: Date | string;
+  customer: { name: string | null; phone: string | null } | null;
+  payments: Array<{ method: string; amount: number; status: string }>;
+  items: Array<{ productNameSnapshot: string; quantity: number; lineTotal: number }>;
+  _count: { items: number };
 };
 
 type Props = {
-  orders:         Order[];
-  total:          number;
-  page:           number;
-  pageSize:       number;
-  totalPages:     number;
+  orders: Order[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
   organizationId: string;
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT:     "secondary",
+  DRAFT: "secondary",
   CONFIRMED: "default",
-  PAID:      "default",
+  PAID: "default",
   FULFILLED: "outline",
   COMPLETED: "default",
-  CANCELED:  "destructive",
+  CANCELED: "destructive",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  DRAFT:     "Rascunho",
+  DRAFT: "Rascunho",
   CONFIRMED: "Confirmado",
-  PAID:      "Pago",
+  PAID: "Pago",
   FULFILLED: "Despachado",
   COMPLETED: "Concluído",
-  CANCELED:  "Cancelado",
+  CANCELED: "Cancelado",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
-  POS:          "PDV",
+  POS: "PDV",
   SELF_SERVICE: "Self-service",
-  IFOOD:        "iFood",
-  WHATSAPP:     "WhatsApp",
+  IFOOD: "iFood",
+  WHATSAPP: "WhatsApp",
   MERCADO_LIVRE: "Mercado Livre",
 };
 
-const ALL_STATUSES  = ["DRAFT","CONFIRMED","PAID","FULFILLED","COMPLETED","CANCELED"];
-const ALL_CHANNELS  = ["POS","SELF_SERVICE","IFOOD","WHATSAPP","MERCADO_LIVRE"];
+const ALL_STATUSES = ["DRAFT", "CONFIRMED", "PAID", "FULFILLED", "COMPLETED", "CANCELED"];
+const ALL_CHANNELS = ["POS", "SELF_SERVICE", "IFOOD", "WHATSAPP", "MERCADO_LIVRE"];
 
 export function OrdersClient({ orders, total, page, pageSize, totalPages }: Props) {
-  const router       = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
 
@@ -77,14 +77,14 @@ export function OrdersClient({ orders, total, page, pageSize, totalPages }: Prop
       const params = new URLSearchParams(searchParams.toString());
       for (const [k, v] of Object.entries(updates)) {
         if (v) params.set(k, v);
-        else    params.delete(k);
+        else params.delete(k);
       }
       router.push(`?${params.toString()}`);
     },
     [router, searchParams],
   );
 
-  const currentStatus  = searchParams.get("status")  ?? "";
+  const currentStatus = searchParams.get("status") ?? "";
   const currentChannel = searchParams.get("channel") ?? "";
 
   return (
@@ -111,7 +111,9 @@ export function OrdersClient({ orders, total, page, pageSize, totalPages }: Prop
         >
           <option value="">Todos os status</option>
           {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+            <option key={s} value={s}>
+              {STATUS_LABELS[s] ?? s}
+            </option>
           ))}
         </Select>
 
@@ -122,7 +124,9 @@ export function OrdersClient({ orders, total, page, pageSize, totalPages }: Prop
         >
           <option value="">Todos os canais</option>
           {ALL_CHANNELS.map((c) => (
-            <option key={c} value={c}>{CHANNEL_LABELS[c] ?? c}</option>
+            <option key={c} value={c}>
+              {CHANNEL_LABELS[c] ?? c}
+            </option>
           ))}
         </Select>
 
@@ -132,7 +136,12 @@ export function OrdersClient({ orders, total, page, pageSize, totalPages }: Prop
             size="sm"
             onClick={() => {
               setSearch("");
-              pushParams({ status: undefined, channel: undefined, search: undefined, page: undefined });
+              pushParams({
+                status: undefined,
+                channel: undefined,
+                search: undefined,
+                page: undefined,
+              });
             }}
           >
             Limpar
@@ -196,15 +205,15 @@ export function OrdersClient({ orders, total, page, pageSize, totalPages }: Prop
                     })}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_COLORS[order.status] as never ?? "secondary"}>
+                    <Badge variant={(STATUS_COLORS[order.status] as never) ?? "secondary"}>
                       {STATUS_LABELS[order.status] ?? order.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleString("pt-BR", {
-                      day:    "2-digit",
-                      month:  "2-digit",
-                      hour:   "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </TableCell>
