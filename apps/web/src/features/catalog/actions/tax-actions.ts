@@ -81,16 +81,19 @@ export async function setProductTaxAction(
 
   const variantId = d.variantId || null;
 
-  await prisma.productTax.upsert({
-    where: {
-      productId_variantId: {
-        productId: d.productId,
-        variantId: variantId as string, // Prisma compound unique — null handled by Prisma internally
-      },
-    },
-    create: { organizationId, productId: d.productId, variantId, ...taxData },
-    update: taxData,
+  // upsert via chave única composta não aceita variantId null no Prisma —
+  // resolve manualmente (vale para variante nula e não-nula).
+  const existing = await prisma.productTax.findFirst({
+    where: { productId: d.productId, variantId },
+    select: { id: true },
   });
+  if (existing) {
+    await prisma.productTax.update({ where: { id: existing.id }, data: taxData });
+  } else {
+    await prisma.productTax.create({
+      data: { organizationId, productId: d.productId, variantId, ...taxData },
+    });
+  }
 
   await writeAudit({
     organizationId,
