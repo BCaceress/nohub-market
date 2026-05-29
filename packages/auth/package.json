@@ -17,6 +17,7 @@
     "@nohub/db": "workspace:*",
     "@nohub/shared": "workspace:*",
     "better-auth": "^1.1.13",
+    "@better-auth/kysely-adapter": "*",
     "resend": "^4.0.1"
   },
   "devDependencies": {

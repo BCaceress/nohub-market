@@ -2,5 +2,8 @@
   "name": "@nohub/config",
   "version": "0.1.0",
   "private": true,
-  "files": ["tsconfig.base.json", "tsconfig.nextjs.json"]
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.nextjs.json"
+  ]
 }
