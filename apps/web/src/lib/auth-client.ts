@@ -1,1 +1,1 @@
-export { authClient, signIn, signUp, signOut, useSession } from "@nohub/auth/client";
+export { authClient, signIn, signOut, signUp, useSession } from "@nohub/auth/client";

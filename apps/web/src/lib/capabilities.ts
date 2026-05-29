@@ -2,12 +2,12 @@ import "server-only";
 import { prisma } from "@nohub/db";
 
 export {
+  type DerivedCapability,
   deriveCapabilities,
   OMNICHANNEL_CHANNELS,
+  type OperationInput,
   type SegmentType,
   type StockStructureType,
-  type DerivedCapability,
-  type OperationInput,
 } from "./capability-rules";
 
 export async function getCapabilities(
