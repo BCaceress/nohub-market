@@ -12,9 +12,9 @@
  * RN-F05: nenhuma chamada BaaS no request — só no worker.
  */
 
-import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
 import type { InvoiceStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { getProvider } from "../providers";
 import { buildInvoiceFromOrder } from "./build-invoice-from-order";
 import { canTransitionInvoice } from "./can-transition-invoice";
@@ -65,7 +65,7 @@ export async function processIssuance(invoiceId: string): Promise<ProcessIssuanc
   if (!fiscalConfig) {
     return { success: false, error: "FiscalConfig não encontrada", retryable: false };
   }
-  if (!certificate || !certificate.isActive) {
+  if (!certificate?.isActive) {
     return { success: false, error: "Certificado A1 não configurado ou inativo", retryable: false };
   }
 

@@ -1,8 +1,8 @@
 "use client";
 
+import { MapPin, Radio } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toggleChannelAction } from "./actions/channel-actions";
@@ -28,13 +28,7 @@ type Channel = {
   }[];
 };
 
-function ChannelCard({
-  channel,
-  organizationId,
-}: {
-  channel: Channel;
-  organizationId: string;
-}) {
+function ChannelCard({ channel, organizationId }: { channel: Channel; organizationId: string }) {
   const [enabled, setEnabled] = useState(channel.enabled);
   const [loading, setLoading] = useState(false);
 
@@ -62,9 +56,7 @@ function ChannelCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={enabled ? "success" : "outline"}>
-            {enabled ? "Ativo" : "Inativo"}
-          </Badge>
+          <Badge variant={enabled ? "success" : "outline"}>{enabled ? "Ativo" : "Inativo"}</Badge>
           <ChannelConfigDialog
             organizationId={organizationId}
             channelId={channel.id}

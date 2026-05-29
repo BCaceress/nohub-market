@@ -5,20 +5,20 @@
  * Cria Invoice PENDING + enfileira no Outbox da Etapa 4 (RN-F05).
  */
 
-import { prisma } from "@nohub/db";
 import type { Prisma } from "@nohub/db";
+import { prisma } from "@nohub/db";
 import { enqueueOutboxEvent } from "@/features/sales/outbox/producer";
 import { writeAudit } from "@/lib/audit";
 
 export type EnqueueIssuanceResult =
-  | { success: true;  invoiceId: string; alreadyExisted: boolean }
+  | { success: true; invoiceId: string; alreadyExisted: boolean }
   | { success: false; error: string };
 
 export async function enqueueIssuance(
   organizationId: string,
-  orderId:        string,
-  actorId?:       string,
-  tx?:            Prisma.TransactionClient,
+  orderId: string,
+  actorId?: string,
+  tx?: Prisma.TransactionClient,
 ): Promise<EnqueueIssuanceResult> {
   const db = tx ?? prisma;
 
@@ -40,12 +40,12 @@ export async function enqueueIssuance(
 
   // Buscar pedido para pegar locationId e totais
   const order = await db.order.findUnique({
-    where:   { id: orderId },
-    select:  {
-      id:           true,
-      locationId:   true,
-      customerId:   true,
-      total:        true,
+    where: { id: orderId },
+    select: {
+      id: true,
+      locationId: true,
+      customerId: true,
+      total: true,
       organizationId: true,
     },
   });
@@ -58,30 +58,33 @@ export async function enqueueIssuance(
     where: { organizationId },
   });
   if (!fiscalConfig) {
-    return { success: false, error: "Configuração fiscal não encontrada — configure o módulo fiscal" };
+    return {
+      success: false,
+      error: "Configuração fiscal não encontrada — configure o módulo fiscal",
+    };
   }
 
   // Criar Invoice PENDING (idempotência via idempotencyKey = orderId)
   const invoice = await db.invoice.create({
     data: {
       organizationId,
-      locationId:    order.locationId,
+      locationId: order.locationId,
       orderId,
-      customerId:    order.customerId ?? null,
-      status:        "PENDING",
-      provider:      fiscalConfig.provider,
-      series:        fiscalConfig.nfceSeries,
-      totalAmount:   order.total,
-      totalTax:      0, // calculado em processIssuance
+      customerId: order.customerId ?? null,
+      status: "PENDING",
+      provider: fiscalConfig.provider,
+      series: fiscalConfig.nfceSeries,
+      totalAmount: order.total,
+      totalTax: 0, // calculado em processIssuance
       idempotencyKey: orderId,
       events: {
         create: {
           eventType: "SUBMITTED",
           fromStatus: undefined,
-          toStatus:   "PENDING",
-          actorId:    actorId ?? null,
-          source:     "INTERNAL",
-          note:       "Invoice criada e enfileirada para emissão",
+          toStatus: "PENDING",
+          actorId: actorId ?? null,
+          source: "INTERNAL",
+          note: "Invoice criada e enfileirada para emissão",
         },
       },
     },
@@ -90,23 +93,23 @@ export async function enqueueIssuance(
   // Enfileirar no Outbox da Etapa 4
   await enqueueOutboxEvent({
     organizationId,
-    eventType:      "FISCAL_ISSUE" as never, // estender OutboxEventType
-    aggregateType:  "Invoice",
-    aggregateId:    invoice.id,
-    payload:        { invoiceId: invoice.id, orderId },
+    eventType: "FISCAL_ISSUE" as never, // estender OutboxEventType
+    aggregateType: "Invoice",
+    aggregateId: invoice.id,
+    payload: { invoiceId: invoice.id, orderId },
     idempotencyKey: `fiscal-issue-${invoice.id}`,
-    priority:       5,
-    maxAttempts:    5,
-    tx:             tx as never,
+    priority: 5,
+    maxAttempts: 5,
+    tx: tx as never,
   });
 
   await writeAudit({
     organizationId,
     actorId: actorId ?? "system",
-    action:  "invoice.enqueued",
+    action: "invoice.enqueued",
     resourceType: "Invoice",
-    resourceId:   invoice.id,
-    after:   { orderId, status: "PENDING" },
+    resourceId: invoice.id,
+    after: { orderId, status: "PENDING" },
   });
 
   return { success: true, invoiceId: invoice.id, alreadyExisted: false };

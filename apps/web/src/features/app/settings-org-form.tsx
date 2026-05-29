@@ -1,15 +1,15 @@
 "use client";
 
+import { formatCEP, formatCNPJ, onlyDigits } from "@nohub/shared/brazilian";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { formatCEP, formatCNPJ, onlyDigits } from "@nohub/shared/brazilian";
-import { useState } from "react";
-import { toast } from "sonner";
 import {
-  type UpdateOrgInput,
   cepLookupForSettingsAction,
+  type UpdateOrgInput,
   updateOrgAction,
 } from "./actions/org-actions";
 

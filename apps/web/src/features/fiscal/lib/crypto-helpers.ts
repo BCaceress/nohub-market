@@ -18,7 +18,7 @@ const TAG_LENGTH = 16; // bytes — auth tag GCM
 
 function getKey(): Buffer {
   const hexKey = process.env.FISCAL_ENCRYPTION_KEY;
-  if (!hexKey || hexKey.length !== 64) {
+  if (hexKey?.length !== 64) {
     // Dev fallback: chave derivada de NEXTAUTH_SECRET (nunca em produção)
     const secret = process.env.BETTER_AUTH_SECRET ?? "dev-fallback-fiscal-key-insecure";
     return crypto.createHash("sha256").update(secret).digest();

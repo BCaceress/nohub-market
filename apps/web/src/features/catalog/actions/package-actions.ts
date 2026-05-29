@@ -1,7 +1,7 @@
 "use server";
 
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
+import { getSession } from "@/lib/auth-server";
 
 export type ProductPackage = {
   id: string;

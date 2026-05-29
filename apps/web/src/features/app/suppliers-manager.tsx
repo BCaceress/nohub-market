@@ -1,19 +1,24 @@
 "use client";
 
+import { formatCNPJ, onlyDigits } from "@nohub/shared/brazilian";
+import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Package, Pencil, Plus, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatCNPJ, onlyDigits } from "@nohub/shared/brazilian";
 import {
   createSupplierAction,
-  updateSupplierAction,
   deleteSupplierAction,
   type SupplierInput,
+  updateSupplierAction,
 } from "./actions/supplier-actions";
 
 type Supplier = {
@@ -24,7 +29,7 @@ type Supplier = {
   phone: string | null;
 };
 
-const EMPTY: SupplierInput = { name: "", document: "", email: "", phone: "" };
+const _EMPTY: SupplierInput = { name: "", document: "", email: "", phone: "" };
 
 function SupplierDialog({
   open,
@@ -52,22 +57,40 @@ function SupplierDialog({
   }
 
   async function submit() {
-    if (!form.name.trim()) { toast.error("Nome obrigatório"); return; }
+    if (!form.name.trim()) {
+      toast.error("Nome obrigatório");
+      return;
+    }
     setSaving(true);
     const payload = { ...form, document: onlyDigits(form.document ?? "") || undefined };
     const res = supplier
       ? await updateSupplierAction(organizationId, supplier.id, payload)
       : await createSupplierAction(organizationId, payload);
     setSaving(false);
-    if (!res.success) { toast.error(res.error); return; }
+    if (!res.success) {
+      toast.error(res.error);
+      return;
+    }
 
     toast.success(supplier ? "Fornecedor atualizado!" : "Fornecedor criado!");
     onOpenChange(false);
     // For create we reload; for update we patch locally
     if (!supplier && res.success && "data" in res) {
-      onSaved({ id: (res.data as { id: string }).id, ...payload, document: payload.document ?? null, email: payload.email || null, phone: payload.phone || null });
+      onSaved({
+        id: (res.data as { id: string }).id,
+        ...payload,
+        document: payload.document ?? null,
+        email: payload.email || null,
+        phone: payload.phone || null,
+      });
     } else if (supplier) {
-      onSaved({ ...supplier, ...payload, document: payload.document ?? null, email: payload.email || null, phone: payload.phone || null });
+      onSaved({
+        ...supplier,
+        ...payload,
+        document: payload.document ?? null,
+        email: payload.email || null,
+        phone: payload.phone || null,
+      });
     }
   }
 
@@ -138,8 +161,12 @@ export function SuppliersManager({
   });
   const [removing, setRemoving] = useState<string | null>(null);
 
-  function openCreate() { setDialog({ open: true, supplier: undefined }); }
-  function openEdit(s: Supplier) { setDialog({ open: true, supplier: s }); }
+  function openCreate() {
+    setDialog({ open: true, supplier: undefined });
+  }
+  function openEdit(s: Supplier) {
+    setDialog({ open: true, supplier: s });
+  }
 
   function handleSaved(s: Supplier) {
     setSuppliers((prev) => {
@@ -194,13 +221,9 @@ export function SuppliersManager({
                 <p className="text-sm font-medium">{s.name}</p>
                 <div className="flex gap-2 mt-0.5 flex-wrap">
                   {s.document && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatCNPJ(s.document)}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{formatCNPJ(s.document)}</span>
                   )}
-                  {s.email && (
-                    <span className="text-xs text-muted-foreground">{s.email}</span>
-                  )}
+                  {s.email && <span className="text-xs text-muted-foreground">{s.email}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-2">

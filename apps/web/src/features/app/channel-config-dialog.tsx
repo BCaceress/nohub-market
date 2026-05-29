@@ -1,10 +1,16 @@
 "use client";
 
+import { Settings } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateChannelConfigAction } from "./actions/channel-actions";
@@ -17,16 +23,22 @@ const CONFIG_FIELDS: Record<ChannelType, { key: string; label: string; placehold
     { key: "catalogUrl", label: "Link do catálogo (opcional)", placeholder: "https://wa.me/c/..." },
   ],
   IFOOD: [
-    { key: "storeId", label: "ID da loja no iFood", placeholder: "00000000-0000-0000-0000-000000000000" },
+    {
+      key: "storeId",
+      label: "ID da loja no iFood",
+      placeholder: "00000000-0000-0000-0000-000000000000",
+    },
     { key: "storeUrl", label: "URL da loja", placeholder: "https://www.ifood.com.br/delivery/..." },
   ],
   MERCADO_LIVRE: [
     { key: "sellerId", label: "ID do vendedor", placeholder: "123456789" },
-    { key: "storeUrl", label: "URL da loja", placeholder: "https://www.mercadolivre.com.br/perfil/..." },
+    {
+      key: "storeUrl",
+      label: "URL da loja",
+      placeholder: "https://www.mercadolivre.com.br/perfil/...",
+    },
   ],
-  RAPPI: [
-    { key: "storeId", label: "ID da loja no Rappi", placeholder: "rappi123" },
-  ],
+  RAPPI: [{ key: "storeId", label: "ID da loja no Rappi", placeholder: "rappi123" }],
   OWN_ECOMMERCE: [
     { key: "domain", label: "Domínio do e-commerce", placeholder: "loja.suaempresa.com.br" },
     { key: "platform", label: "Plataforma (ex: Shopify, WooCommerce)", placeholder: "Shopify" },
@@ -50,8 +62,8 @@ export function ChannelConfigDialog({
 }) {
   const [open, setOpen] = useState(false);
   const fields = CONFIG_FIELDS[channelType as ChannelType] ?? CONFIG_FIELDS.OTHER;
-  const [form, setForm] = useState<Record<string, string>>(
-    () => Object.fromEntries(fields.map((f) => [f.key, currentConfig?.[f.key] ?? ""])),
+  const [form, setForm] = useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map((f) => [f.key, currentConfig?.[f.key] ?? ""])),
   );
   const [saving, setSaving] = useState(false);
 
@@ -59,7 +71,10 @@ export function ChannelConfigDialog({
     setSaving(true);
     const res = await updateChannelConfigAction(organizationId, channelId, form);
     setSaving(false);
-    if (!res.success) { toast.error(res.error); return; }
+    if (!res.success) {
+      toast.error(res.error);
+      return;
+    }
     toast.success("Configuração salva!");
     setOpen(false);
   }
@@ -89,7 +104,9 @@ export function ChannelConfigDialog({
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
             <Button onClick={submit} disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}
             </Button>

@@ -9,38 +9,33 @@ import type { InvoiceStatus } from "@nohub/db";
 
 type Transition = {
   from: InvoiceStatus[];
-  to:   InvoiceStatus;
+  to: InvoiceStatus;
 };
 
 const TRANSITIONS: Transition[] = [
   // Worker processando
-  { from: ["PENDING"],                                to: "SENDING"        },
+  { from: ["PENDING"], to: "SENDING" },
   // BaaS/SEFAZ respondeu positivamente
-  { from: ["SENDING"],                                to: "AUTHORIZED"     },
+  { from: ["SENDING"], to: "AUTHORIZED" },
   // BaaS/SEFAZ rejeitou (reemitível após correção)
-  { from: ["SENDING"],                                to: "REJECTED"       },
+  { from: ["SENDING"], to: "REJECTED" },
   // BaaS/SEFAZ denegou (não reemitível)
-  { from: ["SENDING"],                                to: "DENIED"         },
+  { from: ["SENDING"], to: "DENIED" },
   // SEFAZ fora → contingência
-  { from: ["SENDING", "PENDING"],                     to: "IN_CONTINGENCY" },
+  { from: ["SENDING", "PENDING"], to: "IN_CONTINGENCY" },
   // SEFAZ voltou → transmitir nota em contingência
-  { from: ["IN_CONTINGENCY"],                         to: "SENDING"        },
+  { from: ["IN_CONTINGENCY"], to: "SENDING" },
   // Contingência autorizada
-  { from: ["IN_CONTINGENCY"],                         to: "AUTHORIZED"     },
+  { from: ["IN_CONTINGENCY"], to: "AUTHORIZED" },
   // Cancelamento dentro do prazo
-  { from: ["AUTHORIZED"],                             to: "CANCELED"       },
+  { from: ["AUTHORIZED"], to: "CANCELED" },
   // Retry: de REJECTED pode tentar novamente (ex: correção de dados)
-  { from: ["REJECTED"],                               to: "PENDING"        },
+  { from: ["REJECTED"], to: "PENDING" },
 ];
 
 /** Verifica se a transição from→to é válida */
-export function canTransitionInvoice(
-  from: InvoiceStatus,
-  to:   InvoiceStatus,
-): boolean {
-  return TRANSITIONS.some(
-    (t) => t.to === to && t.from.includes(from),
-  );
+export function canTransitionInvoice(from: InvoiceStatus, to: InvoiceStatus): boolean {
+  return TRANSITIONS.some((t) => t.to === to && t.from.includes(from));
 }
 
 /** Estados em que a nota já finalizou (sem mais transições de negócio) */

@@ -7,8 +7,8 @@
  * RN: faixa deve ser contínua e não pode se sobrepor a faixas já inutilizadas.
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { getProvider } from "../providers";
 import { decryptCertificate, decryptCredentials } from "./crypto-helpers";
 
@@ -90,7 +90,7 @@ export async function inutilizeNumbers(
     });
     return { success: false, error: "FiscalConfig não encontrada", code: "NO_CONFIG" };
   }
-  if (!certificate || !certificate.isActive) {
+  if (!certificate?.isActive) {
     await prisma.invoiceNumberSkip.update({
       where: { id: skip.id },
       data: { status: "REJECTED", providerResponse: { error: "Certificado inativo" } },

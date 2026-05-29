@@ -1,16 +1,16 @@
 "use client";
 
+import { Barcode, Check, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  type ProductPackage,
   deleteProductPackageAction,
+  type ProductPackage,
   upsertProductPackageAction,
 } from "@/features/catalog/actions/package-actions";
-import { Barcode, Check, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
 
 interface Props {
   organizationId: string;

@@ -1,9 +1,9 @@
 "use client";
 
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { FolderOpen, Info, Plus } from "lucide-react";
 import { useRef } from "react";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { CategoryEditor, type CategoryEditorHandle } from "./category-editor";
 
 interface Props {

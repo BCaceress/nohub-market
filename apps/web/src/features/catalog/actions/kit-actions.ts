@@ -1,11 +1,11 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { kitComponentSchema, type KitComponentInput } from "../schemas";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
+import { type KitComponentInput, kitComponentSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
   const m = await prisma.member.findUnique({
@@ -26,7 +26,9 @@ export async function setKitComponentsAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -92,8 +94,12 @@ export async function getKitComponentsAction(kitProductId: string, organizationI
     include: {
       componentProduct: {
         select: {
-          id: true, name: true, unit: true, price: true,
-          imageUrl: true, productType: true,
+          id: true,
+          name: true,
+          unit: true,
+          price: true,
+          imageUrl: true,
+          productType: true,
         },
       },
       componentVariant: {

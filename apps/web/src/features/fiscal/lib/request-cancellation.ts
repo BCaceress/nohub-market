@@ -11,8 +11,8 @@
  *   - Após cancelamento: xmlCanceled gravado na Invoice; protocolo no InvoiceEvent.
  */
 
-import { writeAudit } from "@/lib/audit";
 import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { getProvider } from "../providers";
 import { canTransitionInvoice } from "./can-transition-invoice";
 import { decryptCertificate, decryptCredentials } from "./crypto-helpers";
@@ -94,7 +94,7 @@ export async function requestCancellation(
   if (!fiscalConfig) {
     return { success: false, error: "FiscalConfig não encontrada", code: "NO_CONFIG" };
   }
-  if (!certificate || !certificate.isActive) {
+  if (!certificate?.isActive) {
     return { success: false, error: "Certificado A1 não configurado ou inativo", code: "NO_CERT" };
   }
 

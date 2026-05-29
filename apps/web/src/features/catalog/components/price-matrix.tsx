@@ -1,5 +1,8 @@
 "use client";
 
+import { DollarSign, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,9 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
 import { deleteProductPriceAction, setProductPriceAction } from "../actions/price-actions";
 
 /* ── Types ──────────────────────────────────────────────────── */

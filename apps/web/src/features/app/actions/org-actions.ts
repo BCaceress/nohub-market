@@ -1,13 +1,13 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
-import { lookupCep } from "@/lib/brasilapi";
 import { prisma } from "@nohub/db";
-import { formatCEP, onlyDigits } from "@nohub/shared/brazilian";
+import { onlyDigits } from "@nohub/shared/brazilian";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
+import { lookupCep } from "@/lib/brasilapi";
 
 const updateOrgSchema = z.object({
   legalName: z.string().min(2, "Razão social obrigatória"),

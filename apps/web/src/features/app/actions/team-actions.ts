@@ -1,10 +1,10 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 
 type EditableRole = "admin" | "manager" | "operator" | "viewer";
 
@@ -83,7 +83,8 @@ export async function updateMemberRoleAction(
 
   const target = await prisma.member.findUnique({ where: { id: memberId } });
   if (!target) return { success: false, error: "Membro não encontrado" };
-  if (target.role === "owner") return { success: false, error: "Não é possível alterar o papel do owner" };
+  if (target.role === "owner")
+    return { success: false, error: "Não é possível alterar o papel do owner" };
 
   await prisma.member.update({ where: { id: memberId }, data: { role } });
 

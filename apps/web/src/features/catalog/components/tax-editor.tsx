@@ -1,13 +1,13 @@
 "use client";
 
+import { Info } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { setProductTaxAction } from "../actions/tax-actions";
-import { Info } from "lucide-react";
 
 type TaxData = {
   ncm: string;
@@ -75,15 +75,15 @@ const PIS_COFINS_CST_OPTIONS = [
 ];
 
 const TAX_ORIGIN_OPTIONS = [
-  { value: "NACIONAL",                      label: "0 — Nacional" },
-  { value: "IMPORTADO_DIRETO",              label: "1 — Importado direto" },
-  { value: "IMPORTADO_NACIONAL",            label: "2 — Importado, nacional" },
-  { value: "NACIONAL_MAIS_40_IMPORTADO",    label: "3 — Nacional, > 40% importado" },
-  { value: "NACIONAL_MENOS_40_IMPORTADO",   label: "4 — Nacional, ≤ 40% importado" },
-  { value: "NACIONAL_SEM_SIMILAR",          label: "5 — Nacional, sem similar" },
-  { value: "ESTRANGEIRO_DIRETO",            label: "6 — Estrangeiro direto" },
-  { value: "ESTRANGEIRO_NACIONAL",          label: "7 — Estrangeiro, adq. no mercado interno" },
-  { value: "NACIONAL_MENOS_70_IMPORTADO",   label: "8 — Nacional, > 70% importado" },
+  { value: "NACIONAL", label: "0 — Nacional" },
+  { value: "IMPORTADO_DIRETO", label: "1 — Importado direto" },
+  { value: "IMPORTADO_NACIONAL", label: "2 — Importado, nacional" },
+  { value: "NACIONAL_MAIS_40_IMPORTADO", label: "3 — Nacional, > 40% importado" },
+  { value: "NACIONAL_MENOS_40_IMPORTADO", label: "4 — Nacional, ≤ 40% importado" },
+  { value: "NACIONAL_SEM_SIMILAR", label: "5 — Nacional, sem similar" },
+  { value: "ESTRANGEIRO_DIRETO", label: "6 — Estrangeiro direto" },
+  { value: "ESTRANGEIRO_NACIONAL", label: "7 — Estrangeiro, adq. no mercado interno" },
+  { value: "NACIONAL_MENOS_70_IMPORTADO", label: "8 — Nacional, > 70% importado" },
 ];
 
 export function TaxEditor({ organizationId, productId, taxData, taxRegime, variantId }: Props) {
@@ -146,10 +146,7 @@ export function TaxEditor({ organizationId, productId, taxData, taxRegime, varia
         <Info className="h-4 w-4 text-muted-foreground shrink-0" />
         <span>
           Regime tributário:{" "}
-          <Badge variant={isSimples ? "success" : "info"}>
-            {taxRegime ?? "Não informado"}
-          </Badge>
-          {" "}—{" "}
+          <Badge variant={isSimples ? "success" : "info"}>{taxRegime ?? "Não informado"}</Badge> —{" "}
           {isSimples ? "Use CSOSN para ICMS" : "Use CST para ICMS"}
         </span>
       </div>
@@ -213,7 +210,9 @@ export function TaxEditor({ organizationId, productId, taxData, taxRegime, varia
           className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
         >
           {TAX_ORIGIN_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </div>
@@ -224,12 +223,16 @@ export function TaxEditor({ organizationId, productId, taxData, taxRegime, varia
           <Label>{isSimples ? "ICMS CSOSN" : "ICMS CST"}</Label>
           <select
             value={isSimples ? form.icmsCsosn : form.icmsCst}
-            onChange={(e) => isSimples ? set({ icmsCsosn: e.target.value }) : set({ icmsCst: e.target.value })}
+            onChange={(e) =>
+              isSimples ? set({ icmsCsosn: e.target.value }) : set({ icmsCst: e.target.value })
+            }
             className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
           >
             <option value="">Selecionar…</option>
             {(isSimples ? ICMS_CSOSN_OPTIONS : ICMS_CST_OPTIONS).map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>
@@ -259,7 +262,9 @@ export function TaxEditor({ organizationId, productId, taxData, taxRegime, varia
           >
             <option value="">Selecionar…</option>
             {PIS_COFINS_CST_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>
@@ -285,7 +290,9 @@ export function TaxEditor({ organizationId, productId, taxData, taxRegime, varia
           >
             <option value="">Selecionar…</option>
             {PIS_COFINS_CST_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>

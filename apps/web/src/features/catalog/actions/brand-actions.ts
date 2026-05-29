@@ -1,8 +1,8 @@
 "use server";
 
+import { prisma } from "@nohub/db";
 import { normalizeBrandName } from "@/features/catalog/lib/product-helpers";
 import { getSession } from "@/lib/auth-server";
-import { prisma } from "@nohub/db";
 
 export async function getBrandsAction(organizationId: string) {
   const session = await getSession();

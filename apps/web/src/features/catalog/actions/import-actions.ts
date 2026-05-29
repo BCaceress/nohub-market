@@ -1,11 +1,11 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { importRowSchema, type ImportRow, type ImportRowResult } from "../schemas";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
+import { type ImportRow, type ImportRowResult, importRowSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
   const m = await prisma.member.findUnique({
@@ -28,7 +28,9 @@ export async function importFromFiscalTemplateAction(
 ): Promise<Result<{ results: ImportRowResult[] }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -76,14 +78,16 @@ export async function importFromFiscalTemplateAction(
 
       // Register barcode if template has one
       if (tpl.barcode) {
-        await prisma.productBarcode.create({
-          data: {
-            organizationId,
-            productId: product.id,
-            barcode: tpl.barcode,
-            type: tpl.barcode.length === 8 ? "EAN8" : "EAN13",
-          },
-        }).catch(() => {}); // ignore duplicate barcode
+        await prisma.productBarcode
+          .create({
+            data: {
+              organizationId,
+              productId: product.id,
+              barcode: tpl.barcode,
+              type: tpl.barcode.length === 8 ? "EAN8" : "EAN13",
+            },
+          })
+          .catch(() => {}); // ignore duplicate barcode
       }
 
       // Create ProductTax from template
@@ -103,7 +107,12 @@ export async function importFromFiscalTemplateAction(
         },
       });
 
-      results.push({ row: i + 1, input: { name: tpl.productName }, success: true, productId: product.id });
+      results.push({
+        row: i + 1,
+        input: { name: tpl.productName },
+        success: true,
+        productId: product.id,
+      });
     } catch (err) {
       results.push({
         row: i + 1,
@@ -140,7 +149,9 @@ export async function importProductRowsAction(
 ): Promise<Result<{ results: ImportRowResult[] }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -154,17 +165,21 @@ export async function importProductRowsAction(
 
   // Pre-load existing SKUs and barcodes to avoid per-row queries
   const existingSkus = new Set(
-    (await prisma.product.findMany({
-      where: { organizationId, deletedAt: null, sku: { not: null } },
-      select: { sku: true },
-    })).map((p) => p.sku as string)
+    (
+      await prisma.product.findMany({
+        where: { organizationId, deletedAt: null, sku: { not: null } },
+        select: { sku: true },
+      })
+    ).map((p) => p.sku as string),
   );
 
   const existingBarcodes = new Set(
-    (await prisma.productBarcode.findMany({
-      where: { organizationId },
-      select: { barcode: true },
-    })).map((b) => b.barcode)
+    (
+      await prisma.productBarcode.findMany({
+        where: { organizationId },
+        select: { barcode: true },
+      })
+    ).map((b) => b.barcode),
   );
 
   // Category name → id cache
@@ -178,7 +193,7 @@ export async function importProductRowsAction(
       where: { organizationId, name: { equals: name, mode: "insensitive" }, deletedAt: null },
     });
     if (!cat) {
-      const slug = key.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + `-${Date.now()}`;
+      const slug = `${key.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now()}`;
       cat = await prisma.category.create({
         data: { organizationId, name, slug },
       });
@@ -252,14 +267,16 @@ export async function importProductRowsAction(
 
       if (row.barcode) {
         existingBarcodes.add(row.barcode);
-        await prisma.productBarcode.create({
-          data: {
-            organizationId,
-            productId: product.id,
-            barcode: row.barcode,
-            type: row.barcode.length === 8 ? "EAN8" : "EAN13",
-          },
-        }).catch(() => {});
+        await prisma.productBarcode
+          .create({
+            data: {
+              organizationId,
+              productId: product.id,
+              barcode: row.barcode,
+              type: row.barcode.length === 8 ? "EAN8" : "EAN13",
+            },
+          })
+          .catch(() => {});
       }
 
       if (row.sku) existingSkus.add(row.sku);
@@ -281,11 +298,21 @@ export async function importProductRowsAction(
 
       if (row.price && row.price > 0) {
         await prisma.productPrice.create({
-          data: { organizationId, productId: product.id, price: row.price, cost: row.costPrice ?? null },
+          data: {
+            organizationId,
+            productId: product.id,
+            price: row.price,
+            cost: row.costPrice ?? null,
+          },
         });
       }
 
-      results.push({ row: rowNum, input: rawRow as Record<string, unknown>, success: true, productId: product.id });
+      results.push({
+        row: rowNum,
+        input: rawRow as Record<string, unknown>,
+        success: true,
+        productId: product.id,
+      });
     } catch (err) {
       results.push({
         row: rowNum,

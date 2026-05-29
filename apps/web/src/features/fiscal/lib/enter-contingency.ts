@@ -8,9 +8,9 @@
  * chamando processIssuance novamente (que verifica canTransition).
  */
 
-import { writeAudit } from "@/lib/audit";
-import { prisma } from "@nohub/db";
 import type { InvoiceStatus } from "@nohub/db";
+import { prisma } from "@nohub/db";
+import { writeAudit } from "@/lib/audit";
 import { canTransitionInvoice } from "./can-transition-invoice";
 
 export type EnterContingencyInput = {

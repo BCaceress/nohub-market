@@ -1,11 +1,11 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { variantSchema, type VariantInput } from "../schemas";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
+import { type VariantInput, variantSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
   const m = await prisma.member.findUnique({
@@ -22,12 +22,15 @@ export async function createVariantAction(
 ): Promise<Result<{ id: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = variantSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   // Verify product is VARIANT_PARENT
   const product = await prisma.product.findFirst({
@@ -80,12 +83,15 @@ export async function updateVariantAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = variantSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
   const variant = await prisma.productVariant.findFirst({
@@ -114,7 +120,9 @@ export async function deleteVariantAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 

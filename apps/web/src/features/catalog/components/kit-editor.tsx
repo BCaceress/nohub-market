@@ -1,11 +1,11 @@
 "use client";
 
+import { GripVertical, Layers, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setKitComponentsAction } from "../actions/kit-actions";
-import { Plus, Trash2, Layers, GripVertical } from "lucide-react";
 
 type AvailableProduct = {
   id: string;
@@ -47,7 +47,7 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
       quantity: String(c.quantity),
       position: i,
       label: c.variant ? `${c.product.name} — ${c.variant.name}` : c.product.name,
-    }))
+    })),
   );
   const [selectedProductId, setSelectedProductId] = useState("");
   const [addQty, setAddQty] = useState("1");
@@ -72,11 +72,13 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
   }
 
   function removeItem(i: number) {
-    setItems((prev) => prev.filter((_, idx) => idx !== i).map((item, idx) => ({ ...item, position: idx })));
+    setItems((prev) =>
+      prev.filter((_, idx) => idx !== i).map((item, idx) => ({ ...item, position: idx })),
+    );
   }
 
   function updateQty(i: number, value: string) {
-    setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, quantity: value } : item));
+    setItems((prev) => prev.map((item, idx) => (idx === i ? { ...item, quantity: value } : item)));
   }
 
   async function handleSave() {
@@ -89,7 +91,7 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
           componentVariantId: item.componentVariantId || undefined,
           quantity: Number(item.quantity) || 1,
           position: item.position,
-        }))
+        })),
       );
 
       if (result.success) {
@@ -101,7 +103,7 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
   }
 
   // Cost estimate from product.price (rough)
-  const totalCost = items.reduce((sum, item) => {
+  const _totalCost = items.reduce((sum, item) => {
     const p = availableProducts.find((ap) => ap.id === item.componentProductId);
     return sum + (p ? 0 : 0); // Price not available in availableProducts (simplified)
   }, 0);
@@ -109,7 +111,8 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">
-        O kit não tem estoque próprio. Ao ser vendido, baixa o estoque de cada componente (RN-C03). Componentes não podem ser outros kits (RN-C04).
+        O kit não tem estoque próprio. Ao ser vendido, baixa o estoque de cada componente (RN-C03).
+        Componentes não podem ser outros kits (RN-C04).
       </p>
 
       {/* Component list */}
@@ -117,7 +120,7 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
         <div className="overflow-hidden rounded-xl border border-border">
           {items.map((item, i) => (
             <div
-              key={i}
+              key={`${item.componentProductId}-${item.componentVariantId}`}
               className={`flex items-center gap-3 px-4 py-3 ${i !== 0 ? "border-t border-border" : ""}`}
             >
               <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
@@ -151,15 +154,20 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-10 text-center">
           <Layers className="h-8 w-8 text-muted-foreground/40 mb-3" />
           <p className="text-sm font-medium">Kit vazio</p>
-          <p className="text-xs text-muted-foreground mt-1">Adicione produtos que compõem este combo.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Adicione produtos que compõem este combo.
+          </p>
         </div>
       )}
 
       {/* Add component */}
       <div className="flex gap-2 items-end">
         <div className="flex-1 flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Adicionar produto</label>
+          <label htmlFor="kit-add-product" className="text-xs font-medium text-muted-foreground">
+            Adicionar produto
+          </label>
           <select
+            id="kit-add-product"
             value={selectedProductId}
             onChange={(e) => setSelectedProductId(e.target.value)}
             className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
@@ -173,8 +181,11 @@ export function KitEditor({ organizationId, kitProductId, components, availableP
           </select>
         </div>
         <div className="w-24 flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Qtd.</label>
+          <label htmlFor="kit-add-qty" className="text-xs font-medium text-muted-foreground">
+            Qtd.
+          </label>
           <Input
+            id="kit-add-qty"
             type="number"
             min="0.001"
             step="0.001"

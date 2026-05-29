@@ -1,12 +1,12 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
-import { sendEmail, link } from "@nohub/auth/mailer";
+import { sendEmail } from "@nohub/auth/mailer";
 import { prisma } from "@nohub/db";
 import { getEnv } from "@nohub/shared/env";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
 
 type EditableRole = "admin" | "manager" | "operator" | "viewer";
 
@@ -129,18 +129,27 @@ export async function acceptInvitationAction(token: string): Promise<Result<{ or
   });
 
   if (!invitation) return { success: false, error: "Convite não encontrado" };
-  if (invitation.status !== "pending") return { success: false, error: "Este convite já foi utilizado ou revogado" };
+  if (invitation.status !== "pending")
+    return { success: false, error: "Este convite já foi utilizado ou revogado" };
   if (invitation.expiresAt < new Date()) return { success: false, error: "Convite expirado" };
   if (invitation.email !== session.user.email) {
-    return { success: false, error: `Este convite é para ${invitation.email}. Você está logado como ${session.user.email}` };
+    return {
+      success: false,
+      error: `Este convite é para ${invitation.email}. Você está logado como ${session.user.email}`,
+    };
   }
 
   const exists = await prisma.member.findUnique({
-    where: { userId_organizationId: { userId: session.user.id, organizationId: invitation.organizationId } },
+    where: {
+      userId_organizationId: { userId: session.user.id, organizationId: invitation.organizationId },
+    },
   });
   if (exists) {
     await prisma.invitation.update({ where: { token }, data: { status: "accepted" } });
-    return { success: true, data: { orgName: invitation.organization.tradeName ?? invitation.organization.legalName } };
+    return {
+      success: true,
+      data: { orgName: invitation.organization.tradeName ?? invitation.organization.legalName },
+    };
   }
 
   await prisma.$transaction([
@@ -173,6 +182,9 @@ export async function acceptInvitationAction(token: string): Promise<Result<{ or
 export async function getInvitationAction(token: string) {
   return prisma.invitation.findUnique({
     where: { token },
-    include: { organization: { select: { legalName: true, tradeName: true } }, invitedBy: { select: { name: true } } },
+    include: {
+      organization: { select: { legalName: true, tradeName: true } },
+      invitedBy: { select: { name: true } },
+    },
   });
 }

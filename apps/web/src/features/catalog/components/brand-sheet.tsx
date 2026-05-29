@@ -1,9 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
-import { getBrandsAction, upsertBrandAction } from "@/features/catalog/actions/brand-actions";
 import { Loader2, Package, Plus, Tag } from "lucide-react";
 import {
   forwardRef,
@@ -15,6 +11,10 @@ import {
   useTransition,
 } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
+import { getBrandsAction, upsertBrandAction } from "@/features/catalog/actions/brand-actions";
 
 /* ── Types ──────────────────────────────────────────────── */
 

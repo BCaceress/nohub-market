@@ -1,20 +1,26 @@
 "use client";
 
+import { Mail, Trash2, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Mail, Trash2, UserPlus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { cancelInvitationAction, sendInvitationAction } from "./actions/invite-actions";
 import {
   inviteMemberAction,
-  updateMemberRoleAction,
   removeMemberAction,
+  updateMemberRoleAction,
 } from "./actions/team-actions";
-import { sendInvitationAction, cancelInvitationAction } from "./actions/invite-actions";
 
 type Member = {
   id: string;
@@ -60,7 +66,9 @@ export function TeamManager({
   const [pendingInvitations, setPendingInvitations] = useState(initialInvitations);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "manager" | "operator" | "viewer">("operator");
+  const [inviteRole, setInviteRole] = useState<"admin" | "manager" | "operator" | "viewer">(
+    "operator",
+  );
   const [inviteByEmail, setInviteByEmail] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -72,7 +80,10 @@ export function TeamManager({
       ? await sendInvitationAction(organizationId, inviteEmail.trim(), inviteRole)
       : await inviteMemberAction(organizationId, inviteEmail.trim(), inviteRole);
     setInviting(false);
-    if (!res.success) { toast.error(res.error); return; }
+    if (!res.success) {
+      toast.error(res.error);
+      return;
+    }
     toast.success(inviteByEmail ? "Convite enviado por e-mail!" : "Membro adicionado!");
     setInviteOpen(false);
     setInviteEmail("");
@@ -88,9 +99,7 @@ export function TeamManager({
     if (!res.success) {
       toast.error(res.error);
     } else {
-      setMembers((prev) =>
-        prev.map((m) => (m.id === memberId ? { ...m, role } : m)),
-      );
+      setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role } : m)));
     }
   }
 
@@ -108,7 +117,10 @@ export function TeamManager({
 
   async function handleCancelInvite(id: string) {
     const res = await cancelInvitationAction(organizationId, id);
-    if (!res.success) { toast.error(res.error); return; }
+    if (!res.success) {
+      toast.error(res.error);
+      return;
+    }
     setPendingInvitations((prev) => prev.filter((i) => i.id !== id));
     toast.success("Convite cancelado");
   }
@@ -118,11 +130,24 @@ export function TeamManager({
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{members.length} membro(s)</p>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => { setInviteByEmail(true); setInviteOpen(true); }}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setInviteByEmail(true);
+              setInviteOpen(true);
+            }}
+          >
             <Mail className="mr-2 h-4 w-4" />
             Convidar por e-mail
           </Button>
-          <Button size="sm" onClick={() => { setInviteByEmail(false); setInviteOpen(true); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setInviteByEmail(false);
+              setInviteOpen(true);
+            }}
+          >
             <UserPlus className="mr-2 h-4 w-4" />
             Adicionar existente
           </Button>
@@ -175,16 +200,25 @@ export function TeamManager({
           <p className="text-xs font-medium text-muted-foreground mb-2">Convites pendentes</p>
           <div className="rounded-lg border">
             {pendingInvitations.map((inv, i) => (
-              <div key={inv.id} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? "border-t" : ""}`}>
+              <div
+                key={inv.id}
+                className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? "border-t" : ""}`}
+              >
                 <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{inv.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    {ROLE_LABELS[inv.role] ?? inv.role} · expira {new Date(inv.expiresAt).toLocaleDateString("pt-BR")}
+                    {ROLE_LABELS[inv.role] ?? inv.role} · expira{" "}
+                    {new Date(inv.expiresAt).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <Badge variant="warning">Pendente</Badge>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleCancelInvite(inv.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => handleCancelInvite(inv.id)}
+                >
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -218,9 +252,7 @@ export function TeamManager({
               <Label>Papel</Label>
               <Select
                 value={inviteRole}
-                onChange={(e) =>
-                  setInviteRole(e.target.value as typeof inviteRole)
-                }
+                onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
               >
                 <option value="admin">Admin</option>
                 <option value="manager">Gerente</option>

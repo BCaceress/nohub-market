@@ -1,13 +1,13 @@
 "use client";
 
+import { FolderOpen, Loader2, Plus } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
 import {
   clearCategoryIconsAction,
   getCategoriesAction,
 } from "@/features/catalog/actions/category-actions";
-import { FolderOpen, Loader2, Plus } from "lucide-react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { CategoryEditor, type CategoryEditorHandle } from "./category-editor";
 
 /* ── Types ──────────────────────────────────────────────── */

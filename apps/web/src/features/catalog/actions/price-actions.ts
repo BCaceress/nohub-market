@@ -1,11 +1,11 @@
 "use server";
 
-import { writeAudit } from "@/lib/audit";
-import { getSession } from "@/lib/auth-server";
 import { prisma } from "@nohub/db";
 import type { Result } from "@nohub/shared/schemas";
 import { revalidatePath } from "next/cache";
-import { productPriceSchema, type ProductPriceInput } from "../schemas";
+import { writeAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-server";
+import { type ProductPriceInput, productPriceSchema } from "../schemas";
 
 async function assertMember(userId: string, organizationId: string) {
   const m = await prisma.member.findUnique({
@@ -25,12 +25,15 @@ export async function setProductPriceAction(
 ): Promise<Result<{ id: string }>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
   const parsed = productPriceSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
+  if (!parsed.success)
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Inválido" };
 
   const d = parsed.data;
 
@@ -92,7 +95,9 @@ export async function deleteProductPriceAction(
 ): Promise<Result<null>> {
   const session = await getSession();
   if (!session) return { success: false, error: "Não autenticado" };
-  try { await assertMember(session.user.id, organizationId); } catch {
+  try {
+    await assertMember(session.user.id, organizationId);
+  } catch {
     return { success: false, error: "Sem permissão" };
   }
 
@@ -104,10 +109,7 @@ export async function deleteProductPriceAction(
   return { success: true, data: null };
 }
 
-export async function getProductPricesAction(
-  organizationId: string,
-  productId?: string,
-) {
+export async function getProductPricesAction(organizationId: string, productId?: string) {
   return prisma.productPrice.findMany({
     where: {
       organizationId,

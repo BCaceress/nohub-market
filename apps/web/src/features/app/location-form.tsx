@@ -1,17 +1,17 @@
 "use client";
 
+import { onlyDigits } from "@nohub/shared/brazilian";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { onlyDigits } from "@nohub/shared/brazilian";
 import {
   createLocationAction,
-  updateLocationAction,
   type LocationInput,
+  updateLocationAction,
 } from "./actions/location-actions";
 
 type Location = {
@@ -122,11 +122,7 @@ export function LocationForm({
             checked={form.isSelfService}
             onChange={(v) => set({ isSelfService: v })}
           />
-          <Checkbox
-            label="Funciona 24h"
-            checked={form.is24h}
-            onChange={(v) => set({ is24h: v })}
-          />
+          <Checkbox label="Funciona 24h" checked={form.is24h} onChange={(v) => set({ is24h: v })} />
         </div>
       </div>
 

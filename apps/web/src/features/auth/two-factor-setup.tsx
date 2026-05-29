@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "sonner";
-import QRCode from "react-qr-code";
 import { ShieldCheck, ShieldOff } from "lucide-react";
+import { useState } from "react";
+import QRCode from "react-qr-code";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
@@ -24,27 +31,43 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   // Better Auth 2FA client (cast para contornar divergências de tipo entre versões)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tfa = (authClient as any).twoFactor as {
-    getTotpUri: (p: { password: string }) => Promise<{ data?: { totpURI?: string }; error?: { message?: string } }>;
-    enable: (p: { code: string }) => Promise<{ data?: { backupCodes?: string[] }; error?: { message?: string } }>;
+    getTotpUri: (p: {
+      password: string;
+    }) => Promise<{ data?: { totpURI?: string }; error?: { message?: string } }>;
+    enable: (p: {
+      code: string;
+    }) => Promise<{ data?: { backupCodes?: string[] }; error?: { message?: string } }>;
     disable: (p: { password: string }) => Promise<{ error?: { message?: string } }>;
   };
 
   async function handleEnable() {
-    if (!password) { toast.error("Digite sua senha"); return; }
+    if (!password) {
+      toast.error("Digite sua senha");
+      return;
+    }
     setLoading(true);
     const res = await tfa.getTotpUri({ password });
     setLoading(false);
-    if (res.error) { toast.error(res.error.message ?? "Erro ao gerar QR"); return; }
+    if (res.error) {
+      toast.error(res.error.message ?? "Erro ao gerar QR");
+      return;
+    }
     setTotpUri(res.data?.totpURI ?? "");
     setStep("show-qr");
   }
 
   async function handleConfirmEnable() {
-    if (code.length < 6) { toast.error("Digite o código de 6 dígitos"); return; }
+    if (code.length < 6) {
+      toast.error("Digite o código de 6 dígitos");
+      return;
+    }
     setLoading(true);
     const res = await tfa.enable({ code });
     setLoading(false);
-    if (res.error) { toast.error(res.error.message ?? "Código inválido"); return; }
+    if (res.error) {
+      toast.error(res.error.message ?? "Código inválido");
+      return;
+    }
     setBackupCodes(res.data?.backupCodes ?? []);
     toast.success("Autenticação de dois fatores ativada!");
     setStep("idle");
@@ -54,11 +77,17 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   }
 
   async function handleDisable() {
-    if (!password) { toast.error("Digite sua senha"); return; }
+    if (!password) {
+      toast.error("Digite sua senha");
+      return;
+    }
     setLoading(true);
     const res = await tfa.disable({ password });
     setLoading(false);
-    if (res.error) { toast.error(res.error.message ?? "Erro ao desativar"); return; }
+    if (res.error) {
+      toast.error(res.error.message ?? "Erro ao desativar");
+      return;
+    }
     toast.success("2FA desativado.");
     setStep("idle");
     setPassword("");
@@ -89,9 +118,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
               : "Adicione uma camada extra de segurança ao fazer login."}
           </p>
         </div>
-        <Badge variant={enabled ? "success" : "outline"}>
-          {enabled ? "Ativo" : "Inativo"}
-        </Badge>
+        <Badge variant={enabled ? "success" : "outline"}>{enabled ? "Ativo" : "Inativo"}</Badge>
         <Button
           size="sm"
           variant={enabled ? "outline" : "default"}
@@ -126,7 +153,9 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={reset}>Cancelar</Button>
+                <Button variant="outline" onClick={reset}>
+                  Cancelar
+                </Button>
                 <Button onClick={handleEnable} disabled={loading || !password}>
                   {loading ? "Gerando..." : "Gerar QR code"}
                 </Button>
@@ -138,7 +167,8 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
                 <QRCode value={totpUri} size={180} />
               </div>
               <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Após escanear, o aplicativo exibirá um código de 6 dígitos renovado a cada 30 segundos.
+                Após escanear, o aplicativo exibirá um código de 6 dígitos renovado a cada 30
+                segundos.
               </p>
               <div className="w-full flex flex-col gap-2">
                 <Label>Código de verificação</Label>
@@ -152,7 +182,9 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
                 />
               </div>
               <DialogFooter className="w-full">
-                <Button variant="outline" onClick={reset}>Cancelar</Button>
+                <Button variant="outline" onClick={reset}>
+                  Cancelar
+                </Button>
                 <Button onClick={handleConfirmEnable} disabled={loading || code.length < 6}>
                   {loading ? "Verificando..." : "Confirmar e ativar"}
                 </Button>
@@ -164,7 +196,9 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
             <div className="rounded-md bg-muted p-3 text-xs">
               <p className="font-medium mb-1">Códigos de backup (guarde em local seguro):</p>
               <div className="grid grid-cols-2 gap-1 font-mono">
-                {backupCodes.map((c) => <span key={c}>{c}</span>)}
+                {backupCodes.map((c) => (
+                  <span key={c}>{c}</span>
+                ))}
               </div>
             </div>
           )}
@@ -176,9 +210,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
         <DialogContent onClose={reset}>
           <DialogHeader>
             <DialogTitle>Desativar autenticação de dois fatores</DialogTitle>
-            <DialogDescription>
-              Confirme sua senha para desativar o 2FA.
-            </DialogDescription>
+            <DialogDescription>Confirme sua senha para desativar o 2FA.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2">
@@ -192,12 +224,10 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={reset}>Cancelar</Button>
-              <Button
-                variant="destructive"
-                onClick={handleDisable}
-                disabled={loading || !password}
-              >
+              <Button variant="outline" onClick={reset}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleDisable} disabled={loading || !password}>
                 {loading ? "Desativando..." : "Desativar 2FA"}
               </Button>
             </DialogFooter>

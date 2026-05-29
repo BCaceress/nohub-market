@@ -1,11 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AiProductLookup } from "@/features/catalog/ai-product-lookup";
-import type { OpenFoodFactsProduct } from "@/features/inventory/actions/ai-product-actions";
 import {
   CheckCircle2,
   CheckSquare,
@@ -20,6 +14,11 @@ import {
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AiProductLookup } from "@/features/catalog/ai-product-lookup";
+import type { OpenFoodFactsProduct } from "@/features/inventory/actions/ai-product-actions";
 import { importFromFiscalTemplateAction, importProductRowsAction } from "../actions/import-actions";
 
 /* ── Types ──────────────────────────────────────────────────── */
@@ -92,7 +91,7 @@ function TemplateTab({ organizationId, templates }: Props) {
     });
   }
 
-  function toggleSegmentAll(seg: string, tpls: FiscalTemplate[]) {
+  function toggleSegmentAll(_seg: string, tpls: FiscalTemplate[]) {
     const ids = tpls.map((t) => t.id);
     const allSelected = ids.every((id) => selected.has(id));
     setSelected((prev) => {

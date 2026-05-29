@@ -12,29 +12,28 @@
  * pelo SDK ou cliente HTTP real quando integrar com o Focus NFe.
  */
 
-import crypto from "crypto";
 import type {
   FiscalProvider,
+  FiscalResult,
   InvoiceDraft,
+  InvoiceUpdate,
+  ProviderCancelResult,
   ProviderCertificate,
   ProviderConfig,
-  FiscalResult,
-  ProviderIssueResult,
-  ProviderCancelResult,
-  ProviderStatus,
   ProviderInutilizeResult,
-  InvoiceUpdate,
+  ProviderIssueResult,
+  ProviderStatus,
 } from "./fiscal-provider";
 
 /* ── Mapeamento de formas de pagamento interno → Focus ─────────── */
 
 const PAYMENT_METHOD_MAP: Record<string, string> = {
-  CASH:         "01", // Dinheiro
-  PIX_MANUAL:   "17", // Pix
-  PIX_DYNAMIC:  "17", // Pix
+  CASH: "01", // Dinheiro
+  PIX_MANUAL: "17", // Pix
+  PIX_DYNAMIC: "17", // Pix
   CARD_PRESENT: "03", // Cartão de Crédito (simplificado — usar método real)
-  CARD_ONLINE:  "03",
-  VOUCHER:      "99", // Outros
+  CARD_ONLINE: "03",
+  VOUCHER: "99", // Outros
 };
 
 /* ── Mapeamento NCM/CFOP simples (produção requer tabela completa) */
@@ -42,11 +41,11 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 function mapTaxRegime(regime: string): string {
   // Focus NFe usa CRT (Código de Regime Tributário)
   const map: Record<string, string> = {
-    simples_nacional:  "1",
-    lucro_presumido:   "3",
-    lucro_real:        "3",
-    SIMPLES_NACIONAL:  "1",
-    LUCRO_PRESUMIDO:   "3",
+    simples_nacional: "1",
+    lucro_presumido: "3",
+    lucro_real: "3",
+    SIMPLES_NACIONAL: "1",
+    LUCRO_PRESUMIDO: "3",
   };
   return map[regime] ?? "1";
 }
@@ -60,10 +59,6 @@ export class FocusNfeProvider implements FiscalProvider {
       : "https://homologacao.focusnfe.com.br";
   }
 
-  private getAuthHeader(token: string): string {
-    return `Basic ${Buffer.from(`${token}:`).toString("base64")}`;
-  }
-
   /**
    * Monta o payload Focus NFe a partir do InvoiceDraft interno.
    * Anti-corruption: payload Focus é construído aqui e nunca sai deste arquivo.
@@ -74,51 +69,51 @@ export class FocusNfeProvider implements FiscalProvider {
 
     return {
       natureza_operacao: "VENDA AO CONSUMIDOR",
-      forma_pagamento:   "0",
-      serie:             String(series),
+      forma_pagamento: "0",
+      serie: String(series),
       // referencia é preenchida pelo Focus automaticamente
 
       emitente: {
-        cnpj:                     issuer.cnpj,
-        nome:                     issuer.legalName,
-        nome_fantasia:            issuer.tradeName ?? issuer.legalName,
-        logradouro:               issuer.address.street,
-        numero:                   issuer.address.number,
-        complemento:              issuer.address.complement ?? "",
-        bairro:                   issuer.address.district,
-        municipio:                issuer.address.city,
-        uf:                       issuer.address.state,
-        cep:                      issuer.address.zipCode.replace(/\D/g, ""),
-        telefone:                 "",
-        inscricao_estadual:       issuer.ie ?? "",
+        cnpj: issuer.cnpj,
+        nome: issuer.legalName,
+        nome_fantasia: issuer.tradeName ?? issuer.legalName,
+        logradouro: issuer.address.street,
+        numero: issuer.address.number,
+        complemento: issuer.address.complement ?? "",
+        bairro: issuer.address.district,
+        municipio: issuer.address.city,
+        uf: issuer.address.state,
+        cep: issuer.address.zipCode.replace(/\D/g, ""),
+        telefone: "",
+        inscricao_estadual: issuer.ie ?? "",
         codigo_regime_tributario: crt,
       },
 
       destinatario: recipient?.document
         ? {
-            cpf:  recipient.document.replace(/\D/g, ""),
+            cpf: recipient.document.replace(/\D/g, ""),
             nome: recipient.name ?? "CONSUMIDOR",
             ...(recipient.email ? { email: recipient.email } : {}),
           }
         : undefined,
 
       itens: items.map((item, idx) => ({
-        numero_item:               String(idx + 1),
-        codigo_produto:            item.productCode,
-        descricao:                 item.description,
-        codigo_ncm:                item.ncm.replace(/\D/g, ""),
-        cfop:                      item.cfop,
-        unidade_comercial:         item.unit,
-        quantidade_comercial:      item.quantity,
-        valor_unitario_comercial:  item.unitPrice,
-        valor_bruto:               item.totalPrice,
-        valor_desconto:            item.discountAmount || undefined,
-        icms_origem:               item.icmsOrigin,
-        icms_modalidade:           item.icmsCsosn ? "400" : item.icmsCst ?? "40",
+        numero_item: String(idx + 1),
+        codigo_produto: item.productCode,
+        descricao: item.description,
+        codigo_ncm: item.ncm.replace(/\D/g, ""),
+        cfop: item.cfop,
+        unidade_comercial: item.unit,
+        quantidade_comercial: item.quantity,
+        valor_unitario_comercial: item.unitPrice,
+        valor_bruto: item.totalPrice,
+        valor_desconto: item.discountAmount || undefined,
+        icms_origem: item.icmsOrigin,
+        icms_modalidade: item.icmsCsosn ? "400" : (item.icmsCst ?? "40"),
         // Simples Nacional usa CSOSN
         ...(item.icmsCsosn && { icms_csosn: item.icmsCsosn }),
-        ...(item.icmsCst   && { icms_cst:   item.icmsCst   }),
-        ...(item.icmsRate  && { icms_aliquota: item.icmsRate }),
+        ...(item.icmsCst && { icms_cst: item.icmsCst }),
+        ...(item.icmsRate && { icms_aliquota: item.icmsRate }),
         // PIS
         pis_modalidade: item.pisCst ?? "07",
         ...(item.pisRate && { pis_aliquota: item.pisRate }),
@@ -129,7 +124,7 @@ export class FocusNfeProvider implements FiscalProvider {
 
       formas_pagamento: payments.map((p) => ({
         forma_pagamento: PAYMENT_METHOD_MAP[p.method] ?? "99",
-        valor:           p.amount,
+        valor: p.amount,
       })),
 
       informacoes_adicionais_contribuinte: `Emitido por MarketOS | Ref: ${draft.referenceId}`,
@@ -137,9 +132,9 @@ export class FocusNfeProvider implements FiscalProvider {
   }
 
   async issueNfce(
-    draft:       InvoiceDraft,
-    certificate: ProviderCertificate,
-    config:      ProviderConfig,
+    draft: InvoiceDraft,
+    _certificate: ProviderCertificate,
+    config: ProviderConfig,
   ): Promise<FiscalResult<ProviderIssueResult>> {
     const baseUrl = this.getBaseUrl(config.environment);
     const payload = this.buildFocusPayload(draft);
@@ -165,25 +160,25 @@ export class FocusNfeProvider implements FiscalProvider {
     return {
       success: true,
       data: {
-        accessKey:         fakeAccessKey.slice(0, 44),
-        protocol:          `141${Date.now()}`,
+        accessKey: fakeAccessKey.slice(0, 44),
+        protocol: `141${Date.now()}`,
         providerInvoiceId: `FOCUS_${draft.referenceId}`,
-        xml:               `<?xml version="1.0" encoding="UTF-8"?><nfeProc><!-- SIMULADO --></nfeProc>`,
-        qrCode:            `${baseUrl}/nfce/qrcode/${draft.referenceId}`,
-        danfeUrl:          `${baseUrl}/nfce/danfce/${draft.referenceId}`,
-        issuedAt:          new Date(),
-        isSynchronous:     true,
+        xml: `<?xml version="1.0" encoding="UTF-8"?><nfeProc><!-- SIMULADO --></nfeProc>`,
+        qrCode: `${baseUrl}/nfce/qrcode/${draft.referenceId}`,
+        danfeUrl: `${baseUrl}/nfce/danfce/${draft.referenceId}`,
+        issuedAt: new Date(),
+        isSynchronous: true,
       },
     };
   }
 
   async cancelNfce(
-    accessKey:   string,
-    reason:      string,
+    accessKey: string,
+    _reason: string,
     _certificate: ProviderCertificate,
-    config:      ProviderConfig,
+    config: ProviderConfig,
   ): Promise<FiscalResult<ProviderCancelResult>> {
-    const baseUrl = this.getBaseUrl(config.environment);
+    const _baseUrl = this.getBaseUrl(config.environment);
 
     // TODO: POST ${baseUrl}/v2/nfce/${providerRef}/cancelamento
     console.warn(`[FocusNfeProvider.cancelNfce] SIMULADO — chave ${accessKey}`);
@@ -191,8 +186,8 @@ export class FocusNfeProvider implements FiscalProvider {
     return {
       success: true,
       data: {
-        protocol:   `155${Date.now()}`,
-        xml:        `<?xml version="1.0" encoding="UTF-8"?><retEvento><!-- CANCELAMENTO SIMULADO --></retEvento>`,
+        protocol: `155${Date.now()}`,
+        xml: `<?xml version="1.0" encoding="UTF-8"?><retEvento><!-- CANCELAMENTO SIMULADO --></retEvento>`,
         canceledAt: new Date(),
       },
     };
@@ -200,9 +195,9 @@ export class FocusNfeProvider implements FiscalProvider {
 
   async consultStatus(
     providerInvoiceId: string,
-    config:            ProviderConfig,
+    config: ProviderConfig,
   ): Promise<FiscalResult<ProviderStatus>> {
-    const baseUrl = this.getBaseUrl(config.environment);
+    const _baseUrl = this.getBaseUrl(config.environment);
 
     // TODO: GET ${baseUrl}/v2/nfce/${providerRef}
     console.warn(`[FocusNfeProvider.consultStatus] SIMULADO — ${providerInvoiceId}`);
@@ -214,14 +209,14 @@ export class FocusNfeProvider implements FiscalProvider {
   }
 
   async inutilizeNumbers(
-    series:      number,
-    from:        number,
-    to:          number,
-    reason:      string,
+    series: number,
+    from: number,
+    to: number,
+    _reason: string,
     _certificate: ProviderCertificate,
-    config:      ProviderConfig,
+    config: ProviderConfig,
   ): Promise<FiscalResult<ProviderInutilizeResult>> {
-    const baseUrl = this.getBaseUrl(config.environment);
+    const _baseUrl = this.getBaseUrl(config.environment);
 
     // TODO: POST ${baseUrl}/v2/nfce/inutilizacao
     console.warn(`[FocusNfeProvider.inutilizeNumbers] SIMULADO — série ${series} / ${from}→${to}`);
@@ -229,16 +224,16 @@ export class FocusNfeProvider implements FiscalProvider {
     return {
       success: true,
       data: {
-        protocol:    `165${Date.now()}`,
+        protocol: `165${Date.now()}`,
         processedAt: new Date(),
       },
     };
   }
 
   verifyWebhookSignature(
-    payload: string,
+    _payload: string,
     headers: Record<string, string>,
-    config:  ProviderConfig,
+    config: ProviderConfig,
   ): boolean {
     // Focus NFe não usa assinatura de webhook — verifica por IP ou token de URL
     // Em produção, verificar pela lista de IPs autorizados do Focus
@@ -253,18 +248,18 @@ export class FocusNfeProvider implements FiscalProvider {
       const raw = payload as Record<string, unknown>;
 
       // Focus envia: { ref, status, numero, chave, protocolo, xml, qrcode_url, danfe_url, ... }
-      const ref     = String(raw.ref     ?? "");
-      const status  = String(raw.status  ?? "");
-      const chave   = String(raw.chave   ?? raw.chave_nfe ?? "");
+      const ref = String(raw.ref ?? "");
+      const status = String(raw.status ?? "");
+      const chave = String(raw.chave ?? raw.chave_nfe ?? "");
       const protocolo = String(raw.protocolo ?? "");
-      const xml     = String(raw.xml_nfe ?? raw.xml ?? "");
+      const xml = String(raw.xml_nfe ?? raw.xml ?? "");
 
       // Mapear status Focus → interno
       const statusMap: Record<string, "authorized" | "rejected" | "denied"> = {
-        autorizado:  "authorized",
-        cancelado:   "authorized", // cancelado é tratado separadamente
+        autorizado: "authorized",
+        cancelado: "authorized", // cancelado é tratado separadamente
         erro_autorizacao: "rejected",
-        denegado:    "denied",
+        denegado: "denied",
       };
 
       const mappedStatus = statusMap[status];
@@ -276,15 +271,15 @@ export class FocusNfeProvider implements FiscalProvider {
         success: true,
         data: {
           providerInvoiceId: `FOCUS_${ref}`,
-          status:            mappedStatus,
-          accessKey:         chave    || undefined,
-          protocol:          protocolo || undefined,
-          xml:               xml       || undefined,
-          qrCode:            String(raw.qrcode_url ?? "")  || undefined,
-          danfeUrl:          String(raw.danfce_url ?? "")  || undefined,
-          rejectionCode:     String(raw.codigo    ?? "")   || undefined,
-          rejectionReason:   String(raw.mensagem  ?? "")   || undefined,
-          processedAt:       new Date(),
+          status: mappedStatus,
+          accessKey: chave || undefined,
+          protocol: protocolo || undefined,
+          xml: xml || undefined,
+          qrCode: String(raw.qrcode_url ?? "") || undefined,
+          danfeUrl: String(raw.danfce_url ?? "") || undefined,
+          rejectionCode: String(raw.codigo ?? "") || undefined,
+          rejectionReason: String(raw.mensagem ?? "") || undefined,
+          processedAt: new Date(),
         },
       };
     } catch (err) {

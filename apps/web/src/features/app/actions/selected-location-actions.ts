@@ -1,10 +1,10 @@
 "use server";
 
-import { getSession } from "@/lib/auth-server";
-import { ALL_LOCATIONS, SELECTED_LOCATION_COOKIE } from "@/lib/selected-location";
 import { prisma } from "@nohub/db";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { getSession } from "@/lib/auth-server";
+import { ALL_LOCATIONS, SELECTED_LOCATION_COOKIE } from "@/lib/selected-location";
 
 export async function setSelectedLocationAction(
   organizationId: string,

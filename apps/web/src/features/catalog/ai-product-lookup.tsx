@@ -1,13 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { BarcodeScanner } from "@/features/catalog/components/barcode-scanner";
-import {
-  type OpenFoodFactsProduct,
-  lookupProductByBarcodeAction,
-} from "@/features/inventory/actions/ai-product-actions";
 import {
   AlertCircle,
   Barcode,
@@ -20,6 +12,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { BarcodeScanner } from "@/features/catalog/components/barcode-scanner";
+import {
+  lookupProductByBarcodeAction,
+  type OpenFoodFactsProduct,
+} from "@/features/inventory/actions/ai-product-actions";
 
 /* ── Mobile detection ───────────────────────────────────────── */
 
