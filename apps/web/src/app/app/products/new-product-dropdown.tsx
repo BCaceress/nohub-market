@@ -1,28 +1,48 @@
 "use client";
 
-import { ChevronDown, Layers, Package, Plus, Scissors } from "lucide-react";
+import {
+  ChefHat,
+  ChevronDown,
+  Layers,
+  Package,
+  Plus,
+  Scissors,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const OPTIONS = [
   {
-    type: "SIMPLE",
+    route: "?type=SIMPLE",
     label: "Produto Simples",
     desc: "Unitário padrão — com busca automática por código de barras",
     icon: <Package className="h-4 w-4 shrink-0 text-muted-foreground" />,
   },
   {
-    type: "KIT",
+    route: "?type=KIT",
     label: "Kit / Combo",
-    desc: "Conjunto de produtos vendidos juntos",
+    desc: "Produtos prontos vendidos juntos (cesta, combo, pack)",
     icon: <Layers className="h-4 w-4 shrink-0 text-amber-500" />,
   },
   {
-    type: "FRACTIONED",
+    route: "?type=KIT&kind=RECIPE",
+    label: "Produzido / Receita",
+    desc: "Formado por insumos fracionados (drink, lanche, pizza)",
+    icon: <ChefHat className="h-4 w-4 shrink-0 text-green-500" />,
+  },
+  {
+    route: "?type=FRACTIONED",
     label: "Produto Fracionado",
     desc: "Vendido por peso ou volume (kg, g, l, ml…)",
     icon: <Scissors className="h-4 w-4 shrink-0 text-green-500" />,
+  },
+  {
+    route: "?type=CUSTOM",
+    label: "Produto Personalizado",
+    desc: "Itens fixos + opções montadas na venda (ex: drink)",
+    icon: <SlidersHorizontal className="h-4 w-4 shrink-0 text-sky-500" />,
   },
 ] as const;
 
@@ -43,9 +63,9 @@ export function NewProductDropdown() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  function navigate(type: string) {
+  function navigate(route: string) {
     setOpen(false);
-    router.push(`/app/products/new?type=${type}`);
+    router.push(`/app/products/new${route}`);
   }
 
   return (
@@ -56,7 +76,7 @@ export function NewProductDropdown() {
         <Button
           size="sm"
           className="rounded-r-none border-r border-primary-foreground/20 pr-3"
-          onClick={() => navigate("SIMPLE")}
+          onClick={() => navigate("?type=SIMPLE")}
         >
           <Plus className="h-4 w-4" />
           Novo produto
@@ -83,9 +103,9 @@ export function NewProductDropdown() {
           </p>
           {OPTIONS.map((opt) => (
             <button
-              key={opt.type}
+              key={opt.route}
               type="button"
-              onClick={() => navigate(opt.type)}
+              onClick={() => navigate(opt.route)}
               className="w-full flex items-start gap-3 px-3 py-2.5 text-left cursor-pointer hover:bg-muted transition-colors"
             >
               <span className="mt-0.5">{opt.icon}</span>
