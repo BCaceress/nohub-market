@@ -26,6 +26,14 @@ import { confirmSupplierReturn, createSupplierReturn } from "../lib/create-suppl
 import { generatePurchaseSuggestion } from "../lib/generate-purchase-suggestion";
 import type { ReceiptItemInput } from "../lib/register-receipt";
 import { registerReceipt } from "../lib/register-receipt";
+import type { SupplierProductMappingInput } from "../lib/supplier-product-mapping";
+import {
+  createSupplierProductMapping,
+  deleteSupplierProductMapping,
+  getSupplierPriceStats,
+  listProductSuppliers,
+  updateSupplierProductMapping,
+} from "../lib/supplier-product-mapping";
 import {
   cancelPurchaseOrder,
   confirmPurchaseOrder,
@@ -439,4 +447,74 @@ export async function listLocationsAction() {
     where: { organizationId, deletedAt: null },
     orderBy: { name: "asc" },
   });
+}
+
+/* ── Fornecedores do produto (SupplierProductMapping, RN-P12) ─────── */
+
+// Decimal → number: objetos Prisma.Decimal não podem cruzar a fronteira
+// Server→Client. Serializa antes de devolver pra UI.
+function dec(v: { toString(): string } | null): number | null {
+  if (v == null) return null;
+  const n = Number(v.toString());
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function listProductSuppliersAction(productId: string) {
+  const session = await requireSessionWithOrg();
+  const rows = await listProductSuppliers(session.organizationId, productId);
+  return rows.map((m) => ({
+    id: m.id,
+    supplierId: m.supplierId,
+    supplierProductCode: m.supplierProductCode,
+    supplierProductName: m.supplierProductName,
+    purchaseUnit: m.purchaseUnit,
+    defaultPackQuantity: dec(m.defaultPackQuantity),
+    minOrderQuantity: dec(m.minOrderQuantity),
+    barcode: m.barcode,
+    leadTimeDays: m.leadTimeDays,
+    discountPercent: dec(m.discountPercent),
+    lastCost: dec(m.lastCost),
+    previousCost: dec(m.previousCost),
+    lastPurchaseAt: m.lastPurchaseAt ? m.lastPurchaseAt.toISOString() : null,
+    isPreferred: m.isPreferred,
+    active: m.active,
+    supplier: {
+      id: m.supplier.id,
+      name: m.supplier.name,
+      defaultLeadTimeDays: m.supplier.defaultLeadTimeDays,
+    },
+  }));
+}
+
+export async function createProductSupplierAction(input: SupplierProductMappingInput) {
+  const session = await requireSessionWithOrg();
+  return createSupplierProductMapping(
+    { organizationId: session.organizationId, actorId: session.user.id },
+    input,
+  );
+}
+
+export async function updateProductSupplierAction(
+  mappingId: string,
+  input: Partial<SupplierProductMappingInput>,
+) {
+  const session = await requireSessionWithOrg();
+  return updateSupplierProductMapping(
+    { organizationId: session.organizationId, actorId: session.user.id },
+    mappingId,
+    input,
+  );
+}
+
+export async function deleteProductSupplierAction(mappingId: string) {
+  const session = await requireSessionWithOrg();
+  return deleteSupplierProductMapping(
+    { organizationId: session.organizationId, actorId: session.user.id },
+    mappingId,
+  );
+}
+
+export async function getProductSupplierPriceStatsAction(mappingId: string) {
+  const session = await requireSessionWithOrg();
+  return getSupplierPriceStats(session.organizationId, mappingId);
 }

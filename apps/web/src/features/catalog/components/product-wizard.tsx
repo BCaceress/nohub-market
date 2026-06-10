@@ -86,7 +86,7 @@ function ImageField({ value, onChange }: { value: string; onChange: (v: string) 
       {/* Preview */}
       {value && !error ? (
         <div className="relative w-full h-40 rounded-lg border border-border bg-muted/30 overflow-hidden flex items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* biome-ignore lint/performance/noImgElement: external user-provided URL */}
           <img
             src={value}
             alt="Preview"
@@ -320,7 +320,6 @@ type ExistingProduct = {
   supplierId: string | null;
   hasAgeRestriction: boolean;
   minAge: number | null;
-  expiryDays: number | null;
 };
 
 interface Props {
@@ -358,7 +357,6 @@ type FormState = {
   isActive: boolean;
   hasAgeRestriction: boolean;
   minAge: string;
-  expiryDays: string;
 };
 
 /* ── Main component ─────────────────────────────────────────── */
@@ -405,7 +403,6 @@ export function ProductWizard({
     isActive: product?.isActive ?? true,
     hasAgeRestriction: product?.hasAgeRestriction ?? false,
     minAge: product?.minAge?.toString() ?? "18",
-    expiryDays: product?.expiryDays?.toString() ?? "",
   });
 
   function set(partial: Partial<FormState>) {
@@ -471,7 +468,6 @@ export function ProductWizard({
         isActive: form.isActive,
         hasAgeRestriction: form.hasAgeRestriction,
         minAge: form.hasAgeRestriction ? Number(form.minAge) || 18 : undefined,
-        expiryDays: form.expiryDays ? Number(form.expiryDays) : undefined,
       };
 
       const result = isEdit

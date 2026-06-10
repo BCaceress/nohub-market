@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Boxes, ChefHat, Layers, Package, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Boxes, Layers, Package, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -13,7 +13,6 @@ import { type KitComponentOption, saveKitProductAction } from "../actions/kit-pr
 import { ImagePicker, SectionTitle } from "./custom-product-form";
 
 type Category = { id: string; name: string; parentId: string | null };
-type CompositionKind = "COMBO" | "RECIPE";
 
 export type KitProductInitial = {
   id: string;
@@ -24,7 +23,6 @@ export type KitProductInitial = {
   isActive: boolean;
   categoryId: string | null;
   imageUrl: string | null;
-  compositionKind: CompositionKind | null;
   components: Array<{ componentProductId: string; quantity: number }>;
 };
 
@@ -33,7 +31,6 @@ interface Props {
   availableProducts: KitComponentOption[];
   categories: Category[];
   initialSku?: string;
-  initialKind?: CompositionKind;
   product?: KitProductInitial;
 }
 
@@ -59,55 +56,11 @@ export function KitProductForm({
   availableProducts,
   categories,
   initialSku,
-  initialKind,
   product,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isEdit = Boolean(product);
-
-  const [kind, setKind] = useState<CompositionKind>(
-    product?.compositionKind ?? initialKind ?? "COMBO",
-  );
-  const isRecipe = kind === "RECIPE";
-  // Vocabulário/comportamento que muda conforme o tipo de composição
-  const t = isRecipe
-    ? {
-        noun: "insumo",
-        nounCap: "Insumo",
-        nounPlural: "insumos",
-        compTitle: "Composição da receita",
-        compHint:
-          "Insumos (produtos simples ou fracionados). Mínimo de 2 itens. Quantidades fracionadas (ml, g, kg, l).",
-        emptyTitle: "Receita vazia",
-        emptyHint: "Adicione ao menos 2 insumos que compõem esta receita.",
-        costLabel: "Custo total dos insumos",
-        stockTitle: "Produção",
-        stockMetric: "Produções possíveis",
-        stockHint:
-          "Quantas unidades dá pra produzir com o estoque atual dos insumos. A venda baixa cada insumo.",
-        qtyStep: "0.001",
-        qtyMin: "0.001",
-        defaultQty: "1",
-      }
-    : {
-        noun: "produto",
-        nounCap: "Produto",
-        nounPlural: "produtos",
-        compTitle: "Composição do kit",
-        compHint:
-          "Somente produtos simples. Mínimo de 2 produtos. O mesmo produto pode ser adicionado mais de uma vez (as quantidades são consolidadas).",
-        emptyTitle: "Kit vazio",
-        emptyHint: "Adicione ao menos 2 produtos que compõem este combo.",
-        costLabel: "Custo total dos componentes",
-        stockTitle: "Estoque calculado",
-        stockMetric: "Kits disponíveis",
-        stockHint:
-          "Calculado pela menor disponibilidade entre os componentes. O kit não mantém estoque próprio — a venda baixa cada componente.",
-        qtyStep: "1",
-        qtyMin: "1",
-        defaultQty: "1",
-      };
 
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
@@ -131,7 +84,7 @@ export function KitProductForm({
 
   /* ── Composição ─────────────────────────────────────────── */
   const addItem = () =>
-    setItems((p) => [...p, { id: newId(), componentProductId: "", quantity: t.defaultQty }]);
+    setItems((p) => [...p, { id: newId(), componentProductId: "", quantity: "1" }]);
   const removeItem = (i: number) => setItems((p) => p.filter((_, j) => j !== i));
   const updateItem = (i: number, patch: Partial<EditItem>) =>
     setItems((p) => p.map((it, j) => (j === i ? { ...it, ...patch } : it)));
@@ -174,16 +127,16 @@ export function KitProductForm({
   /* ── Salvar ─────────────────────────────────────────────── */
   function handleSave() {
     if (!name.trim()) {
-      toast.error(`Informe o nome ${isRecipe ? "da receita" : "do kit"}.`);
+      toast.error("Informe o nome do kit.");
       return;
     }
     const valid = items.filter((it) => it.componentProductId);
     if (valid.length < 2) {
-      toast.error(`Deve possuir no mínimo 2 ${t.nounPlural}.`);
+      toast.error("O kit deve possuir no mínimo 2 produtos.");
       return;
     }
     if (valid.some((it) => !(Number(it.quantity) > 0))) {
-      toast.error(`Quantidade de cada ${t.noun} deve ser maior que zero.`);
+      toast.error("Quantidade de cada produto deve ser maior que zero.");
       return;
     }
 
@@ -195,7 +148,6 @@ export function KitProductForm({
         categoryId: categoryId || "",
         imageUrl: imageUrl || "",
         isActive,
-        compositionKind: kind,
         price: priceValue,
         components: valid.map((it) => ({
           componentProductId: it.componentProductId,
@@ -206,11 +158,7 @@ export function KitProductForm({
         toast.error(result.error);
         return;
       }
-      toast.success(
-        isEdit
-          ? `${isRecipe ? "Receita" : "Kit"} atualizado!`
-          : `${isRecipe ? "Receita criada" : "Kit criado"}!`,
-      );
+      toast.success(isEdit ? "Kit atualizado!" : "Kit criado!");
       router.push(`/app/products/${result.data.id}`);
       router.refresh();
     });
@@ -227,28 +175,15 @@ export function KitProductForm({
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg",
-              isRecipe ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500",
-            )}
-          >
-            {isRecipe ? <ChefHat className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+            <Layers className="h-4 w-4" />
           </span>
           <div>
             <h1 className="font-display text-[16px] font-semibold leading-none">
-              {isEdit
-                ? isRecipe
-                  ? "Editar receita"
-                  : "Editar Kit/Combo"
-                : isRecipe
-                  ? "Nova receita"
-                  : "Novo Kit/Combo"}
+              {isEdit ? "Editar Kit/Combo" : "Novo Kit/Combo"}
             </h1>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {isRecipe
-                ? "Tipo: Produzido/Receita · baixa os insumos na venda"
-                : "Tipo: Kit/Combo · baixa os componentes na venda"}
+              Tipo: Kit/Combo · baixa os componentes na venda
               {sku && (
                 <span className="ml-2 rounded bg-surface-1 px-1.5 py-0.5 font-mono text-[10px]">
                   {sku}
@@ -262,31 +197,8 @@ export function KitProductForm({
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={isPending}>
-            {isPending ? "Salvando…" : isRecipe ? "Salvar receita" : "Salvar kit"}
+            {isPending ? "Salvando…" : "Salvar kit"}
           </Button>
-        </div>
-      </div>
-
-      {/* Tipo de Composição — define o comportamento da tela */}
-      <div className="mb-8 flex flex-col gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Tipo de composição *</span>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <KindCard
-            active={kind === "COMBO"}
-            onClick={() => setKind("COMBO")}
-            icon={<Layers className="h-5 w-5" />}
-            accent="amber"
-            title="Kit / Combo"
-            desc="Produtos prontos vendidos juntos. Quantidade inteira. Ex: cesta, combo, pack."
-          />
-          <KindCard
-            active={kind === "RECIPE"}
-            onClick={() => setKind("RECIPE")}
-            icon={<ChefHat className="h-5 w-5" />}
-            accent="green"
-            title="Produzido / Receita"
-            desc="Formado por insumos. Aceita frações (ml, g, kg, l). Ex: drink, lanche, pizza."
-          />
         </div>
       </div>
 
@@ -300,18 +212,16 @@ export function KitProductForm({
             <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
               <div className="sm:row-span-2">
                 <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                  {isRecipe ? "Imagem da receita" : "Imagem do kit"}
+                  Imagem do kit
                 </span>
                 <ImagePicker value={imageUrl} onChange={setImageUrl} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {isRecipe ? "Nome da receita *" : "Nome do kit *"}
-                </span>
+                <span className="text-xs font-medium text-muted-foreground">Nome do kit *</span>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={isRecipe ? "Ex: Caipirinha" : "Ex: Combo Festa"}
+                  placeholder="Ex: Combo Festa"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -362,7 +272,7 @@ export function KitProductForm({
             {/* Situação */}
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-3">
               <div>
-                <p className="text-sm font-medium">{isRecipe ? "Receita ativa" : "Kit ativo"}</p>
+                <p className="text-sm font-medium">Kit ativo</p>
                 <p className="text-xs text-muted-foreground">Inativo não aparece nas vendas</p>
               </div>
               <button
@@ -386,10 +296,10 @@ export function KitProductForm({
 
           {/* Preço e Margem */}
           <section className="flex flex-col gap-3">
-            <SectionTitle>{isRecipe ? "Custo e preço" : "Preço e margem"}</SectionTitle>
+            <SectionTitle>Preço e margem</SectionTitle>
             <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t.costLabel}</span>
+                <span className="text-muted-foreground">Custo total dos componentes</span>
                 <span className="font-mono font-medium">{BRL(totalCost)}</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -427,29 +337,35 @@ export function KitProductForm({
             </div>
           </section>
 
-          {/* Estoque calculado / Produção */}
+          {/* Estoque calculado */}
           <section className="flex flex-col gap-3">
-            <SectionTitle icon={<Boxes className="h-3.5 w-3.5" />}>{t.stockTitle}</SectionTitle>
+            <SectionTitle icon={<Boxes className="h-3.5 w-3.5" />}>Estoque calculado</SectionTitle>
             <div className="rounded-xl border border-border bg-muted/10 p-4">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">{t.stockMetric}</span>
+                <span className="text-sm text-muted-foreground">Kits disponíveis</span>
                 <span className="font-mono text-2xl font-semibold">{kitStock}</span>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">{t.stockHint}</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Calculado pela menor disponibilidade entre os componentes. O kit não mantém estoque
+                próprio — a venda baixa cada componente.
+              </p>
             </div>
           </section>
         </div>
 
         {/* ═══ RIGHT — Composição (maior área) ═══ */}
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={<Layers className="h-3.5 w-3.5" />}>{t.compTitle}</SectionTitle>
-          <p className="text-[12px] text-muted-foreground">{t.compHint}</p>
+          <SectionTitle icon={<Layers className="h-3.5 w-3.5" />}>Composição do kit</SectionTitle>
+          <p className="text-[12px] text-muted-foreground">
+            Somente produtos simples. Mínimo de 2 produtos. O mesmo produto pode ser adicionado mais
+            de uma vez (as quantidades são consolidadas).
+          </p>
 
           <div className="rounded-xl border border-border">
             {/* Cabeçalho */}
             <div className="grid grid-cols-[1.6fr_6.5rem_6rem_6rem_2.5rem] items-center gap-2 rounded-t-xl bg-surface-1 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <span>{t.nounCap}</span>
-              <span className="text-right">{isRecipe ? "Qtd / un." : "Quant."}</span>
+              <span>Produto</span>
+              <span className="text-right">Quant.</span>
               <span className="text-right">Custo un.</span>
               <span className="text-right">Subtotal</span>
               <span />
@@ -458,8 +374,10 @@ export function KitProductForm({
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Package className="mb-3 h-8 w-8 text-muted-foreground/40" />
-                <p className="text-sm font-medium">{t.emptyTitle}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t.emptyHint}</p>
+                <p className="text-sm font-medium">Kit vazio</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Adicione ao menos 2 produtos que compõem este combo.
+                </p>
               </div>
             ) : (
               items.map((it, i) => {
@@ -486,8 +404,8 @@ export function KitProductForm({
                     <div className="flex items-center justify-end gap-1">
                       <Input
                         type="number"
-                        min={t.qtyMin}
-                        step={t.qtyStep}
+                        min="1"
+                        step="1"
                         value={it.quantity}
                         onChange={(e) => updateItem(i, { quantity: e.target.value })}
                         className="h-9 text-right font-mono"
@@ -537,53 +455,10 @@ export function KitProductForm({
             onClick={addItem}
           >
             <Plus className="h-3.5 w-3.5" />
-            Adicionar {t.noun}
+            Adicionar produto
           </Button>
         </section>
       </div>
     </div>
-  );
-}
-
-function KindCard({
-  active,
-  onClick,
-  icon,
-  accent,
-  title,
-  desc,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  accent: "amber" | "green";
-  title: string;
-  desc: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
-        active
-          ? "border-primary bg-primary-soft ring-1 ring-primary"
-          : "border-border bg-card hover:border-border-strong hover:bg-muted/30",
-      )}
-    >
-      <span
-        className={cn(
-          "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-          accent === "green" ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500",
-        )}
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold leading-tight">{title}</span>
-        <span className="text-xs leading-snug text-muted-foreground">{desc}</span>
-      </span>
-    </button>
   );
 }

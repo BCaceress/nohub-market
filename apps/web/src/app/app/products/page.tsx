@@ -17,6 +17,49 @@ import { ProductListClient } from "./product-list-client";
 
 export const metadata = { title: "Produtos — NoHub Market" };
 
+type BalanceRow = {
+  id: string;
+  quantityOnHand: { toString(): string };
+  minQuantity: { toString(): string } | null;
+  locationId: string;
+  location: { id: string; name: string } | null;
+};
+
+/** Soma os saldos materializados (StockBalance) por loja → linha única por local. */
+function aggregateBalancesByLocation(balances: BalanceRow[]) {
+  const byLocation = new Map<
+    string,
+    {
+      id: string;
+      quantity: number;
+      min: number;
+      hasMin: boolean;
+      location: { id: string; name: string } | null;
+    }
+  >();
+  for (const b of balances) {
+    const acc = byLocation.get(b.locationId) ?? {
+      id: b.id,
+      quantity: 0,
+      min: 0,
+      hasMin: false,
+      location: b.location,
+    };
+    acc.quantity += Number(b.quantityOnHand);
+    if (b.minQuantity != null) {
+      acc.min += Number(b.minQuantity);
+      acc.hasMin = true;
+    }
+    byLocation.set(b.locationId, acc);
+  }
+  return Array.from(byLocation.values()).map((e) => ({
+    id: e.id,
+    quantity: String(e.quantity),
+    minQuantity: e.hasMin ? String(e.min) : null,
+    location: e.location,
+  }));
+}
+
 export default async function ProductsPage({
   searchParams,
 }: {
@@ -100,18 +143,19 @@ export default async function ProductsPage({
           costPrice: p.costPrice?.toString() ?? null,
           conversionFactor: p.conversionFactor.toString(),
           weight: p.weight?.toString() ?? null,
+          height: p.height?.toString() ?? null,
+          width: p.width?.toString() ?? null,
+          length: p.length?.toString() ?? null,
+          stockMin: p.stockMin?.toString() ?? null,
+          stockIdeal: p.stockIdeal?.toString() ?? null,
           prices: p.prices.map((pr) => ({
             id: pr.id,
             price: pr.price.toString(),
             promoPrice: pr.promoPrice?.toString() ?? null,
             location: pr.location ? { id: pr.location.id, name: pr.location.name } : null,
           })),
-          stockEntries: p.stockEntries.map((se) => ({
-            id: se.id,
-            quantity: se.quantity.toString(),
-            minQuantity: se.minQuantity?.toString() ?? null,
-            location: se.location ? { id: se.location.id, name: se.location.name } : null,
-          })),
+          stockBalances: [],
+          stockEntries: aggregateBalancesByLocation(p.stockBalances),
         }))}
         categories={categories}
         locations={locations

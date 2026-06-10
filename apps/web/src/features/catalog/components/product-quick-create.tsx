@@ -11,6 +11,7 @@ import {
   FileText,
   FolderPlus,
   ImagePlus,
+  Layers,
   Loader2,
   type LucideIcon,
   Package,
@@ -18,7 +19,10 @@ import {
   PlusCircle,
   Receipt,
   RefreshCw,
+  Scale,
   ScanLine,
+  Search,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   X,
@@ -47,10 +51,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBrandsAction, upsertBrandAction } from "@/features/catalog/actions/brand-actions";
-import {
-  createCategoryAction,
-  suggestSubcategoryTaxAction,
-} from "@/features/catalog/actions/category-actions";
+import { createCategoryAction } from "@/features/catalog/actions/category-actions";
+import { setKitComponentsAction } from "@/features/catalog/actions/kit-actions";
 import {
   deleteProductPackageAction,
   type ProductPackage,
@@ -61,6 +63,7 @@ import {
   findProductByBarcodeAction,
   generateNextSkuAction,
   generateSkuAction,
+  searchProductsForKitAction,
   setProductSuppliersAction,
   updateProductAction,
 } from "@/features/catalog/actions/product-actions";
@@ -87,10 +90,14 @@ interface Props {
   organizationId: string;
   categories: CategoryLite[];
   initialSku?: string;
+  /** Tipo escolhido no dropdown de entrada (SIMPLE | KIT | FRACTIONED). */
+  initialType?: string;
   suppliers: { id: string; name: string }[];
   taxRegime: string | null;
   product?: ExistingProduct;
   initialPackages?: ProductPackage[];
+  /** Abas extras (ex.: Variantes, Composição) na edição — evita aba-sobre-aba. */
+  extraTabs?: { value: string; label: string; badge?: number; content: React.ReactNode }[];
 }
 
 type ExistingTaxData = {
@@ -138,10 +145,39 @@ type ExistingProduct = {
   supplierId: string | null;
   hasAgeRestriction: boolean;
   minAge: number | null;
-  expiryDays: number | null;
   storageTemperature: "AMBIENTE" | "REFRIGERADO" | "CONGELADO" | null;
   taxData?: ExistingTaxData[];
+  kitComponents?: {
+    componentProductId: string;
+    quantity: { toString(): string };
+    componentProduct: { id: string; name: string; unit: string };
+  }[];
 };
+
+// Componente de combo selecionado no form (criação)
+type KitItem = {
+  componentProductId: string;
+  name: string;
+  unit: string;
+  quantity: string;
+};
+
+const PRODUCT_TYPE_OPTIONS: {
+  value: ProductInput["productType"];
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+}[] = [
+  { value: "SIMPLE", label: "Simples", hint: "Produto unitário padrão", icon: Package },
+  { value: "FRACTIONED", label: "Fracionado", hint: "Vendido por peso/volume", icon: Scale },
+  { value: "KIT", label: "Combo / Kit", hint: "Baixa estoque dos componentes", icon: Layers },
+  {
+    value: "CUSTOM",
+    label: "Personalizado",
+    hint: "Itens fixos + opções escolhidas na venda",
+    icon: SlidersHorizontal,
+  },
+];
 
 const UNIT_SELECT = [
   { value: "UN", label: "Unidade (un)" },
@@ -245,6 +281,7 @@ const TEMP_PRODUCT_OPTIONS: {
 
 type Form = {
   sku: string;
+  productType: ProductInput["productType"];
   barcode: string;
   name: string;
   shortName: string;
@@ -271,11 +308,10 @@ type Form = {
   isActive: boolean;
   hasAgeRestriction: boolean;
   storageTemperature: "" | "AMBIENTE" | "REFRIGERADO" | "CONGELADO";
-  expiryDays: string;
-  expiryUnit: "days" | "months" | "years" | "none";
 };
 
 const EMPTY: Omit<Form, "sku"> = {
+  productType: "SIMPLE",
   barcode: "",
   name: "",
   shortName: "",
@@ -300,8 +336,6 @@ const EMPTY: Omit<Form, "sku"> = {
   isActive: true,
   hasAgeRestriction: false,
   storageTemperature: "",
-  expiryDays: "",
-  expiryUnit: "days",
 };
 
 /* ── Money input (digits → R$) ──────────────────────────────── */
@@ -351,6 +385,77 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
         {children}
       </h2>
       <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/* ── Sticky product header (modo página única) ──────────────── */
+
+function ProductHeader({
+  name,
+  brand,
+  barcode,
+  imageUrl,
+  price,
+  margin,
+}: {
+  name: string;
+  brand: string;
+  barcode: string;
+  imageUrl: string;
+  price: number;
+  margin: number | null;
+}) {
+  const priceLabel =
+    price > 0 ? price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "R$ —";
+  return (
+    <div className="sticky top-0 z-30 -mx-4 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-6 sm:px-6">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="" className="h-full w-full object-contain p-1" />
+        ) : (
+          <Package className="h-5 w-5 text-muted-foreground/40" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{name.trim() || "Novo produto"}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {[brand.trim(), barcode.replace(/\D/g, "")].filter(Boolean).join(" · ") || "Sem EAN"}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 text-right">
+        <span className="text-sm font-semibold tabular-nums">{priceLabel}</span>
+        {margin !== null && (
+          <Badge variant={margin < 0 ? "destructive" : "success"} className="hidden sm:inline-flex">
+            {margin.toFixed(0)}%
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Heading de seção (modo página única, substitui a aba) ──── */
+
+function StackHeading({
+  icon: Icon,
+  title,
+  hint,
+}: {
+  icon: LucideIcon;
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div>
+        <h2 className="text-sm font-semibold leading-none">{title}</h2>
+        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      </div>
     </div>
   );
 }
@@ -581,6 +686,7 @@ const PACK_LABEL_SUGGESTIONS = ["Fardo", "Caixa", "Pallet"];
 function productToForm(product: ExistingProduct, fallbackSku: string): Form {
   return {
     sku: product.sku ?? fallbackSku,
+    productType: (product.productType as Form["productType"]) ?? "SIMPLE",
     barcode: product.barcode ?? "",
     name: product.name,
     shortName: product.posName ?? "",
@@ -605,8 +711,6 @@ function productToForm(product: ExistingProduct, fallbackSku: string): Form {
     isActive: product.isActive,
     hasAgeRestriction: product.hasAgeRestriction,
     storageTemperature: product.storageTemperature ?? "",
-    expiryDays: product.expiryDays?.toString() ?? "",
-    expiryUnit: product.expiryDays ? "days" : "none",
   };
 }
 
@@ -651,18 +755,26 @@ export function ProductQuickCreate({
   organizationId,
   categories: initialCategories,
   initialSku,
+  initialType,
   suppliers,
   taxRegime,
   product,
   initialPackages = [],
+  extraTabs = [],
 }: Props) {
   const router = useRouter();
   const ids = useId();
   const [isPending, startTransition] = useTransition();
   const isEdit = Boolean(product);
+  // Tipo vem do dropdown de entrada; o seletor some da tela (apenas selo visual).
+  const creationType = (
+    ["SIMPLE", "KIT", "FRACTIONED", "CUSTOM"].includes(initialType ?? "") ? initialType : "SIMPLE"
+  ) as Form["productType"];
   const [categories, setCategories] = useState<CategoryLite[]>(initialCategories);
   const [form, setForm] = useState<Form>(() =>
-    product ? productToForm(product, initialSku ?? "") : { sku: "", ...EMPTY },
+    product
+      ? productToForm(product, initialSku ?? "")
+      : { sku: "", ...EMPTY, productType: creationType },
   );
   const [tax, setTax] = useState<TaxForm>(() => taxDataToForm(product?.taxData));
   const [supplierIds, setSupplierIds] = useState<string[]>(() =>
@@ -672,7 +784,10 @@ export function ProductQuickCreate({
     packagesToLevels(initialPackages, product?.barcode),
   );
   const [tab, setTab] = useState("basico");
-  const [aiTaxLoading, setAiTaxLoading] = useState(false);
+  // Modo página única (criação): revela Fiscal + Mais sob demanda.
+  const [showMore, setShowMore] = useState(false);
+  // Produto simples controla por UN; select de unidade fica escondido até pedir.
+  const [showUnitSelect, setShowUnitSelect] = useState(false);
   const [skuLoading, setSkuLoading] = useState(false);
   const [bcStatus, setBcStatus] = useState<BcStatus>("idle");
   const [bcSuggest, setBcSuggest] = useState<OpenFoodFactsProduct | null>(null);
@@ -680,12 +795,20 @@ export function ProductQuickCreate({
   // Etapa 1 = busca scan-first; Etapa 2 = formulário. Edição entra direto no form.
   const [step, setStep] = useState<"search" | "form">(isEdit ? "form" : "search");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [diffUnitOpen, setDiffUnitOpen] = useState(
-    Boolean(
-      product &&
-        (product.saleUnit !== product.unit || product.conversionFactor?.toString() !== "1"),
-    ),
+  // Componentes do combo (apenas criação — na edição usa a aba "Composição")
+  const [kitItems, setKitItems] = useState<KitItem[]>(() =>
+    (product?.kitComponents ?? []).map((c) => ({
+      componentProductId: c.componentProductId,
+      name: c.componentProduct.name,
+      unit: c.componentProduct.unit,
+      quantity: c.quantity.toString(),
+    })),
   );
+  const [kitQuery, setKitQuery] = useState("");
+  const [kitResults, setKitResults] = useState<Array<{ id: string; name: string; unit: string }>>(
+    [],
+  );
+  const [kitSearching, setKitSearching] = useState(false);
 
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
 
@@ -724,12 +847,25 @@ export function ProductQuickCreate({
     return f;
   }
 
+  // Maior embalagem cadastrada → para exibir estoque equivalente (ex.: "≈ 10 caixas").
+  const topPackIndex = packLevels.length - 1;
+  const topPackFactor = topPackIndex >= 0 ? levelFactor(topPackIndex) : 0;
+  const topPackLabel = topPackIndex >= 0 ? packLevels[topPackIndex]?.label?.trim() || "" : "";
+  function packEquivalent(value: string): string | null {
+    const n = Number(value);
+    if (!n || !topPackLabel || topPackFactor <= 1) return null;
+    const qty = n / topPackFactor;
+    const label = topPackLabel.toLowerCase();
+    const qtyStr = Number.isInteger(qty)
+      ? String(qty)
+      : qty.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    return `≈ ${qtyStr} ${label}${qty === 1 ? "" : "s"}`;
+  }
+
   // Cadastro inline de subcategoria
   const [subcatDialogOpen, setSubcatDialogOpen] = useState(false);
   const [newSubcatParent, setNewSubcatParent] = useState("");
   const [newSubcatName, setNewSubcatName] = useState("");
-  const [newSubcatExpiry, setNewSubcatExpiry] = useState(false);
-  const [newSubcatLot, setNewSubcatLot] = useState(false);
   const [creatingSubcat, setCreatingSubcat] = useState(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -737,6 +873,54 @@ export function ProductQuickCreate({
   function set<K extends keyof Form>(k: K, v: Form[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
+
+  /* ── tipo de produto ── */
+  const isKit = form.productType === "KIT";
+  const isFractioned = form.productType === "FRACTIONED";
+  // VARIANT_PARENT é editado via aba própria; aqui tratamos os 3 tipos cadastráveis.
+  const unitShort = (form.unit || "UN").toLowerCase();
+
+  /* ── combo/kit: componentes ── */
+  function addKitItem(p: { id: string; name: string; unit: string }) {
+    setKitItems((prev) =>
+      prev.some((it) => it.componentProductId === p.id)
+        ? prev
+        : [...prev, { componentProductId: p.id, name: p.name, unit: p.unit, quantity: "1" }],
+    );
+    setKitQuery("");
+    setKitResults([]);
+  }
+  function removeKitItem(id: string) {
+    setKitItems((prev) => prev.filter((it) => it.componentProductId !== id));
+  }
+  function updateKitQty(id: string, quantity: string) {
+    setKitItems((prev) =>
+      prev.map((it) => (it.componentProductId === id ? { ...it, quantity } : it)),
+    );
+  }
+
+  // Busca de componentes (debounce simples)
+  useEffect(() => {
+    if (!isKit) return;
+    const q = kitQuery.trim();
+    if (q.length < 2) {
+      setKitResults([]);
+      return;
+    }
+    let cancelled = false;
+    setKitSearching(true);
+    const t = setTimeout(() => {
+      searchProductsForKitAction(organizationId, q).then((rows) => {
+        if (cancelled) return;
+        setKitSearching(false);
+        setKitResults(rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit })));
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [kitQuery, isKit, organizationId]);
 
   /* ── derived ── */
   const roots = categories.filter((c) => !c.parentId);
@@ -852,16 +1036,13 @@ export function ProductQuickCreate({
     // Regras de venda / armazenagem derivadas (agora campos do próprio produto)
     if (p.minimumAge && p.minimumAge >= 18) set("hasAgeRestriction", true);
     if (p.storageTemperature) set("storageTemperature", p.storageTemperature);
-    if (p.shelfLifeDays && p.shelfLifeDays > 0 && form.expiryUnit === "none") {
-      set("expiryUnit", "days");
-      set("expiryDays", String(p.shelfLifeDays));
-    }
 
     // Tags: existentes sugeridas + novas + atributos derivados (sabor)
     const derived = [
       ...(p.tags ?? []),
       p.flavor,
-      p.containsAlcohol === false ? "Não Alcoólico" : p.containsAlcohol ? "Alcoólico" : undefined,
+      // Só marca "Alcoólico" quando relevante — "Não Alcoólico" virava ruído em todo produto.
+      p.containsAlcohol === true ? "Alcoólico" : undefined,
     ].filter((t): t is string => Boolean(t?.trim()));
     if (derived.length) {
       setTags((prev) => Array.from(new Set([...prev, ...derived])));
@@ -891,43 +1072,10 @@ export function ProductQuickCreate({
     if (r.success) set("sku", r.sku);
   }
 
-  async function suggestTax() {
-    const sub = categories.find((c) => c.id === form.subcategoryId);
-    if (!sub) return toast.error("Selecione a subcategoria primeiro (aba Básico).");
-    const parent = sub.parentId ? categories.find((c) => c.id === sub.parentId)?.name : undefined;
-    setAiTaxLoading(true);
-    const res = await suggestSubcategoryTaxAction({
-      subcategoryName: sub.name,
-      parentCategoryName: parent,
-      taxRegime,
-    });
-    setAiTaxLoading(false);
-    if (!res.success) return toast.error(res.error);
-    const s = res.data;
-    setTax((t) => ({
-      ...t,
-      ncm: s.ncm ?? t.ncm,
-      cest: s.cest ?? t.cest,
-      cfopInternal: s.cfopInternal ?? t.cfopInternal,
-      cfopInterstate: s.cfopInterstate ?? t.cfopInterstate,
-      origin: s.origin ?? t.origin,
-      icmsCst: s.icmsCst ?? t.icmsCst,
-      icmsCsosn: s.icmsCsosn ?? t.icmsCsosn,
-      icmsRate: s.icmsRate ?? t.icmsRate,
-      pisCst: s.pisCst ?? t.pisCst,
-      pisRate: s.pisRate ?? t.pisRate,
-      cofinsCst: s.cofinsCst ?? t.cofinsCst,
-      cofinsRate: s.cofinsRate ?? t.cofinsRate,
-    }));
-    toast.success(s.notes ? `IA: ${s.notes}` : "Dados fiscais sugeridos. Revise antes de salvar.");
-  }
-
   function openSubcatDialog() {
     const root = categories.find((c) => c.id === form.subcategoryId)?.parentId ?? "";
     setNewSubcatParent(root || roots[0]?.id || "");
     setNewSubcatName("");
-    setNewSubcatExpiry(false);
-    setNewSubcatLot(false);
     setSubcatDialogOpen(true);
   }
 
@@ -939,8 +1087,6 @@ export function ProductQuickCreate({
       const res = await createCategoryAction(organizationId, {
         name: newSubcatName.trim(),
         parentId: newSubcatParent,
-        controlsExpiry: newSubcatExpiry,
-        controlsLot: newSubcatLot,
       });
       if (!res.success) {
         toast.error(res.error);
@@ -950,8 +1096,6 @@ export function ProductQuickCreate({
         id: res.data.id,
         name: newSubcatName.trim(),
         parentId: newSubcatParent,
-        controlsExpiry: newSubcatExpiry,
-        controlsLot: newSubcatLot,
       };
       setCategories((prev) => [...prev, created]);
       set("subcategoryId", created.id);
@@ -964,10 +1108,16 @@ export function ProductQuickCreate({
 
   /* ── validation ── */
   function validate(): string | null {
-    if (cleanBarcode.length < 8) return "Informe um código de barras válido (mín. 8 dígitos).";
+    // Combo pode não ter EAN; demais tipos exigem código de barras.
+    if (!isKit && cleanBarcode.length < 8)
+      return "Informe um código de barras válido (mín. 8 dígitos).";
     if (!form.name.trim()) return "Informe o nome do produto.";
     if (!form.subcategoryId) return "Selecione a subcategoria.";
     if (price <= 0) return "Informe o preço de venda.";
+    if (isFractioned && (Number(form.conversionFactor) || 0) <= 0)
+      return "Fator de conversão deve ser maior que zero.";
+    if (isKit && !isEdit && kitItems.length === 0)
+      return "Adicione ao menos um componente ao combo.";
     return null;
   }
 
@@ -984,7 +1134,11 @@ export function ProductQuickCreate({
       if (brand) await upsertBrandAction(organizationId, brand);
 
       let sku = form.sku;
-      const productType = (product?.productType ?? "SIMPLE") as ProductInput["productType"];
+      // Tipo é imutável na edição; na criação vem do seletor.
+      const productType = (
+        isEdit ? (product?.productType ?? form.productType) : form.productType
+      ) as ProductInput["productType"];
+      const fractioned = productType === "FRACTIONED";
       const build = (s: string): ProductInput => ({
         name: form.name.trim(),
         posName: form.shortName.trim() || undefined,
@@ -994,8 +1148,9 @@ export function ProductQuickCreate({
         tags,
         productType,
         unit: form.unit as ProductInput["unit"],
-        saleUnit: form.saleUnit as ProductInput["saleUnit"],
-        conversionFactor: Number(form.conversionFactor) || 1,
+        // Não-fracionado vende na própria unidade de estoque (fator 1).
+        saleUnit: (fractioned ? form.saleUnit : form.unit) as ProductInput["saleUnit"],
+        conversionFactor: fractioned ? Number(form.conversionFactor) || 1 : 1,
         packUnit: (form.packUnit || undefined) as ProductInput["packUnit"],
         packSize: form.packSize ? Number(form.packSize) : undefined,
         price,
@@ -1015,14 +1170,6 @@ export function ProductQuickCreate({
         hasAgeRestriction: form.hasAgeRestriction,
         minAge: form.hasAgeRestriction ? 18 : undefined,
         storageTemperature: form.storageTemperature || undefined,
-        expiryDays: (() => {
-          if (form.expiryUnit === "none" || !form.expiryDays) return undefined;
-          const n = Number(form.expiryDays);
-          if (!n) return undefined;
-          if (form.expiryUnit === "months") return Math.round(n * 30);
-          if (form.expiryUnit === "years") return Math.round(n * 365);
-          return n;
-        })(),
       });
 
       let res = isEdit
@@ -1044,7 +1191,23 @@ export function ProductQuickCreate({
       }
 
       // Fiscal opcional — só grava se NCM (8 dígitos) preenchido
-      const productId = isEdit ? (product?.id ?? "") : res.data.id;
+      const productId = isEdit ? (product?.id ?? "") : (res.data?.id ?? "");
+
+      // Combo: grava composição na criação (edição usa a aba "Composição")
+      if (productType === "KIT" && !isEdit && kitItems.length > 0) {
+        const kres = await setKitComponentsAction(
+          organizationId,
+          productId,
+          kitItems.map((it, i) => ({
+            componentProductId: it.componentProductId,
+            quantity: Number(it.quantity) || 1,
+            position: i,
+          })),
+        );
+        if (!kres.success) {
+          toast.error(`Produto criado, mas a composição falhou: ${kres.error}`);
+        }
+      }
 
       const ncmDigits = tax.ncm.replace(/\D/g, "");
       if (ncmDigits.length === 8) {
@@ -1117,11 +1280,14 @@ export function ProductQuickCreate({
       }
       if (mode === "new") {
         const next = await generateNextSkuAction(organizationId);
-        setForm({ sku: next.success ? next.sku : "", ...EMPTY });
+        setForm({ sku: next.success ? next.sku : "", ...EMPTY, productType: creationType });
         setTax(EMPTY_TAX);
         setTags([]);
         setSupplierIds([]);
         setPackLevels([]);
+        setKitItems([]);
+        setKitQuery("");
+        setKitResults([]);
         setTab("basico");
         setBcStatus("idle");
         setBcSuggest(null);
@@ -1184,11 +1350,11 @@ export function ProductQuickCreate({
         <button
           type="button"
           onClick={() => {
-            if (isEdit && product) router.push(`/app/products/${product.id}`);
+            if (isEdit) router.push("/app/products");
             else setStep("search");
           }}
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-surface-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={isEdit ? "Voltar para a ficha" : "Voltar para a busca"}
+          aria-label={isEdit ? "Voltar para produtos" : "Voltar para a busca"}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -1197,29 +1363,52 @@ export function ProductQuickCreate({
         </h1>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="gap-0">
-        <TabsList variant="underline">
-          <TabsTrigger value="basico" variant="underline">
-            Básico
-          </TabsTrigger>
-          <TabsTrigger
-            value="estoque"
-            variant="underline"
-            icon={<Package className="h-3.5 w-3.5" />}
-          >
-            Estoque
-          </TabsTrigger>
-          <TabsTrigger
-            value="fiscal"
-            variant="underline"
-            icon={<Receipt className="h-3.5 w-3.5" />}
-          >
-            Fiscal
-          </TabsTrigger>
-          <TabsTrigger value="mais" variant="underline">
-            Mais
-          </TabsTrigger>
-        </TabsList>
+      {!isEdit && (
+        <ProductHeader
+          name={form.name}
+          brand={form.brand}
+          barcode={form.barcode}
+          imageUrl={form.imageUrl}
+          price={price}
+          margin={margin}
+        />
+      )}
+
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        expandAll={!isEdit}
+        className={isEdit ? "gap-0" : "gap-12"}
+      >
+        {isEdit && (
+          <TabsList variant="underline">
+            <TabsTrigger value="basico" variant="underline">
+              Básico
+            </TabsTrigger>
+            <TabsTrigger
+              value="estoque"
+              variant="underline"
+              icon={<Package className="h-3.5 w-3.5" />}
+            >
+              Estoque
+            </TabsTrigger>
+            <TabsTrigger
+              value="fiscal"
+              variant="underline"
+              icon={<Receipt className="h-3.5 w-3.5" />}
+            >
+              Fiscal
+            </TabsTrigger>
+            <TabsTrigger value="mais" variant="underline">
+              Mais
+            </TabsTrigger>
+            {extraTabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} variant="underline" badge={t.badge}>
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        )}
 
         <TabsContent value="basico" className="pt-6">
           {/* Body: 2 columns */}
@@ -1516,225 +1705,368 @@ export function ProductQuickCreate({
             <aside className="flex flex-col gap-2 md:sticky md:top-6 md:self-start">
               <span className="text-xs font-medium text-muted-foreground">Imagem do produto</span>
               <ImageCard value={form.imageUrl} onChange={(v) => set("imageUrl", v)} />
+              {/* Tipo do cadastro — apenas visual (definido no dropdown de entrada) */}
+              {(() => {
+                const typeOpt = PRODUCT_TYPE_OPTIONS.find((o) => o.value === form.productType);
+                if (!typeOpt) return null;
+                const TypeIcon = typeOpt.icon;
+                return (
+                  <div className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-1/40 px-3 py-2 text-xs text-muted-foreground">
+                    <TypeIcon className="h-3.5 w-3.5" />
+                    <span>
+                      Tipo de cadastro:{" "}
+                      <span className="font-medium text-foreground">{typeOpt.label}</span>
+                    </span>
+                  </div>
+                );
+              })()}
             </aside>
           </div>
         </TabsContent>
 
         {/* ── ESTOQUE ─────────────────────────────────────────── */}
         <TabsContent value="estoque" className="flex flex-col gap-8 pt-6">
-          <section className="flex flex-col gap-5">
-            <SectionTitle>Unidades</SectionTitle>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${ids}-unit`}>Unidade de estoque</Label>
-                <Select
-                  id={`${ids}-unit`}
-                  value={form.unit}
-                  onChange={(e) => set("unit", e.target.value)}
-                >
-                  {UNIT_SELECT.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label}
-                    </option>
-                  ))}
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Como o produto é contado no estoque.
-                </p>
-              </div>
-            </div>
+          {!isEdit && <StackHeading icon={Package} title="Estoque e embalagens" />}
+          {isKit ? (
+            <section className="flex flex-col gap-4">
+              <SectionTitle>Composição do combo</SectionTitle>
+              <p className="text-xs text-muted-foreground">
+                O combo não tem estoque próprio. Ao vender, baixa o estoque de cada componente
+                (RN-C03). Componentes não podem ser outros combos (RN-C04).
+              </p>
 
-            {!diffUnitOpen ? (
-              <button
-                type="button"
-                onClick={() => setDiffUnitOpen(true)}
-                className="w-fit text-xs font-medium text-primary transition hover:underline"
-              >
-                + Unidade de venda diferente da de estoque
-              </button>
-            ) : (
-              <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1/40 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Venda em unidade diferente
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDiffUnitOpen(false);
-                      set("saleUnit", form.unit);
-                      set("conversionFactor", "1");
-                    }}
-                    className="text-xs text-muted-foreground transition hover:text-destructive"
-                  >
-                    Remover
-                  </button>
+              {isEdit ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                  {kitItems.length > 0
+                    ? `${kitItems.length} componente${kitItems.length !== 1 ? "s" : ""} — gerencie na aba “Composição”.`
+                    : "Gerencie os componentes na aba “Composição”."}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Para produtos fracionados: ex. estoque em KG, vendido em gramas (fator = 0,001).
-                </p>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor={`${ids}-saleunit`}>Unidade de venda</Label>
-                    <Select
-                      id={`${ids}-saleunit`}
-                      value={form.saleUnit}
-                      onChange={(e) => set("saleUnit", e.target.value)}
-                    >
-                      {UNIT_SELECT.map((u) => (
-                        <option key={u.value} value={u.value}>
-                          {u.label}
-                        </option>
+              ) : (
+                <>
+                  {/* Busca de produtos para compor o combo */}
+                  <div className="relative w-full sm:max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={kitQuery}
+                      onChange={(e) => setKitQuery(e.target.value)}
+                      placeholder="Buscar produto por nome, SKU ou EAN…"
+                      className="pl-9"
+                    />
+                    {(kitResults.length > 0 || kitSearching) && kitQuery.trim().length >= 2 && (
+                      <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-card shadow-md">
+                        {kitSearching && kitResults.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>
+                        ) : (
+                          kitResults.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => addKitItem(r)}
+                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition hover:bg-surface-1"
+                            >
+                              <span className="truncate">{r.name}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {r.unit.toLowerCase()}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Componentes selecionados */}
+                  {kitItems.length > 0 ? (
+                    <div className="overflow-hidden rounded-xl border border-border">
+                      {kitItems.map((it, i) => (
+                        <div
+                          key={it.componentProductId}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-3",
+                            i !== 0 && "border-t border-border",
+                          )}
+                        >
+                          <Layers className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{it.name}</p>
+                          </div>
+                          <Input
+                            type="number"
+                            min="0.001"
+                            step="0.001"
+                            value={it.quantity}
+                            onChange={(e) => updateKitQty(it.componentProductId, e.target.value)}
+                            className="h-8 w-20 text-right font-mono text-sm"
+                          />
+                          <span className="w-8 shrink-0 text-xs text-muted-foreground">
+                            {it.unit.toLowerCase()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeKitItem(it.componentProductId)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-1 hover:text-destructive"
+                            aria-label="Remover componente"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       ))}
-                    </Select>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-10 text-center">
+                      <Layers className="mb-3 h-8 w-8 text-muted-foreground/40" />
+                      <p className="text-sm font-medium">Combo vazio</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Busque acima e adicione os produtos que compõem este combo.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          ) : (
+            <>
+              <section className="flex flex-col gap-5">
+                <SectionTitle>Unidade de controle</SectionTitle>
+
+                {/* Produto simples: controle em UN. Select só aparece se pedir (ou fracionado/edição). */}
+                {(isFractioned || isEdit || showUnitSelect) && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`${ids}-unit`}>Unidade de estoque</Label>
+                      <Select
+                        id={`${ids}-unit`}
+                        value={form.unit}
+                        onChange={(e) => set("unit", e.target.value)}
+                      >
+                        {UNIT_SELECT.map((u) => (
+                          <option key={u.value} value={u.value}>
+                            {u.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Unidade base de controle do estoque — normalmente a menor unidade de
+                        venda/consumo (ex.: UN). Fardos e caixas de compra são configurados em
+                        “Embalagens” abaixo.
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor={`${ids}-factor`}>Fator de conversão</Label>
-                    <Input
-                      id={`${ids}-factor`}
-                      type="number"
-                      min="0.0001"
-                      step="0.0001"
-                      value={form.conversionFactor}
-                      onChange={(e) => set("conversionFactor", e.target.value)}
-                      placeholder="1"
-                    />
-                    <p className="text-xs text-muted-foreground">estoque = venda × fator</p>
+                )}
+
+                {/* Destaque permanente da unidade de controle */}
+                <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/5 px-3.5 py-3">
+                  <Boxes className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex-1 text-xs">
+                    <p className="font-medium text-foreground">
+                      Vendido e controlado por{" "}
+                      <span className="font-mono uppercase">{form.unit || "UN"}</span>
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Estoque, mínimo, ideal, relatórios e alertas usam{" "}
+                      <span className="font-mono uppercase">{form.unit || "UN"}</span>. Como você{" "}
+                      <strong>compra</strong> (fardo, caixa…) vai em “Embalagens” abaixo e é
+                      convertido automaticamente.
+                    </p>
                   </div>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Embalagens — níveis (Unidade → Fardo → Caixa…) com código + qtd */}
-          <section className="flex flex-col gap-3">
-            <SectionTitle>Embalagens e códigos de barras</SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              Como você compra. Cada nível tem seu código e quantos itens do nível abaixo cabe nele.
-            </p>
-            <div className="overflow-hidden rounded-lg border border-border">
-              <div className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] gap-2 bg-surface-1/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                <span>Embalagem</span>
-                <span>Código de barras</span>
-                <span>Contém</span>
-                <span className="text-right">= Unidades</span>
-                <span />
-              </div>
-
-              {/* Unidade — fixa, usa o EAN do produto */}
-              <div className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] items-center gap-2 border-t border-border px-3 py-2 text-sm">
-                <span className="font-medium">Unidade</span>
-                <span className="truncate font-mono text-xs text-muted-foreground">
-                  {cleanBarcode || "— informe o EAN na aba Básico"}
-                </span>
-                <span className="text-muted-foreground">1</span>
-                <span className="text-right tabular-nums">1</span>
-                <span />
-              </div>
-
-              {packLevels.map((lvl, i) => {
-                const factor = levelFactor(i);
-                const belowLabel =
-                  i === 0 ? "un" : (packLevels[i - 1]?.label.toLowerCase() ?? "un");
-                return (
-                  <div
-                    key={lvl.id}
-                    className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] items-center gap-2 border-t border-border px-3 py-2"
-                  >
-                    <Input
-                      value={lvl.label}
-                      onChange={(e) => updatePackLevel(lvl.id, { label: e.target.value })}
-                      placeholder="Fardo"
-                      className="h-9"
-                    />
-                    <Input
-                      value={lvl.barcode}
-                      onChange={(e) =>
-                        updatePackLevel(lvl.id, {
-                          barcode: e.target.value.replace(/\D/g, "").slice(0, 14),
-                        })
-                      }
-                      placeholder="Código de barras"
-                      inputMode="numeric"
-                      className="h-9 font-mono"
-                    />
-                    <Input
-                      value={lvl.qtyPerParent}
-                      onChange={(e) =>
-                        updatePackLevel(lvl.id, {
-                          qtyPerParent: e.target.value.replace(/\D/g, ""),
-                        })
-                      }
-                      placeholder={`${belowLabel}`}
-                      inputMode="numeric"
-                      className="h-9"
-                      title={`Quantos ${belowLabel} cabem em 1 ${lvl.label || "embalagem"}`}
-                    />
-                    <span className="text-right text-sm tabular-nums">
-                      {factor > 0 ? factor : "—"}
-                    </span>
+                  {!isFractioned && !isEdit && !showUnitSelect && (
                     <button
                       type="button"
-                      onClick={() => removePackLevel(lvl.id)}
-                      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-1 hover:text-destructive"
-                      aria-label="Remover nível"
+                      onClick={() => setShowUnitSelect(true)}
+                      className="shrink-0 text-xs font-medium text-primary transition hover:underline"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Alterar unidade
                     </button>
-                  </div>
-                );
-              })}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-fit cursor-pointer gap-1.5"
-              onClick={addPackLevel}
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar embalagem
-            </Button>
-          </section>
+                  )}
+                </div>
 
-          <section className="flex flex-col gap-5">
-            <SectionTitle>Controle de estoque</SectionTitle>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${ids}-stockmin`}>Estoque mínimo</Label>
-                <Input
-                  id={`${ids}-stockmin`}
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={form.stockMin}
-                  onChange={(e) => set("stockMin", e.target.value)}
-                  placeholder="Ponto de reposição"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${ids}-stockideal`}>Estoque ideal</Label>
-                <Input
-                  id={`${ids}-stockideal`}
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  value={form.stockIdeal}
-                  onChange={(e) => set("stockIdeal", e.target.value)}
-                  placeholder="Nível alvo de reposição"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${ids}-location`}>Localização</Label>
-                <Input
-                  id={`${ids}-location`}
-                  value={form.location}
-                  onChange={(e) => set("location", e.target.value)}
-                  placeholder="Corredor / prateleira"
-                />
-              </div>
-            </div>
-          </section>
+                {isFractioned && (
+                  <div className="flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <p className="text-xs text-muted-foreground">
+                      Produto fracionado: estoque em uma unidade, venda em outra. Ex.: estoque em
+                      KG, vendido em gramas (fator = 0,001).
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor={`${ids}-saleunit`}>Unidade de venda</Label>
+                        <Select
+                          id={`${ids}-saleunit`}
+                          value={form.saleUnit}
+                          onChange={(e) => set("saleUnit", e.target.value)}
+                        >
+                          {UNIT_SELECT.map((u) => (
+                            <option key={u.value} value={u.value}>
+                              {u.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor={`${ids}-factor`}>Fator de conversão</Label>
+                        <Input
+                          id={`${ids}-factor`}
+                          type="number"
+                          min="0.0001"
+                          step="0.0001"
+                          value={form.conversionFactor}
+                          onChange={(e) => set("conversionFactor", e.target.value)}
+                          placeholder="1"
+                        />
+                        <p className="text-xs text-muted-foreground">estoque = venda × fator</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Embalagens — níveis (Unidade → Fardo → Caixa…) com código + qtd */}
+              <section className="flex flex-col gap-3">
+                <SectionTitle>Como você compra (embalagens)</SectionTitle>
+                <p className="text-xs text-muted-foreground">
+                  Fardo, caixa, pacote… Cada nível tem seu código de barras (se houver) e quantos
+                  itens do nível abaixo cabem nele. A última coluna mostra a equivalência na unidade
+                  de controle (<span className="font-mono uppercase">{form.unit || "UN"}</span>),
+                  convertida automaticamente em compras, vendas e movimentações.
+                </p>
+                <div className="overflow-hidden rounded-lg border border-border">
+                  <div className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] gap-2 bg-surface-1/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span>Embalagem</span>
+                    <span>Código de barras</span>
+                    <span>Contém</span>
+                    <span className="text-right">= {(form.unit || "UN").toUpperCase()}</span>
+                    <span />
+                  </div>
+
+                  {/* Unidade — fixa, usa o EAN do produto */}
+                  <div className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] items-center gap-2 border-t border-border px-3 py-2 text-sm">
+                    <span className="font-medium">Unidade</span>
+                    <span className="truncate font-mono text-xs text-muted-foreground">
+                      {cleanBarcode || "— informe o EAN na aba Básico"}
+                    </span>
+                    <span className="text-muted-foreground">1</span>
+                    <span className="text-right tabular-nums">1</span>
+                    <span />
+                  </div>
+
+                  {packLevels.map((lvl, i) => {
+                    const factor = levelFactor(i);
+                    const belowLabel =
+                      i === 0 ? "un" : (packLevels[i - 1]?.label.toLowerCase() ?? "un");
+                    return (
+                      <div
+                        key={lvl.id}
+                        className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] items-center gap-2 border-t border-border px-3 py-2"
+                      >
+                        <Input
+                          value={lvl.label}
+                          onChange={(e) => updatePackLevel(lvl.id, { label: e.target.value })}
+                          placeholder="Fardo"
+                          className="h-9"
+                        />
+                        <Input
+                          value={lvl.barcode}
+                          onChange={(e) =>
+                            updatePackLevel(lvl.id, {
+                              barcode: e.target.value.replace(/\D/g, "").slice(0, 14),
+                            })
+                          }
+                          placeholder="Código de barras"
+                          inputMode="numeric"
+                          className="h-9 font-mono"
+                        />
+                        <Input
+                          value={lvl.qtyPerParent}
+                          onChange={(e) =>
+                            updatePackLevel(lvl.id, {
+                              qtyPerParent: e.target.value.replace(/\D/g, ""),
+                            })
+                          }
+                          placeholder={`${belowLabel}`}
+                          inputMode="numeric"
+                          className="h-9"
+                          title={`Quantos ${belowLabel} cabem em 1 ${lvl.label || "embalagem"}`}
+                        />
+                        <span className="text-right text-sm tabular-nums">
+                          {factor > 0 ? factor : "—"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePackLevel(lvl.id)}
+                          className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition hover:bg-surface-1 hover:text-destructive"
+                          aria-label="Remover nível"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-fit cursor-pointer gap-1.5"
+                  onClick={addPackLevel}
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar embalagem
+                </Button>
+              </section>
+
+              <section className="flex flex-col gap-5">
+                <SectionTitle>Controle de estoque</SectionTitle>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${ids}-stockmin`}>Estoque mínimo ({unitShort})</Label>
+                    <Input
+                      id={`${ids}-stockmin`}
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={form.stockMin}
+                      onChange={(e) => set("stockMin", e.target.value)}
+                      placeholder="Ponto de reposição"
+                    />
+                    {packEquivalent(form.stockMin) && (
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {packEquivalent(form.stockMin)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${ids}-stockideal`}>Estoque ideal ({unitShort})</Label>
+                    <Input
+                      id={`${ids}-stockideal`}
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={form.stockIdeal}
+                      onChange={(e) => set("stockIdeal", e.target.value)}
+                      placeholder="Nível alvo de reposição"
+                    />
+                    {packEquivalent(form.stockIdeal) && (
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {packEquivalent(form.stockIdeal)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${ids}-location`}>Localização</Label>
+                    <Input
+                      id={`${ids}-location`}
+                      value={form.location}
+                      onChange={(e) => set("location", e.target.value)}
+                      placeholder="Corredor / prateleira"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Mínimo (ponto de reposição) e ideal (nível alvo) sempre na unidade base de estoque
+                  ({unitShort}), nunca em caixas/fardos.
+                </p>
+              </section>
+            </>
+          )}
 
           {suppliers.length > 0 && (
             <section className="flex flex-col gap-3">
@@ -1826,359 +2158,331 @@ export function ProductQuickCreate({
           </section>
         </TabsContent>
 
-        {/* ── FISCAL ──────────────────────────────────────────── */}
-        <TabsContent value="fiscal" className="flex flex-col gap-6 pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-1/40 p-3">
-            <span className="text-sm text-muted-foreground">
-              Regime:{" "}
-              <Badge variant={isSimples ? "success" : "secondary"}>
-                {taxRegime ?? "Não informado"}
-              </Badge>{" "}
-              — {isSimples ? "use CSOSN" : "use CST"} no ICMS. Fiscal é opcional.
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={aiTaxLoading || !form.subcategoryId}
-              onClick={suggestTax}
-            >
-              {aiTaxLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Sugerir com IA
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-ncm`}>NCM (8 dígitos)</Label>
-              <Input
-                id={`${ids}-ncm`}
-                value={tax.ncm}
-                onChange={(e) => setTaxField("ncm", e.target.value.replace(/\D/g, "").slice(0, 8))}
-                placeholder="Informe o NCM (8 dígitos)"
-                inputMode="numeric"
-                className="font-mono"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-cest`}>CEST (7 dígitos)</Label>
-              <Input
-                id={`${ids}-cest`}
-                value={tax.cest}
-                onChange={(e) => setTaxField("cest", e.target.value.replace(/\D/g, "").slice(0, 7))}
-                placeholder="7 dígitos (opcional)"
-                inputMode="numeric"
-                className="font-mono"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-cfop-int`}>CFOP interno</Label>
-              <Input
-                id={`${ids}-cfop-int`}
-                value={tax.cfopInternal}
-                onChange={(e) =>
-                  setTaxField("cfopInternal", e.target.value.replace(/\D/g, "").slice(0, 4))
-                }
-                placeholder="4 dígitos (mesma UF)"
-                inputMode="numeric"
-                className="font-mono"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-cfop-est`}>CFOP interestadual</Label>
-              <Input
-                id={`${ids}-cfop-est`}
-                value={tax.cfopInterstate}
-                onChange={(e) =>
-                  setTaxField("cfopInterstate", e.target.value.replace(/\D/g, "").slice(0, 4))
-                }
-                placeholder="4 dígitos (outra UF)"
-                inputMode="numeric"
-                className="font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${ids}-origin`}>Origem</Label>
-            <Select
-              id={`${ids}-origin`}
-              value={tax.origin}
-              onChange={(e) => setTaxField("origin", e.target.value)}
-            >
-              {TAX_ORIGIN_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-icms-cst`}>{isSimples ? "ICMS CSOSN" : "ICMS CST"}</Label>
-              <Select
-                id={`${ids}-icms-cst`}
-                value={isSimples ? tax.icmsCsosn : tax.icmsCst}
-                onChange={(e) =>
-                  isSimples
-                    ? setTaxField("icmsCsosn", e.target.value)
-                    : setTaxField("icmsCst", e.target.value)
-                }
-              >
-                <option value="">Selecionar…</option>
-                {(isSimples ? ICMS_CSOSN_OPTIONS : ICMS_CST_OPTIONS).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-icms-rate`}>Alíquota ICMS (%)</Label>
-              <Input
-                id={`${ids}-icms-rate`}
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={tax.icmsRate}
-                onChange={(e) => setTaxField("icmsRate", e.target.value)}
-                placeholder="% — ex. 18"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-pis-cst`}>PIS CST</Label>
-              <Select
-                id={`${ids}-pis-cst`}
-                value={tax.pisCst}
-                onChange={(e) => setTaxField("pisCst", e.target.value)}
-              >
-                <option value="">Selecionar…</option>
-                {PIS_COFINS_CST_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-pis-rate`}>Alíquota PIS (%)</Label>
-              <Input
-                id={`${ids}-pis-rate`}
-                type="number"
-                min="0"
-                max="100"
-                step="0.0001"
-                value={tax.pisRate}
-                onChange={(e) => setTaxField("pisRate", e.target.value)}
-                placeholder="% — ex. 0,65"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-cofins-cst`}>COFINS CST</Label>
-              <Select
-                id={`${ids}-cofins-cst`}
-                value={tax.cofinsCst}
-                onChange={(e) => setTaxField("cofinsCst", e.target.value)}
-              >
-                <option value="">Selecionar…</option>
-                {PIS_COFINS_CST_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${ids}-cofins-rate`}>Alíquota COFINS (%)</Label>
-              <Input
-                id={`${ids}-cofins-rate`}
-                type="number"
-                min="0"
-                max="100"
-                step="0.0001"
-                value={tax.cofinsRate}
-                onChange={(e) => setTaxField("cofinsRate", e.target.value)}
-                placeholder="% — ex. 3,00"
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* ── MAIS ────────────────────────────────────────────── */}
-        <TabsContent value="mais" className="flex flex-col gap-8 pt-6">
-          <section className="flex flex-col gap-5">
-            <SectionTitle>Descrição</SectionTitle>
-            <textarea
-              id={`${ids}-desc`}
-              rows={4}
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder="Descrição opcional do produto…"
-              className="flex w-full resize-none rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-            />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <SectionTitle>Tags</SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              Usadas em busca, filtros e promoções. A busca por EAN sugere automaticamente.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 py-1 text-sm"
-                >
-                  {t}
-                  <button
-                    type="button"
-                    onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
-                    className="text-muted-foreground transition hover:text-destructive"
-                    aria-label={`Remover tag ${t}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+        {!isEdit && !showMore && (
+          <button
+            type="button"
+            onClick={() => setShowMore(true)}
+            className="flex w-full items-center justify-between rounded-xl border border-dashed border-border bg-surface-1/30 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-surface-1/60"
+          >
+            <span className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Receipt className="h-4 w-4" />
+              </span>
+              <span>
+                <span className="block text-sm font-medium">Mais opções (opcional)</span>
+                <span className="block text-xs text-muted-foreground">
+                  Fiscal, descrição, tags, armazenagem e regras de venda
                 </span>
-              ))}
-              <Input
-                id={`${ids}-tag`}
-                placeholder="Adicionar tag + Enter"
-                autoComplete="off"
-                className="h-8 w-44"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const v = e.currentTarget.value.trim();
-                    if (v) setTags((prev) => Array.from(new Set([...prev, v])));
-                    e.currentTarget.value = "";
-                  }
-                }}
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+
+        {(isEdit || showMore) && (
+          <>
+            {!isEdit && (
+              <StackHeading
+                icon={Receipt}
+                title="Fiscal"
+                hint="Em geral já vem preenchido pela busca. Opcional — só grava com NCM válido (8 dígitos)."
               />
-            </div>
-          </section>
+            )}
 
-          <section className="flex flex-col gap-3">
-            <SectionTitle>Armazenagem</SectionTitle>
-            <p className="text-xs text-muted-foreground">
-              Temperatura própria do produto (preenchida pela busca, editável).
-            </p>
-            <div className="grid grid-cols-3 gap-2 sm:max-w-md">
-              {TEMP_PRODUCT_OPTIONS.map((opt) => {
-                const active = form.storageTemperature === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => set("storageTemperature", active ? "" : opt.value)}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm transition-colors",
-                      active
-                        ? "border-primary bg-primary/10 font-medium text-foreground"
-                        : "border-border bg-card text-muted-foreground hover:bg-muted/40",
-                    )}
-                  >
-                    <span>{opt.emoji}</span>
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-5">
-            <SectionTitle>Regras de venda</SectionTitle>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
-                <input
-                  type="checkbox"
-                  checked={form.hasAgeRestriction}
-                  onChange={(e) => set("hasAgeRestriction", e.target.checked)}
-                  className="h-4 w-4 rounded border border-input accent-primary"
-                />
-                <div>
-                  <p className="text-sm font-medium leading-none">Restrição de idade (+18)</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Exige verificação de maioridade na venda
-                  </p>
+            {/* ── FISCAL ──────────────────────────────────────────── */}
+            <TabsContent value="fiscal" className="flex flex-col gap-6 pt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-ncm`}>NCM (8 dígitos)</Label>
+                  <Input
+                    id={`${ids}-ncm`}
+                    value={tax.ncm}
+                    onChange={(e) =>
+                      setTaxField("ncm", e.target.value.replace(/\D/g, "").slice(0, 8))
+                    }
+                    placeholder="Informe o NCM (8 dígitos)"
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
                 </div>
-              </label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-cest`}>CEST (7 dígitos)</Label>
+                  <Input
+                    id={`${ids}-cest`}
+                    value={tax.cest}
+                    onChange={(e) =>
+                      setTaxField("cest", e.target.value.replace(/\D/g, "").slice(0, 7))
+                    }
+                    placeholder="7 dígitos (opcional)"
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-cfop-int`}>CFOP interno</Label>
+                  <Input
+                    id={`${ids}-cfop-int`}
+                    value={tax.cfopInternal}
+                    onChange={(e) =>
+                      setTaxField("cfopInternal", e.target.value.replace(/\D/g, "").slice(0, 4))
+                    }
+                    placeholder="4 dígitos (mesma UF)"
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-cfop-est`}>CFOP interestadual</Label>
+                  <Input
+                    id={`${ids}-cfop-est`}
+                    value={tax.cfopInterstate}
+                    onChange={(e) =>
+                      setTaxField("cfopInterstate", e.target.value.replace(/\D/g, "").slice(0, 4))
+                    }
+                    placeholder="4 dígitos (outra UF)"
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1.5">
-                <Label>Validade pós fabricação</Label>
-                <div className="flex gap-2">
+                <Label htmlFor={`${ids}-origin`}>Origem</Label>
+                <Select
+                  id={`${ids}-origin`}
+                  value={tax.origin}
+                  onChange={(e) => setTaxField("origin", e.target.value)}
+                >
+                  {TAX_ORIGIN_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-icms-cst`}>{isSimples ? "ICMS CSOSN" : "ICMS CST"}</Label>
                   <Select
-                    value={form.expiryUnit}
-                    onChange={(e) => {
-                      set("expiryUnit", e.target.value as Form["expiryUnit"]);
-                      if (e.target.value === "none") set("expiryDays", "");
-                    }}
+                    id={`${ids}-icms-cst`}
+                    value={isSimples ? tax.icmsCsosn : tax.icmsCst}
+                    onChange={(e) =>
+                      isSimples
+                        ? setTaxField("icmsCsosn", e.target.value)
+                        : setTaxField("icmsCst", e.target.value)
+                    }
                   >
-                    <option value="none">Sem validade</option>
-                    <option value="days">Dias</option>
-                    <option value="months">Meses</option>
-                    <option value="years">Anos</option>
+                    <option value="">Selecionar…</option>
+                    {(isSimples ? ICMS_CSOSN_OPTIONS : ICMS_CST_OPTIONS).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </Select>
-                  {form.expiryUnit !== "none" && (
-                    <Input
-                      type="number"
-                      min="1"
-                      value={form.expiryDays}
-                      onChange={(e) => set("expiryDays", e.target.value)}
-                      placeholder={
-                        form.expiryUnit === "days"
-                          ? "Ex: 180"
-                          : form.expiryUnit === "months"
-                            ? "Ex: 6"
-                            : "Ex: 2"
-                      }
-                    />
-                  )}
                 </div>
-                {form.expiryUnit !== "none" && form.expiryDays && Number(form.expiryDays) > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    ={" "}
-                    {form.expiryUnit === "days"
-                      ? `${form.expiryDays} dias`
-                      : form.expiryUnit === "months"
-                        ? `${Math.round(Number(form.expiryDays) * 30)} dias`
-                        : `${Math.round(Number(form.expiryDays) * 365)} dias`}
-                  </p>
-                )}
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-icms-rate`}>Alíquota ICMS (%)</Label>
+                  <Input
+                    id={`${ids}-icms-rate`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={tax.icmsRate}
+                    onChange={(e) => setTaxField("icmsRate", e.target.value)}
+                    placeholder="% — ex. 18"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-pis-cst`}>PIS CST</Label>
+                  <Select
+                    id={`${ids}-pis-cst`}
+                    value={tax.pisCst}
+                    onChange={(e) => setTaxField("pisCst", e.target.value)}
+                  >
+                    <option value="">Selecionar…</option>
+                    {PIS_COFINS_CST_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-pis-rate`}>Alíquota PIS (%)</Label>
+                  <Input
+                    id={`${ids}-pis-rate`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.0001"
+                    value={tax.pisRate}
+                    onChange={(e) => setTaxField("pisRate", e.target.value)}
+                    placeholder="% — ex. 0,65"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-cofins-cst`}>COFINS CST</Label>
+                  <Select
+                    id={`${ids}-cofins-cst`}
+                    value={tax.cofinsCst}
+                    onChange={(e) => setTaxField("cofinsCst", e.target.value)}
+                  >
+                    <option value="">Selecionar…</option>
+                    {PIS_COFINS_CST_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${ids}-cofins-rate`}>Alíquota COFINS (%)</Label>
+                  <Input
+                    id={`${ids}-cofins-rate`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.0001"
+                    value={tax.cofinsRate}
+                    onChange={(e) => setTaxField("cofinsRate", e.target.value)}
+                    placeholder="% — ex. 3,00"
+                  />
+                </div>
               </div>
-            </div>
-            <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
-              <input
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => set("isActive", e.target.checked)}
-                className="h-4 w-4 rounded border border-input accent-primary"
-              />
-              <div>
-                <p className="text-sm font-medium leading-none">Produto ativo</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Produto inativo não aparece nas vendas
+            </TabsContent>
+
+            {/* ── MAIS ────────────────────────────────────────────── */}
+            <TabsContent value="mais" className="flex flex-col gap-8 pt-6">
+              <section className="flex flex-col gap-5">
+                <SectionTitle>Descrição</SectionTitle>
+                <textarea
+                  id={`${ids}-desc`}
+                  rows={4}
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  placeholder="Descrição opcional do produto…"
+                  className="flex w-full resize-none rounded-lg border border-input bg-card px-3.5 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                />
+              </section>
+
+              <section className="flex flex-col gap-3">
+                <SectionTitle>Tags</SectionTitle>
+                <p className="text-xs text-muted-foreground">
+                  Usadas em busca, filtros e promoções. A busca por EAN sugere automaticamente.
                 </p>
-              </div>
-            </label>
-          </section>
-        </TabsContent>
+                <div className="flex flex-wrap items-center gap-2">
+                  {tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 py-1 text-sm"
+                    >
+                      {t}
+                      <button
+                        type="button"
+                        onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                        className="text-muted-foreground transition hover:text-destructive"
+                        aria-label={`Remover tag ${t}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <Input
+                    id={`${ids}-tag`}
+                    placeholder="Adicionar tag + Enter"
+                    autoComplete="off"
+                    className="h-8 w-44"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const v = e.currentTarget.value.trim();
+                        if (v) setTags((prev) => Array.from(new Set([...prev, v])));
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                </div>
+              </section>
+
+              <section className="flex flex-col gap-3">
+                <SectionTitle>Armazenagem</SectionTitle>
+                <p className="text-xs text-muted-foreground">
+                  Temperatura própria do produto (preenchida pela busca, editável).
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+                  {TEMP_PRODUCT_OPTIONS.map((opt) => {
+                    const active = form.storageTemperature === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => set("storageTemperature", active ? "" : opt.value)}
+                        className={cn(
+                          "flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-sm transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 font-medium text-foreground"
+                            : "border-border bg-card text-muted-foreground hover:bg-muted/40",
+                        )}
+                      >
+                        <span>{opt.emoji}</span>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="flex flex-col gap-5">
+                <SectionTitle>Regras de venda</SectionTitle>
+                <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
+                  <input
+                    type="checkbox"
+                    checked={form.hasAgeRestriction}
+                    onChange={(e) => set("hasAgeRestriction", e.target.checked)}
+                    className="h-4 w-4 rounded border border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Restrição de idade (+18)</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Exige verificação de maioridade na venda
+                    </p>
+                  </div>
+                </label>
+                <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) => set("isActive", e.target.checked)}
+                    className="h-4 w-4 rounded border border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Produto ativo</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Produto inativo não aparece nas vendas
+                    </p>
+                  </div>
+                </label>
+              </section>
+            </TabsContent>
+          </>
+        )}
+
+        {extraTabs.map((t) => (
+          <TabsContent key={t.value} value={t.value} className="pt-6">
+            {t.content}
+          </TabsContent>
+        ))}
       </Tabs>
 
       {/* Footer */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+      <div className="sticky bottom-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/85 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:-mx-6 sm:px-6">
         <Button
           type="button"
           variant="outline"
           disabled={isPending}
-          onClick={() =>
-            router.push(isEdit && product ? `/app/products/${product.id}` : "/app/products")
-          }
+          onClick={() => router.push("/app/products")}
         >
           Cancelar
         </Button>
@@ -2291,49 +2595,6 @@ export function ProductQuickCreate({
                   }
                 }}
               />
-            </div>
-
-            {/* Perfil herdável pelos produtos da subcategoria */}
-            <div className="flex flex-col gap-3 border-t border-border pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Perfil herdável pelos produtos
-              </p>
-              <p className="-mt-1 text-xs text-muted-foreground/70">
-                Temperatura e +18 agora são definidos por produto (pela busca), não pela
-                subcategoria.
-              </p>
-
-              {/* Controla validade */}
-              <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
-                <input
-                  type="checkbox"
-                  checked={newSubcatExpiry}
-                  onChange={(e) => setNewSubcatExpiry(e.target.checked)}
-                  className="h-4 w-4 rounded border border-input accent-primary"
-                />
-                <div>
-                  <p className="text-sm font-medium leading-none">Controla validade</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Produtos exigem data de validade no recebimento
-                  </p>
-                </div>
-              </label>
-
-              {/* Controla lote */}
-              <label className="flex cursor-pointer select-none items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3.5 py-2.5 transition-colors hover:bg-muted/40">
-                <input
-                  type="checkbox"
-                  checked={newSubcatLot}
-                  onChange={(e) => setNewSubcatLot(e.target.checked)}
-                  className="h-4 w-4 rounded border border-input accent-primary"
-                />
-                <div>
-                  <p className="text-sm font-medium leading-none">Controla lote</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Rastreabilidade por lote no estoque
-                  </p>
-                </div>
-              </label>
             </div>
           </div>
           <DialogFooter>

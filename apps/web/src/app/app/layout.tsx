@@ -5,8 +5,6 @@ import { NavSidebar } from "@/components/nav-sidebar";
 import { CapabilitiesProvider } from "@/features/app/capabilities-provider";
 import { getSession } from "@/lib/auth-server";
 import { getCapabilities } from "@/lib/capabilities";
-import { ALL_LOCATIONS } from "@/lib/selected-location";
-import { readSelectedLocation } from "@/lib/selected-location-server";
 
 function getInitials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
@@ -38,36 +36,88 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const capsObject = Object.fromEntries(caps);
   const orgName = member.organization.tradeName ?? member.organization.legalName;
 
-  const initials = getInitials(session.user.name, session.user.email);
+  const orgId = member.organizationId;
+  const dueSoon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); // próximas 72h
 
-  const allLocations = await prisma.location.findMany({
-    where: { organizationId: member.organizationId, deletedAt: null },
-    select: { id: true, name: true, type: true, city: true, state: true },
-    orderBy: { createdAt: "asc" },
-  });
-  const scopedLocations =
-    member.locationScopes.length > 0
-      ? allLocations.filter((l) => member.locationScopes.includes(l.id))
-      : allLocations;
-  const onlyScopedLocation = scopedLocations.length === 1 ? scopedLocations[0] : null;
-  const selectedLocation = await readSelectedLocation(
-    scopedLocations.map((l) => l.id),
-    onlyScopedLocation?.id ?? ALL_LOCATIONS,
-  );
+  const [onlinePending, openCashSession, nfeIssues, payablesDue, lowStockRows, fiscalConfig] =
+    await Promise.all([
+      // Pedidos online aguardando ação (confirmados/pagos, canais digitais).
+      prisma.order.count({
+        where: {
+          organizationId: orgId,
+          channel: { notIn: ["POS", "SELF_SERVICE"] },
+          status: { in: ["CONFIRMED", "PAID"] },
+        },
+      }),
+      // Caixa aberto (qualquer local do operador).
+      prisma.cashSession.findFirst({
+        where: { organizationId: orgId, status: "OPEN" },
+        orderBy: { openedAt: "desc" },
+        select: { id: true, openedAt: true, location: { select: { name: true } } },
+      }),
+      // Notas rejeitadas/denegadas — exigem correção.
+      prisma.invoice.count({
+        where: { organizationId: orgId, status: { in: ["REJECTED", "DENIED"] } },
+      }),
+      // Contas a pagar vencendo (até 72h) ou vencidas.
+      prisma.accountPayable.count({
+        where: {
+          organizationId: orgId,
+          status: { in: ["PENDING", "PARTIALLY_PAID"] },
+          dueDate: { lte: dueSoon },
+        },
+      }),
+      // Itens abaixo do ponto de reposição (comparação entre colunas → raw).
+      prisma.$queryRaw<{ count: number }[]>`
+      SELECT COUNT(*)::int AS count
+      FROM "StockBalance"
+      WHERE "organizationId" = ${orgId}
+        AND "minQuantity" IS NOT NULL
+        AND "quantityOnHand" <= "minQuantity"
+    `,
+      prisma.fiscalConfig.findUnique({
+        where: { organizationId: orgId },
+        select: { environment: true, promotedAt: true },
+      }),
+    ]);
+
+  const lowStock = Number(lowStockRows[0]?.count ?? 0);
+
+  const notifications = {
+    lowStock,
+    onlinePending,
+    nfeIssues,
+    payablesDue,
+    total: lowStock + onlinePending + nfeIssues + payablesDue,
+  };
+
+  // Saúde fiscal: erro se há rejeições; aviso se ainda em homologação; ok em produção.
+  const fiscalLevel: "ok" | "warn" | "error" =
+    nfeIssues > 0 ? "error" : fiscalConfig?.environment !== "PRODUCTION" ? "warn" : "ok";
+
+  const cash = openCashSession
+    ? {
+        open: true as const,
+        locationName: openCashSession.location.name,
+        openedAt: openCashSession.openedAt.toISOString(),
+      }
+    : { open: false as const };
+
+  const initials = getInitials(session.user.name, session.user.email);
 
   return (
     <CapabilitiesProvider value={capsObject}>
       <div className="flex h-screen overflow-hidden bg-background">
-        <NavSidebar orgName={orgName} role={member.role} />
+        <NavSidebar orgName={orgName} role={member.role} onlineBadge={onlinePending} />
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <AppTopbar
             userName={session.user.name ?? session.user.email}
             userEmail={session.user.email}
             userInitials={initials}
-            organizationId={member.organizationId}
-            locations={scopedLocations}
-            selectedLocationId={selectedLocation}
+            cash={cash}
+            notifications={notifications}
+            fiscalLevel={fiscalLevel}
           />
 
           <main className="flex-1 overflow-y-auto">

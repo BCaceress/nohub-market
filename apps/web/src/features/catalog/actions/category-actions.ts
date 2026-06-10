@@ -148,6 +148,25 @@ export async function createCategoryAction(
   } = parsed.data;
   const baseSlug = parsed.data.slug || generateSlug(name);
 
+  // Nome único dentro do mesmo nível (raiz, ou irmãos sob a mesma categoria)
+  const duplicate = await prisma.category.findFirst({
+    where: {
+      organizationId,
+      parentId: parentId || null,
+      deletedAt: null,
+      name: { equals: name.trim(), mode: "insensitive" },
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return {
+      success: false,
+      error: parentId
+        ? "Já existe uma subcategoria com esse nome nesta categoria."
+        : "Já existe uma categoria com esse nome.",
+    };
+  }
+
   // Insert with retry on unique conflict (avoids TOCTOU race)
   let category: { id: string };
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -223,6 +242,26 @@ export async function updateCategoryAction(
     controlsExpiry,
     controlsLot,
   } = parsed.data;
+
+  // Nome único dentro do mesmo nível (ignora a própria categoria)
+  const duplicate = await prisma.category.findFirst({
+    where: {
+      organizationId,
+      parentId: parentId || null,
+      deletedAt: null,
+      name: { equals: name.trim(), mode: "insensitive" },
+      id: { not: categoryId },
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return {
+      success: false,
+      error: parentId
+        ? "Já existe uma subcategoria com esse nome nesta categoria."
+        : "Já existe uma categoria com esse nome.",
+    };
+  }
 
   await prisma.category.updateMany({
     where: { id: categoryId, organizationId },

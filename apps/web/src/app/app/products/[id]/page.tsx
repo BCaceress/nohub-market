@@ -1,4 +1,5 @@
 import { prisma } from "@nohub/db";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
@@ -69,44 +70,47 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   // Personalizado tem tela própria (cadastro/edição unificado)
   if (isCustom) {
     return (
-      <CustomProductForm
-        organizationId={member.organizationId}
-        availableProducts={allProducts.map((p) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.sku,
-          unit: p.unit,
-        }))}
-        categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
-        product={{
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          price: Number(product.price),
-          isActive: product.isActive,
-          categoryId: product.categoryId,
-          sku: product.sku,
-          imageUrl: product.imageUrl,
-          fixedComponents: product.kitComponents.map((c) => ({
-            componentProductId: c.componentProductId,
-            quantity: Number(c.quantity),
-          })),
-          groups: optionGroups.map((g) => ({
-            name: g.name,
-            unit: g.unit,
-            required: g.required,
-            minSelect: g.minSelect,
-            maxSelect: g.maxSelect,
-            options: g.options.map((o) => ({
-              name: o.name,
-              componentProductId: o.componentProductId,
-              quantity: Number(o.quantity),
-              priceDelta: Number(o.priceDelta),
-              isDefault: o.isDefault,
+      <>
+        <OverviewLink id={id} />
+        <CustomProductForm
+          organizationId={member.organizationId}
+          availableProducts={allProducts.map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            unit: p.unit,
+          }))}
+          categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
+          product={{
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: Number(product.price),
+            isActive: product.isActive,
+            categoryId: product.categoryId,
+            sku: product.sku,
+            imageUrl: product.imageUrl,
+            fixedComponents: product.kitComponents.map((c) => ({
+              componentProductId: c.componentProductId,
+              quantity: Number(c.quantity),
             })),
-          })),
-        }}
-      />
+            groups: optionGroups.map((g) => ({
+              name: g.name,
+              unit: g.unit,
+              required: g.required,
+              minSelect: g.minSelect,
+              maxSelect: g.maxSelect,
+              options: g.options.map((o) => ({
+                name: o.name,
+                componentProductId: o.componentProductId,
+                quantity: Number(o.quantity),
+                priceDelta: Number(o.priceDelta),
+                isDefault: o.isDefault,
+              })),
+            })),
+          }}
+        />
+      </>
     );
   }
 
@@ -114,26 +118,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   if (isKit) {
     const availableProducts = await getKitComponentOptionsAction(member.organizationId, product.id);
     return (
-      <KitProductForm
-        organizationId={member.organizationId}
-        availableProducts={availableProducts}
-        categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
-        product={{
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          sku: product.sku,
-          price: Number(product.price),
-          isActive: product.isActive,
-          categoryId: product.categoryId,
-          imageUrl: product.imageUrl,
-          compositionKind: product.compositionKind ?? "COMBO",
-          components: product.kitComponents.map((c) => ({
-            componentProductId: c.componentProductId,
-            quantity: Number(c.quantity),
-          })),
-        }}
-      />
+      <>
+        <OverviewLink id={id} />
+        <KitProductForm
+          organizationId={member.organizationId}
+          availableProducts={availableProducts}
+          categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
+          product={{
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            sku: product.sku,
+            price: Number(product.price),
+            isActive: product.isActive,
+            categoryId: product.categoryId,
+            imageUrl: product.imageUrl,
+            components: product.kitComponents.map((c) => ({
+              componentProductId: c.componentProductId,
+              quantity: Number(c.quantity),
+            })),
+          }}
+        />
+      </>
     );
   }
 
@@ -172,6 +178,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
+      <OverviewLink id={id} />
       <ProductQuickCreate
         organizationId={member.organizationId}
         categories={categories as never}
@@ -197,5 +204,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         />
       </section>
     </>
+  );
+}
+
+function OverviewLink({ id }: { id: string }) {
+  return (
+    <div className="flex justify-end mb-2 px-1">
+      <Link
+        href={`/app/products/${id}/overview`}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground"
+      >
+        Ver detalhes / histórico →
+      </Link>
+    </div>
   );
 }

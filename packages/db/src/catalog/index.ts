@@ -1,3 +1,4 @@
+export * from "./convert-unit";
 export * from "./explode-kit";
 export * from "./resolve-price";
 export * from "./resolve-tax";

@@ -10,7 +10,25 @@
       "Bash(pnpm --filter @nohub/web typecheck)",
       "Bash(npx --no-install tsc --noEmit -p apps/web/tsconfig.json)",
       "Bash(pnpm install *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, StartTime, @{n='CmdLine';e={\\(Get-CimInstance Win32_Process -Filter \"ProcessId=$\\($_.Id\\)\"\\).CommandLine}} | Format-Table -Wrap -AutoSize)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./package.json'\\).scripts,null,1\\)\\)\")",
+      "PowerShell(Get-Process node,pnpm -ErrorAction SilentlyContinue | Where-Object { $cl = \\(Get-CimInstance Win32_Process -Filter \"ProcessId=$\\($_.Id\\)\"\\).CommandLine; $cl -match 'turbo|next|nohub-market' } | ForEach-Object { Write-Output \"Stopping $\\($_.Id\\)\"; Stop-Process -Id $_.Id -Force })",
+      "Bash(npx tsx *)",
+      "Bash(node -e \"try{require.resolve\\('tsconfig-paths'\\);console.log\\('tsconfig-paths OK'\\)}catch{console.log\\('NO tsconfig-paths'\\)}; console.log\\('alias:', JSON.stringify\\(require\\('./tsconfig.json'\\).compilerOptions.paths\\)\\)\")",
+      "Bash(rm -rf node_modules/server-only node_modules/client-only)",
+      "Bash(rm -f apps/web/src/scripts/test-custom-sale.ts)",
+      "Bash(rmdir apps/web/src/scripts)",
+      "Bash(ls node_modules/server-only)",
+      "Bash(mkdir -p \"d:\\\\Dev\\\\nohub-market\\\\apps\\\\web\\\\src\\\\app\\\\app\\\\suppliers\\\\[id]\\\\edit\")",
+      "Bash(npm run *)",
+      "Bash(rm -rf \"d:\\\\Dev\\\\nohub-market\\\\apps\\\\web\\\\src\\\\app\\\\app\\\\suppliers\\\\[id]\\\\edit\")",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/app/suppliers)"
+    ],
+    "additionalDirectories": [
+      "d:\\Dev\\nohub-market\\apps\\web\\src\\app\\app\\suppliers\\[id]\\edit"
     ]
   }
 }

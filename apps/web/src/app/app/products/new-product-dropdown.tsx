@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  ChefHat,
-  ChevronDown,
-  Layers,
-  Package,
-  Plus,
-  Scissors,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ChevronDown, Layers, Package, Plus, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,18 +17,6 @@ const OPTIONS = [
     label: "Kit / Combo",
     desc: "Produtos prontos vendidos juntos (cesta, combo, pack)",
     icon: <Layers className="h-4 w-4 shrink-0 text-amber-500" />,
-  },
-  {
-    route: "?type=KIT&kind=RECIPE",
-    label: "Produzido / Receita",
-    desc: "Formado por insumos fracionados (drink, lanche, pizza)",
-    icon: <ChefHat className="h-4 w-4 shrink-0 text-green-500" />,
-  },
-  {
-    route: "?type=FRACTIONED",
-    label: "Produto Fracionado",
-    desc: "Vendido por peso ou volume (kg, g, l, ml…)",
-    icon: <Scissors className="h-4 w-4 shrink-0 text-green-500" />,
   },
   {
     route: "?type=CUSTOM",

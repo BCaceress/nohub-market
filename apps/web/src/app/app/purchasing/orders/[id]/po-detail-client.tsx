@@ -2,29 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   cancelPurchaseOrderAction,
   confirmPurchaseOrderAction,
   sendPurchaseOrderAction,
 } from "@/features/purchasing/actions/purchasing-actions";
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Rascunho",
-  SENT: "Enviado",
-  CONFIRMED: "Confirmado",
-  RECEIVING: "Recebendo",
-  RECEIVED: "Recebido",
-  CANCELED: "Cancelado",
+const PO_STATUS: Record<string, { variant: BadgeProps["variant"]; label: string }> = {
+  DRAFT: { variant: "outline", label: "Rascunho" },
+  SENT: { variant: "info", label: "Enviado" },
+  CONFIRMED: { variant: "warning", label: "Confirmado" },
+  RECEIVING: { variant: "soft", label: "Recebendo" },
+  RECEIVED: { variant: "success", label: "Recebido" },
+  CANCELED: { variant: "destructive", label: "Cancelado" },
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  SENT: "bg-blue-100 text-blue-700",
-  CONFIRMED: "bg-yellow-100 text-yellow-800",
-  RECEIVING: "bg-purple-100 text-purple-700",
-  RECEIVED: "bg-green-100 text-green-700",
-  CANCELED: "bg-red-100 text-red-700",
-};
+const brl = (v: unknown) =>
+  Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 type PO = {
   id: string;
@@ -79,15 +75,18 @@ type PO = {
 
 type Props = { po: PO };
 
+const SECTION_TITLE = "mb-3 text-lg font-semibold text-foreground";
+const TH = "px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground";
+
 export function PurchaseOrderDetailClient({ po }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const handleSend = () => {
+  const run = (fn: () => Promise<{ success: boolean; error?: string }>) => {
     startTransition(async () => {
-      const r = await sendPurchaseOrderAction(po.id);
-      if (!r.success) setError(r.error);
+      const r = await fn();
+      if (!r.success) setError(r.error ?? "Erro");
       else {
         setError(null);
         router.refresh();
@@ -95,105 +94,83 @@ export function PurchaseOrderDetailClient({ po }: Props) {
     });
   };
 
-  const handleConfirm = () => {
-    startTransition(async () => {
-      const r = await confirmPurchaseOrderAction(po.id);
-      if (!r.success) setError(r.error);
-      else {
-        setError(null);
-        router.refresh();
-      }
-    });
-  };
-
+  const handleSend = () => run(() => sendPurchaseOrderAction(po.id));
+  const handleConfirm = () => run(() => confirmPurchaseOrderAction(po.id));
   const handleCancel = () => {
     const reason = prompt("Motivo do cancelamento:");
     if (!reason) return;
-    startTransition(async () => {
-      const r = await cancelPurchaseOrderAction(po.id, reason);
-      if (!r.success) setError(r.error);
-      else {
-        setError(null);
-        router.refresh();
-      }
-    });
+    run(() => cancelPurchaseOrderAction(po.id, reason));
   };
 
+  const statusMeta = PO_STATUS[po.status];
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-6">
+      {/* Voltar */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={() => router.push("/app/purchasing")}
+      >
+        ← Compras
+      </Button>
+
       {/* Cabeçalho */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">PO #{po.id.slice(0, 8)}</h1>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[po.status] ?? "bg-gray-100 text-gray-700"}`}
-            >
-              {STATUS_LABELS[po.status] ?? po.status}
-            </span>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              PO #{po.id.slice(0, 8)}
+            </h1>
+            <Badge variant={statusMeta?.variant ?? "outline"}>
+              {statusMeta?.label ?? po.status}
+            </Badge>
           </div>
-          <p className="text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             {po.supplier.name} · {new Date(po.createdAt).toLocaleDateString("pt-BR")}
           </p>
         </div>
         <div className="flex gap-2">
-          {po.status === "DRAFT" && (
-            <button
-              type="button"
-              onClick={handleSend}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
-            >
-              Enviar ao Fornecedor
-            </button>
-          )}
-          {po.status === "SENT" && (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="px-4 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600"
-            >
-              Confirmar Pedido
-            </button>
-          )}
+          {po.status === "DRAFT" && <Button onClick={handleSend}>Enviar ao Fornecedor</Button>}
+          {po.status === "SENT" && <Button onClick={handleConfirm}>Confirmar Pedido</Button>}
           {po.status === "CONFIRMED" && (
-            <button
-              type="button"
-              onClick={() => router.push(`/app/purchasing/receive?poId=${po.id}`)}
-              className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700"
-            >
+            <Button onClick={() => router.push(`/app/purchasing?receive=${po.id}`)}>
               Registrar Recebimento
-            </button>
+            </Button>
           )}
           {["DRAFT", "SENT", "CONFIRMED"].includes(po.status) && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              className="text-destructive hover:bg-destructive-soft"
               onClick={handleCancel}
-              className="px-4 py-2 border border-red-300 text-red-700 text-sm rounded-lg hover:bg-red-50"
             >
               Cancelar
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-3 text-sm">
+        <div className="rounded-lg border border-destructive/20 bg-destructive-soft px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {/* Totais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
           { label: "Subtotal", value: po.subtotal },
           { label: "Desconto", value: po.discountTotal },
           { label: "Frete", value: po.freight },
-          { label: "Total", value: po.total },
+          { label: "Total", value: po.total, highlight: true },
         ].map((t) => (
-          <div key={t.label} className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-xs text-gray-500 mb-1">{t.label}</p>
-            <p className="text-lg font-semibold">
-              {Number(t.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          <div key={t.label} className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">{t.label}</p>
+            <p
+              className={`mt-1 text-lg font-semibold tabular-nums ${t.highlight ? "text-primary" : "text-foreground"}`}
+            >
+              {brl(t.value)}
             </p>
           </div>
         ))}
@@ -201,36 +178,34 @@ export function PurchaseOrderDetailClient({ po }: Props) {
 
       {/* Itens */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Itens</h2>
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <h2 className={SECTION_TITLE}>Itens</h2>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
+            <thead className="border-b border-border bg-surface-1">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Produto</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-600">Qtd</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-600">Custo Unit.</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-600">Total Linha</th>
+                <th className={TH}>Produto</th>
+                <th className={`${TH} text-right`}>Qtd</th>
+                <th className={`${TH} text-right`}>Custo Unit.</th>
+                <th className={`${TH} text-right`}>Total Linha</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {po.items.map((item) => (
-                <tr key={item.id}>
+                <tr key={item.id} className="transition-colors hover:bg-surface-1">
                   <td className="px-4 py-3">
-                    <p className="font-medium">{item.productNameSnapshot}</p>
-                    {item.variant && <p className="text-xs text-gray-400">{item.variant.name}</p>}
+                    <p className="font-medium text-foreground">{item.productNameSnapshot}</p>
+                    {item.variant && (
+                      <p className="text-xs text-muted-foreground">{item.variant.name}</p>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-right">{Number(item.expectedQuantity)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {Number(item.unitCost).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
+                  <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                    {Number(item.expectedQuantity)}
                   </td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {Number(item.lineTotal).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {brl(item.unitCost)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
+                    {brl(item.lineTotal)}
                   </td>
                 </tr>
               ))}
@@ -242,26 +217,22 @@ export function PurchaseOrderDetailClient({ po }: Props) {
       {/* Recebimentos */}
       {po.receipts.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">Recebimentos</h2>
+          <h2 className={SECTION_TITLE}>Recebimentos</h2>
           <div className="space-y-2">
             {po.receipts.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3"
+                className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
               >
-                <span className="font-mono text-xs text-gray-500">{r.id.slice(0, 8)}</span>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${r.status === "CONFIRMED" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
-                >
-                  {r.status}
-                </span>
-                <span className="text-xs text-gray-500">
+                <span className="font-mono text-xs text-muted-foreground">{r.id.slice(0, 8)}</span>
+                <Badge variant={r.status === "CONFIRMED" ? "success" : "outline"}>{r.status}</Badge>
+                <span className="text-xs text-muted-foreground">
                   {new Date(r.createdAt).toLocaleDateString("pt-BR")}
                 </span>
                 <button
                   type="button"
                   onClick={() => router.push(`/app/purchasing/receive/${r.id}`)}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="cursor-pointer text-xs text-primary hover:underline"
                 >
                   Ver
                 </button>
@@ -274,27 +245,31 @@ export function PurchaseOrderDetailClient({ po }: Props) {
       {/* Contas a pagar */}
       {po.accountPayables.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">Contas a Pagar</h2>
+          <h2 className={SECTION_TITLE}>Contas a Pagar</h2>
           <div className="space-y-2">
             {po.accountPayables.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-3"
+                className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
               >
-                <span className="text-sm">
+                <span className="text-sm text-muted-foreground">
                   {p.installmentNumber}/{p.totalInstallments}
                 </span>
-                <span className="font-semibold">
-                  {Number(p.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </span>
-                <span className="text-xs text-gray-500">
+                <span className="font-semibold tabular-nums text-foreground">{brl(p.amount)}</span>
+                <span className="text-xs text-muted-foreground">
                   Vence {new Date(p.dueDate).toLocaleDateString("pt-BR")}
                 </span>
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${p.status === "PAID" ? "bg-green-100 text-green-700" : p.status === "CANCELED" ? "bg-gray-100 text-gray-500" : "bg-yellow-100 text-yellow-700"}`}
+                <Badge
+                  variant={
+                    p.status === "PAID"
+                      ? "success"
+                      : p.status === "CANCELED"
+                        ? "outline"
+                        : "warning"
+                  }
                 >
                   {p.status}
-                </span>
+                </Badge>
               </div>
             ))}
           </div>
@@ -303,16 +278,16 @@ export function PurchaseOrderDetailClient({ po }: Props) {
 
       {/* Histórico */}
       <section>
-        <h2 className="text-lg font-semibold mb-3">Histórico</h2>
+        <h2 className={SECTION_TITLE}>Histórico</h2>
         <div className="space-y-2">
           {po.history.map((h) => (
-            <div key={h.id} className="flex items-center gap-3 text-sm text-gray-600">
-              <span className="text-xs text-gray-400 w-24 shrink-0">
+            <div key={h.id} className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="w-24 shrink-0 text-xs text-muted-foreground/70">
                 {new Date(h.createdAt).toLocaleDateString("pt-BR")}
               </span>
               <span>
                 {h.fromStatus ? `${h.fromStatus} → ` : ""}
-                <strong>{h.toStatus}</strong>
+                <strong className="text-foreground">{h.toStatus}</strong>
                 {h.reason && ` — ${h.reason}`}
               </span>
             </div>

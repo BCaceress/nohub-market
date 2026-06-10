@@ -28,6 +28,7 @@ const quickSaleSchema = z.object({
         variantId: z.string().nullish(),
         quantity: z.coerce.number().int().min(1),
         discountAmount: z.coerce.number().min(0).optional(),
+        selectedOptionIds: z.array(z.string()).optional(),
       }),
     )
     .min(1),
@@ -175,6 +176,55 @@ export async function getOrdersAction(organizationId: string, filters: OrderFilt
   ]);
 
   return { orders, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+}
+
+export async function getProductSalesStatsAction(
+  organizationId: string,
+  productId: string,
+  opts: { from: Date; to: Date },
+) {
+  const items = await prisma.orderItem.findMany({
+    where: {
+      productId,
+      order: {
+        organizationId,
+        status: { notIn: ["CANCELED", "DRAFT"] },
+        createdAt: { gte: opts.from, lte: opts.to },
+      },
+    },
+    select: {
+      quantity: true,
+      lineTotal: true,
+      order: { select: { createdAt: true } },
+    },
+  });
+
+  let totalQty = 0;
+  let totalRevenue = 0;
+  const dailyMap = new Map<string, { qty: number; revenue: number }>();
+
+  for (const item of items) {
+    const qty = Number(item.quantity);
+    const rev = Number(item.lineTotal);
+    totalQty += qty;
+    totalRevenue += rev;
+    const day = item.order.createdAt.toISOString().slice(0, 10);
+    const prev = dailyMap.get(day) ?? { qty: 0, revenue: 0 };
+    dailyMap.set(day, { qty: prev.qty + qty, revenue: prev.revenue + rev });
+  }
+
+  const daily: { date: string; qty: number; revenue: number }[] = [];
+  const cursor = new Date(opts.from);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(opts.to);
+  end.setHours(23, 59, 59, 999);
+  while (cursor <= end) {
+    const key = cursor.toISOString().slice(0, 10);
+    daily.push({ date: key, ...(dailyMap.get(key) ?? { qty: 0, revenue: 0 }) });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return { totalQty, totalRevenue, daily };
 }
 
 export async function getOrderAction(organizationId: string, orderId: string) {

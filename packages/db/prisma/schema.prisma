@@ -324,6 +324,10 @@ model Organization {
   onboardingStep      Int     @default(1)
   onboardingData      Json?
 
+  // Financeiro — taxas de adquirente e prazo de liquidação D+N
+  // { cardFeeRates: { CARD_PRESENT: number, CARD_ONLINE: number }, settlementDays: number }
+  financeSettings Json?
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -369,6 +373,9 @@ model Organization {
   goodsReceipts               GoodsReceipt[]
   supplierReturns             SupplierReturn[]
   accountPayables             AccountPayable[]
+  accountReceivables          AccountReceivable[]
+  paymentSettlements          PaymentSettlement[]
+  financeCategories           FinanceCategory[]
   quotations                  Quotation[]
   purchaseSuggestions         PurchaseSuggestion[]
   nfeImports                  NfeImport[]
@@ -525,29 +532,64 @@ model Supplier {
   id             String  @id @default(cuid())
   organizationId String
   name           String
+  tradeName      String? // nome fantasia
   document       String?
   email          String?
   phone          String?
+  website        String?
+  contactName    String? // pessoa de contato principal
+  segment        String? // segmento/categoria (ex: bebidas, alimentos)
+
+  // Endereço
+  addressStreet     String?
+  addressNumber     String?
+  addressComplement String?
+  addressDistrict   String?
+  addressCity       String?
+  addressState      String?
+  addressZip        String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  // Etapa 6 — campos opcionais de compras
-  defaultPaymentTerms Json?
-  defaultLeadTimeDays Int?
-  minOrderAmount      Decimal? @db.Decimal(10, 2)
-  notes               String?
+  // Condições comerciais padrão
+  defaultPaymentTerms    Json? // { termsDays: Int, type: "NET"|"INSTALLMENT", installments?: [{days,percent}] }
+  defaultLeadTimeDays    Int?
+  minOrderAmount         Decimal? @db.Decimal(10, 2)
+  deliveryDays           Json? // ["MONDAY","THURSDAY"]
+  defaultDiscountPercent Decimal? @db.Decimal(5, 2)
+  freightFixedAmount     Decimal? @db.Decimal(10, 2)
+  freightFreeAbove       Decimal? @db.Decimal(10, 2)
+  freightNotes           String?
+
+  notes String?
 
   organization            Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   products                Product[]
-  // Etapa 6
   supplierProductMappings SupplierProductMapping[]
   purchaseOrders          PurchaseOrder[]
   supplierReturns         SupplierReturn[]
   accountPayables         AccountPayable[]
   quotationResponses      QuotationSupplierResponse[]
+  auditLogs               SupplierAuditLog[]
 
+  @@index([organizationId])
+}
+
+model SupplierAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  supplierId     String
+  userId         String?
+  userName       String?
+  action         String // CREATED | UPDATED | DELETED
+  changedFields  Json? // { fieldName: { from: value, to: value } }
+  createdAt      DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
   @@index([organizationId])
 }
 
@@ -628,7 +670,7 @@ model Product {
   tags    String[] @default([])
 
   // Discriminador de tipo — imutável após criação (RN-C02)
-  productType ProductType @default(SIMPLE)
+  productType     ProductType      @default(SIMPLE)
   // Subtipo de KIT: COMBO (qtd inteira) ou RECIPE (insumos fracionados). null p/ não-KIT.
   compositionKind CompositionKind?
 
@@ -807,7 +849,7 @@ model ProductKitComponent {
 
 // Grupo de escolha de um produto CUSTOM (radio se maxSelect=1, checkbox se >1)
 model ProductOptionGroup {
-  id             String  @id @default(cuid())
+  id             String      @id @default(cuid())
   organizationId String
   productId      String
   name           String // "Escolha da Vodka"
@@ -1360,21 +1402,54 @@ enum MlLogisticMode {
 model Customer {
   id             String  @id @default(cuid())
   organizationId String
+  personType     String  @default("PF") // PF | PJ
   name           String?
-  document       String? // CPF (PII)
+  document       String? // CPF/CNPJ (PII)
   phone          String? // (PII)
+  whatsapp       String? // (PII)
   email          String? // (PII)
+  contactName    String? // pessoa de contato (PJ)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Endereço
+  addressStreet     String?
+  addressNumber     String?
+  addressComplement String?
+  addressDistrict   String?
+  addressCity       String?
+  addressState      String?
+  addressZip        String?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notes String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   orders       Order[]
   invoices     Invoice[] // Etapa 5
+  receivables  AccountReceivable[]
+  auditLogs    CustomerAuditLog[]
 
   @@index([organizationId])
   @@index([organizationId, document])
   @@index([organizationId, phone])
+}
+
+model CustomerAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  userId         String?
+  userName       String?
+  action         String // CREATED | UPDATED | DELETED | REACTIVATED | DEACTIVATED
+  changedFields  Json? // { fieldName: { from: value, to: value } }
+  createdAt      DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([organizationId])
 }
 
 // Pedido — agregador genérico; canal é adapter (RN-V01)
@@ -1411,6 +1486,7 @@ model Order {
   items         OrderItem[]
   statusHistory OrderStatusHistory[]
   payments      Payment[]
+  receivables   AccountReceivable[]
   invoice       Invoice? // Etapa 5
 
   // NULL values in PG unique constraints are treated as distinct — múltiplos NULLs OK
@@ -1525,7 +1601,8 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  settlement PaymentSettlement?
 
   @@index([orderId])
   @@index([status])
@@ -1568,12 +1645,15 @@ model CashMovement {
   amount        Decimal          @db.Decimal(10, 2)
   note          String?
   actorId       String?
+  categoryId    String?
 
   createdAt DateTime @default(now())
 
-  cashSession CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  cashSession CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  category    FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([cashSessionId])
+  @@index([categoryId])
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -2252,22 +2332,123 @@ model AccountPayable {
   status     AccountPayableStatus @default(PENDING)
 
   description       String
-  installmentNumber Int    @default(1)
-  totalInstallments Int    @default(1)
+  installmentNumber Int     @default(1)
+  totalInstallments Int     @default(1)
+  categoryId        String?
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
-  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId], references: [id], onDelete: SetNull)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier      Supplier         @relation(fields: [supplierId], references: [id])
+  goodsReceipt  GoodsReceipt?    @relation(fields: [goodsReceiptId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  category      FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([organizationId, status])
   @@index([dueDate])
   @@index([supplierId])
+  @@index([categoryId])
+}
+
+// ── Contas a receber (Financeiro) ──────────────────────────────────────
+
+enum AccountReceivableStatus {
+  PENDING
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELED
+}
+
+model AccountReceivable {
+  id             String  @id @default(cuid())
+  organizationId String
+  customerId     String?
+  orderId        String?
+
+  amount         Decimal                 @db.Decimal(10, 2)
+  receivedAmount Decimal                 @default(0) @db.Decimal(10, 2)
+  dueDate        DateTime
+  status         AccountReceivableStatus @default(PENDING)
+
+  description       String
+  installmentNumber Int     @default(1)
+  totalInstallments Int     @default(1)
+  categoryId        String?
+
+  receivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order        Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  category     FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([dueDate])
+  @@index([customerId])
+  @@index([categoryId])
+}
+
+// ── Conciliação de cartão — liquidação D+N (Financeiro) ────────────────
+
+enum SettlementStatus {
+  PENDING
+  SETTLED
+  CANCELED
+}
+
+model PaymentSettlement {
+  id             String @id @default(cuid())
+  organizationId String
+  paymentId      String @unique
+
+  provider     String?
+  grossAmount  Decimal          @db.Decimal(10, 2)
+  feeAmount    Decimal          @db.Decimal(10, 2)
+  netAmount    Decimal          @db.Decimal(10, 2)
+  expectedDate DateTime
+  settledAt    DateTime?
+  status       SettlementStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([expectedDate])
+}
+
+// ── Categorias financeiras — DRE simplificado ──────────────────────────
+
+enum FinanceCategoryKind {
+  INCOME
+  EXPENSE
+}
+
+model FinanceCategory {
+  id             String              @id @default(cuid())
+  organizationId String
+  name           String
+  kind           FinanceCategoryKind
+  archived       Boolean             @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payables     AccountPayable[]
+  receivables  AccountReceivable[]
+  movements    CashMovement[]
+
+  @@unique([organizationId, name, kind])
+  @@index([organizationId])
 }
 
 // ── Cotação (opcional — RN-P11) ────────────────────────────────────────

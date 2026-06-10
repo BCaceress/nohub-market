@@ -20,6 +20,7 @@ export type QuickSaleItem = {
   variantId?: string | null;
   quantity: number;
   discountAmount?: number;
+  selectedOptionIds?: string[];
 };
 
 export type QuickSaleInput = {
@@ -70,6 +71,7 @@ export async function quickSale(input: QuickSaleInput): Promise<QuickSaleResult>
       channel: "POS",
       quantity: rawItem.quantity,
       discountAmount: rawItem.discountAmount,
+      selectedOptionIds: rawItem.selectedOptionIds,
     });
     if (!result.success) {
       return { success: false, error: result.error, code: "BUILD_ITEM_FAILED" };
@@ -114,6 +116,18 @@ export async function quickSale(input: QuickSaleInput): Promise<QuickSaleResult>
           discountAmount: s.discountAmount,
           lineTotal: s.lineTotal,
           isKit: s.isKit,
+          selections: {
+            create: s.selections.map((sel) => ({
+              groupId: sel.groupId,
+              optionId: sel.optionId,
+              componentProductId: sel.componentProductId,
+              componentVariantId: sel.componentVariantId,
+              groupNameSnapshot: sel.groupNameSnapshot,
+              optionNameSnapshot: sel.optionNameSnapshot,
+              quantitySnapshot: sel.quantitySnapshot,
+              priceDeltaSnapshot: sel.priceDeltaSnapshot,
+            })),
+          },
         })),
       },
       statusHistory: {

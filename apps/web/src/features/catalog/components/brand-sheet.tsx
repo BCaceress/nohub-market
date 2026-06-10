@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Package, Plus, Tag } from "lucide-react";
+import { Loader2, Tag } from "lucide-react";
 import {
   forwardRef,
   useCallback,
@@ -106,7 +106,7 @@ export const BrandSheet = forwardRef<BrandSheetHandle, BrandSheetProps>(function
   }
 
   return (
-    <Sheet open={isOpen} onClose={close} className="w-full max-w-[400px]">
+    <Sheet open={isOpen} onClose={close} className="w-full max-w-100">
       <SheetHeader
         title={
           <span className="flex items-center gap-2">
@@ -150,27 +150,43 @@ export const BrandSheet = forwardRef<BrandSheetHandle, BrandSheetProps>(function
 
         {/* Brand list */}
         {loading ? (
-          <div className="flex items-center justify-center py-10">
+          <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : brands.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center">
-            <Package className="h-8 w-8 text-muted-foreground/30" />
-            <p className="text-sm font-medium text-muted-foreground">Nenhuma marca cadastrada</p>
-            <p className="text-xs text-muted-foreground/70 max-w-[220px]">
-              Digite acima para adicionar a primeira marca.
-            </p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Tag className="h-5 w-5 text-muted-foreground/50" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Nenhuma marca cadastrada</p>
+              <p className="mt-0.5 text-xs text-muted-foreground max-w-50">
+                Digite acima para adicionar a primeira marca.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-border overflow-hidden bg-card">
-            {brands.map((b, i) => (
-              <div
-                key={b.id}
-                className={`flex items-center px-3.5 py-2.5 ${i > 0 ? "border-t border-border" : ""}`}
-              >
-                <span className="flex-1 text-sm font-medium truncate">{b.name}</span>
-              </div>
-            ))}
+          <div className="flex flex-col gap-1">
+            <p className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {brands.length} marca{brands.length !== 1 ? "s" : ""}
+            </p>
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              {brands.map((b, i) => (
+                <div
+                  key={b.id}
+                  className={`group flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/40 ${
+                    i > 0 ? "border-t border-border/60" : ""
+                  }`}
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/8 text-primary">
+                    <Tag className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="flex-1 text-sm font-medium text-foreground truncate">
+                    {b.name}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </SheetBody>

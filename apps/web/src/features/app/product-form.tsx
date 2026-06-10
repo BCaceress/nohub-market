@@ -62,7 +62,6 @@ type Product = {
   active: boolean;
   hasAgeRestriction: boolean;
   minAge: number | null;
-  expiryDays: number | null;
   allowFractioned: boolean;
 };
 
@@ -112,7 +111,6 @@ export function ProductForm({
     active: product?.active ?? true,
     hasAgeRestriction: product?.hasAgeRestriction ?? false,
     minAge: product?.minAge ?? 18,
-    expiryDays: product?.expiryDays ?? undefined,
     allowFractioned: product?.allowFractioned ?? false,
   });
   const [saving, setSaving] = useState(false);
@@ -275,22 +273,6 @@ export function ProductForm({
                 />
               </div>
             )}
-          </div>
-        )}
-
-        {caps.has("product.expiry_tracking") && (
-          <div className="flex flex-col gap-2">
-            <Label>Validade (dias)</Label>
-            <Input
-              type="number"
-              min="1"
-              className="w-32"
-              value={form.expiryDays ?? ""}
-              onChange={(e) =>
-                set({ expiryDays: e.target.value ? Number(e.target.value) : undefined })
-              }
-              placeholder="Ex: 30"
-            />
           </div>
         )}
 

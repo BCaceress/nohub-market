@@ -15,6 +15,7 @@
 import { prisma } from "@nohub/db";
 import { applyMovement } from "@/features/inventory/lib/apply-movement";
 import { writeAudit } from "@/lib/audit";
+import { recordSupplierPrice } from "./supplier-product-mapping";
 
 export type ConfirmReceiptResult =
   | { success: true; receiptId: string; movementsCreated: number; payablesCreated: number }
@@ -196,6 +197,31 @@ export async function confirmReceipt(
       payablesCreated++;
     }
   });
+
+  // ── 7. Alimentar histórico de preço do fornecedor (RN-P12) ───
+  // Best-effort: só registra para itens com mapping no fornecedor da PO.
+  // Não bloqueia a confirmação se um mapping não existir.
+  const purchasedAt = new Date();
+  for (const item of receipt.items) {
+    const mapping = await prisma.supplierProductMapping.findFirst({
+      where: {
+        organizationId,
+        supplierId: po.supplierId,
+        productId: item.productId,
+        variantId: item.variantId ?? null,
+      },
+      select: { id: true },
+    });
+    if (!mapping) continue;
+    await recordSupplierPrice({
+      organizationId,
+      mappingId: mapping.id,
+      unitCost: Number(item.unitCost),
+      source: "GOODS_RECEIPT",
+      sourceId: receiptId,
+      purchasedAt,
+    });
+  }
 
   await writeAudit({
     organizationId,

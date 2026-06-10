@@ -16,9 +16,9 @@ export const metadata = { title: "Novo produto — NoHub Market" };
 export default async function NewProductPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; kind?: string }>;
+  searchParams: Promise<{ type?: string }>;
 }) {
-  const { type, kind } = await searchParams;
+  const { type } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/signin");
 
@@ -64,7 +64,6 @@ export default async function NewProductPage({
         organizationId={member.organizationId}
         availableProducts={availableProducts}
         categories={categories.map((c) => ({ id: c.id, name: c.name, parentId: c.parentId }))}
-        initialKind={kind === "RECIPE" ? "RECIPE" : "COMBO"}
       />
     );
   }

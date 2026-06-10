@@ -187,7 +187,7 @@ export function BarcodeSearchStep({ organizationId, onUse, onManual, onOpenExist
                     onClick={() => onOpenExisting(p.id)}
                     className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-1"
                   >
-                    <Thumb url={p.imageUrl} />
+                    <Thumb url={p.imageUrl ?? undefined} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{p.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
@@ -329,8 +329,8 @@ export function BarcodeSearchStep({ organizationId, onUse, onManual, onOpenExist
 function Thumb({ url, big }: { url?: string; big?: boolean }) {
   const size = big ? "h-14 w-14" : "h-9 w-9";
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // biome-ignore lint/performance/noImgElement: external user-provided URL
       <img
         src={url}
         alt=""

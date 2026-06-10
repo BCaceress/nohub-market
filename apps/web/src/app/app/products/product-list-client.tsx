@@ -20,6 +20,7 @@ import {
   Scissors,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Store,
   X,
 } from "lucide-react";
@@ -73,6 +74,11 @@ const TYPE_CONFIG = {
     label: "Fracionado",
     icon: <Scissors className="h-3 w-3" />,
     variant: "success",
+  },
+  CUSTOM: {
+    label: "Personalizado",
+    icon: <SlidersHorizontal className="h-3 w-3" />,
+    variant: "info",
   },
 } satisfies Record<string, TypeConfigEntry>;
 
@@ -271,6 +277,7 @@ export function ProductListClient({
     { value: "SIMPLE", label: TYPE_CONFIG.SIMPLE.label, icon: TYPE_CONFIG.SIMPLE.icon },
     { value: "KIT", label: TYPE_CONFIG.KIT.label, icon: TYPE_CONFIG.KIT.icon },
     { value: "FRACTIONED", label: TYPE_CONFIG.FRACTIONED.label, icon: TYPE_CONFIG.FRACTIONED.icon },
+    { value: "CUSTOM", label: TYPE_CONFIG.CUSTOM.label, icon: TYPE_CONFIG.CUSTOM.icon },
   ];
   const activeTypeOption = typeOptions.find((o) => o.value === activeType) ?? defaultTypeOption;
 
@@ -281,7 +288,7 @@ export function ProductListClient({
     <div className="flex flex-1 min-h-0 flex-col gap-4">
       {/* Toolbar — single row */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
-        <form onSubmit={handleSearch} className="relative flex-1 min-w-[220px]">
+        <form onSubmit={handleSearch} className="relative flex-1 min-w-55">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchRef}
@@ -311,7 +318,7 @@ export function ProductListClient({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-w-[150px] cursor-pointer justify-between gap-2 px-3 font-normal"
+              className="h-9 min-w-37.5 cursor-pointer justify-between gap-2 px-3 font-normal"
             >
               <span className="inline-flex items-center gap-1.5">
                 {activeTypeOption.icon}
@@ -320,7 +327,7 @@ export function ProductListClient({
               <ChevronDown className="h-3.5 w-3.5 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[180px]">
+          <DropdownMenuContent align="start" className="min-w-45">
             {typeOptions.map((opt) => (
               <DropdownMenuItem
                 key={opt.value || "all"}
@@ -339,16 +346,13 @@ export function ProductListClient({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-w-[180px] cursor-pointer justify-between gap-2 px-3 font-normal"
+              className="h-9 min-w-45 cursor-pointer justify-between gap-2 px-3 font-normal"
             >
               <span className="truncate">{categoryLabel}</span>
               <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="min-w-[240px] max-h-[360px] overflow-y-auto"
-          >
+          <DropdownMenuContent align="start" className="min-w-60 max-h-90 overflow-y-auto">
             <DropdownMenuItem
               onSelect={() => updateParam("categoryId", "")}
               className="cursor-pointer text-sm text-muted-foreground"
@@ -536,7 +540,7 @@ export function ProductListClient({
                       target.closest("[role='menu']")
                     )
                       return;
-                    router.push(`/app/products/${p.id}`);
+                    router.push(`/app/products/${p.id}/overview`);
                   }}
                 >
                   <TableCell>
@@ -547,7 +551,7 @@ export function ProductListClient({
                         className="group relative flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30 transition-colors hover:border-primary/50"
                         aria-label={`Ver imagem de ${p.name}`}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {/* biome-ignore lint/performance/noImgElement: external user-provided URL */}
                         <img src={imageUrl} alt="" className="h-full w-full object-contain" />
                         <span className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition-opacity group-hover:opacity-100">
                           <Eye className="h-4 w-4 text-white" />
@@ -632,7 +636,7 @@ export function ProductListClient({
                           </span>
                           <span
                             role="tooltip"
-                            className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden min-w-[200px] rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/storeprice:block"
+                            className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden min-w-50 rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/storeprice:block"
                           >
                             <span className="block px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                               Preços por loja
@@ -742,7 +746,7 @@ export function ProductListClient({
                           )}
                           <span
                             role="tooltip"
-                            className="pointer-events-none absolute right-0 top-full z-20 mt-1.5 hidden min-w-[220px] rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/stockpop:block"
+                            className="pointer-events-none absolute right-0 top-full z-20 mt-1.5 hidden min-w-55 rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/stockpop:block"
                           >
                             <span className="block px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                               Estoque por loja
@@ -802,7 +806,7 @@ export function ProductListClient({
                         </span>
                         <span
                           role="tooltip"
-                          className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden min-w-[160px] rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/fiscal:block"
+                          className="pointer-events-none absolute right-0 top-full z-50 mt-1.5 hidden w-max min-w-30 rounded-md border border-border bg-popover p-2 text-left text-xs shadow-lg group-hover/fiscal:block"
                         >
                           {p.taxData.map((tx) => (
                             <span
@@ -853,8 +857,14 @@ export function ProductListClient({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
-                        className="min-w-[160px] rounded-lg border-border bg-popover p-1 shadow-lg"
+                        className="min-w-40 rounded-lg border-border bg-popover p-1 shadow-lg"
                       >
+                        <DropdownMenuItem asChild className="cursor-pointer rounded-md text-[13px]">
+                          <Link href={`/app/products/${p.id}/overview`}>
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                            Ver detalhes
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem asChild className="cursor-pointer rounded-md text-[13px]">
                           <Link href={`/app/products/${p.id}`}>
                             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
@@ -919,7 +929,7 @@ export function ProductListClient({
             <X className="h-5 w-5" />
           </button>
           <div className="relative z-10 flex h-full items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* biome-ignore lint/performance/noImgElement: external user-provided URL */}
             <img
               src={lightbox.src}
               alt={lightbox.name}
@@ -1033,7 +1043,7 @@ function QuickToggle({
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-foreground">
-      <span className="truncate max-w-[180px]">{label}</span>
+      <span className="truncate max-w-45">{label}</span>
       <button
         type="button"
         onClick={onRemove}

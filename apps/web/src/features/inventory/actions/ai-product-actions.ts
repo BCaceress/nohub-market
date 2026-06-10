@@ -138,35 +138,78 @@ interface GeminiFullResult {
 
 const UA = "NoHubMarket/1.0 (https://nohub.com.br; contact@nohub.com.br) Node.js";
 
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"] as const;
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_JSON_CONFIG = {
   responseMimeType: "application/json",
   thinkingConfig: { thinkingBudget: 0 },
 } as const;
 
-async function geminiGenerateJson(apiKey: string, prompt: string): Promise<string | null> {
-  const { GoogleGenAI } = await import("@google/genai");
-  const ai = new GoogleGenAI({ apiKey });
+// Fallback rápido/barato quando o Gemini falha ou bate 429/503.
+const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5";
 
-  for (const model of GEMINI_MODELS) {
+/** Remove cercas ```json … ``` que alguns modelos teimam em adicionar. */
+function stripJsonFences(text: string): string {
+  const t = text.trim();
+  if (!t.startsWith("```")) return t;
+  return t
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+}
+
+/**
+ * Gera JSON a partir de uma instrução estática (`system`) + dados voláteis do
+ * produto (`volatile`). Tenta Gemini 2.5 Flash primeiro; em erro/429/503 cai
+ * para a API do Claude (Haiku). Retorna a string JSON crua ou null.
+ *
+ * O `system` é mantido idêntico entre chamadas de um mesmo lote de scan, então
+ * o caminho Claude o envia com cache_control (prompt caching) — leituras de
+ * cache baratas durante rajadas de cadastro.
+ */
+async function generateJson(system: string, volatile: string): Promise<string | null> {
+  const geminiKey = process.env.GOOGLE_GEMINI_API_KEY;
+  if (geminiKey) {
     try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
       const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
+        model: GEMINI_MODEL,
+        contents: `${system}\n\n${volatile}`,
         config: GEMINI_JSON_CONFIG,
       });
       const text = (response.text ?? "").trim();
-      if (text) return text;
+      if (text) return stripJsonFences(text);
     } catch (err) {
       const status = (err as { status?: number })?.status;
-      if (status === 503 || status === 429) {
-        console.warn(`[barcode] ${model} unavailable (${status}), trying fallback`);
-        continue;
-      }
-      throw err;
+      console.warn(`[barcode] gemini-2.5-flash falhou (${status ?? "erro"}), tentando Claude`);
     }
   }
-  return null;
+  return claudeGenerateJson(system, volatile);
+}
+
+async function claudeGenerateJson(system: string, volatile: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn("[barcode] ANTHROPIC_API_KEY ausente — sem fallback Claude");
+    return null;
+  }
+  try {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    const client = new Anthropic({ apiKey });
+    const res = await client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      // Instrução estática cacheada (prefix-match). Dados do produto no turno do usuário.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: volatile }],
+    });
+    const block = res.content.find((b) => b.type === "text");
+    const text = block && block.type === "text" ? block.text.trim() : "";
+    return text ? stripJsonFences(text) : null;
+  } catch (err) {
+    console.error("[barcode] Claude fallback error:", err);
+    return null;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -344,8 +387,8 @@ async function enrichWithGeminiContext(params: {
   tags: ContextTag[];
   taxRegime?: string | null;
 }): Promise<GeminiFullResult | null> {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!apiKey) return null;
+  // Precisa de ao menos um provedor (Gemini ou Claude p/ fallback).
+  if (!process.env.GOOGLE_GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return null;
 
   const { barcode, cosmosData, categories, tags, taxRegime } = params;
   const isSimples = taxRegime === "SIMPLES_NACIONAL" || taxRegime === "MEI" || !taxRegime;
@@ -372,22 +415,10 @@ async function enrichWithGeminiContext(params: {
           .join("\n")
       : "  (sem variantes de embalagem)";
 
-    const prompt = `Você é especialista fiscal e de varejo brasileiro.
-Analise os dados do produto abaixo e retorne um JSON completo em PT-BR para cadastro em sistema de varejo.
-
-## Dados do produto (Cosmos Bluesoft — fonte confiável BR)
-- EAN: ${barcode}
-- Nome bruto: ${cosmosData.name}
-- Marca: ${cosmosData.brand ?? "desconhecida"}
-- Categoria Cosmos: ${cosmosData.category ?? "não informada"}
-- NCM: ${cosmosData.ncmCode ?? "desconhecido"} — ${cosmosData.ncmDescription ?? ""}
-- CEST: ${cosmosData.cestCode ?? "não informado"}
-- Peso líquido: ${cosmosData.weight ? `${cosmosData.weight}g` : "não informado"}
-- Peso bruto: ${cosmosData.grossWeight ? `${cosmosData.grossWeight}g` : "não informado"}
-- Preço médio mercado: ${cosmosData.avgPrice ? `R$ ${cosmosData.avgPrice.toFixed(2)}` : "não informado"}
-
-## Variantes de embalagem
-${gtinsSummary}
+    // Instrução estática (cacheável): tarefa + listas do sistema + regime + schema.
+    // Mantida idêntica entre scans do mesmo lote → prompt caching no Claude.
+    const system = `Você é especialista fiscal e de varejo brasileiro.
+Analise os dados do produto fornecidos pelo usuário e retorne um JSON completo em PT-BR para cadastro em sistema de varejo.
 
 ## Categorias disponíveis no sistema
 [${catList}]
@@ -423,8 +454,8 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
   "category": "nome da categoria escolhida ou null",
   "suggestedTagIds": ["IDs de tags existentes relevantes (0–8)"],
   "suggestedNewTags": [{"name":"nome PT-BR","group":"geral|tipo|volume|temperatura|dieta|comercial|operacional"}],
-  "ncm": "${cosmosData.ncmCode ?? "NCM de 8 dígitos"}",
-  "cest": "${cosmosData.cestCode ?? "7 dígitos ou null"}",
+  "ncm": "NCM de 8 dígitos (confirme/corrija o informado nos dados do produto)",
+  "cest": "CEST de 7 dígitos ou null",
   "cfopInternal": "${isSimples ? "5405" : "5102"} — ajuste se necessário",
   "cfopInterstate": "${isSimples ? "6404" : "6102"} — ajuste se necessário",
   "origin": "NACIONAL ou IMPORTADO_DIRETO ou IMPORTADO_NACIONAL",
@@ -439,7 +470,22 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
   "cofinsCst": "${isSimples ? "07" : "01"}"
 }`;
 
-    const text = await geminiGenerateJson(apiKey, prompt);
+    // Dados voláteis do produto — variam a cada EAN, ficam no turno do usuário.
+    const volatile = `## Dados do produto (Cosmos Bluesoft — fonte confiável BR)
+- EAN: ${barcode}
+- Nome bruto: ${cosmosData.name}
+- Marca: ${cosmosData.brand ?? "desconhecida"}
+- Categoria Cosmos: ${cosmosData.category ?? "não informada"}
+- NCM: ${cosmosData.ncmCode ?? "desconhecido"} — ${cosmosData.ncmDescription ?? ""}
+- CEST: ${cosmosData.cestCode ?? "não informado"}
+- Peso líquido: ${cosmosData.weight ? `${cosmosData.weight}g` : "não informado"}
+- Peso bruto: ${cosmosData.grossWeight ? `${cosmosData.grossWeight}g` : "não informado"}
+- Preço médio mercado: ${cosmosData.avgPrice ? `R$ ${cosmosData.avgPrice.toFixed(2)}` : "não informado"}
+
+## Variantes de embalagem
+${gtinsSummary}`;
+
+    const text = await generateJson(system, volatile);
     if (!text) return null;
 
     const data = JSON.parse(text) as GeminiFullResult & { unknown?: boolean };
@@ -469,12 +515,11 @@ ${isSimples ? "Simples Nacional / MEI → usar CSOSN (3 dígitos), campo icmsCst
 ───────────────────────────────────────────────────────────────────── */
 
 async function lookupWithGeminiBarcode(barcode: string): Promise<OpenFoodFactsProduct | null> {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.GOOGLE_GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) return null;
 
   try {
-    const prompt = `Você é especialista em produtos de varejo brasileiro.
-Com base no código EAN ${barcode}, identifique o produto.
+    const system = `Você é especialista em produtos de varejo brasileiro.
+Identifique o produto a partir do código EAN fornecido pelo usuário.
 Se não conhecer, retorne: {"unknown": true}
 
 Retorne JSON:
@@ -491,7 +536,7 @@ Retorne JSON:
 
 Retorne APENAS JSON válido, sem markdown.`;
 
-    const text = await geminiGenerateJson(apiKey, prompt);
+    const text = await generateJson(system, `EAN: ${barcode}`);
     if (!text) return null;
 
     const data = JSON.parse(text) as {
@@ -542,7 +587,8 @@ export async function lookupProductByBarcodeAction(
     return { success: false, error: "Código de barras inválido (8–14 dígitos)" };
   }
 
-  const hasGemini = !!process.env.GOOGLE_GEMINI_API_KEY;
+  // Tem LLM disponível? Gemini 2.5 (primário) ou Claude (fallback).
+  const hasLlm = !!process.env.GOOGLE_GEMINI_API_KEY || !!process.env.ANTHROPIC_API_KEY;
 
   // Fetch Cosmos + org context in parallel
   const [cosmosData, orgContext] = await Promise.all([
@@ -575,8 +621,8 @@ export async function lookupProductByBarcodeAction(
 
   console.log("[barcode] Cosmos result:", JSON.stringify(cosmosData, null, 2));
 
-  // ── Path 1: Cosmos + Gemini full context ─────────────────────
-  if (cosmosData && hasGemini) {
+  // ── Path 1: Cosmos + enriquecimento LLM (Gemini → Claude) ────
+  if (cosmosData && hasLlm) {
     const geminiResult = await enrichWithGeminiContext({
       barcode: cleaned,
       cosmosData,
@@ -657,8 +703,8 @@ export async function lookupProductByBarcodeAction(
     return { success: true, data: cosmosToProduct(cosmosData) };
   }
 
-  // ── Path 3: Gemini barcode-only (no Cosmos token or not found) ─
-  if (hasGemini) {
+  // ── Path 3: barcode-only via LLM (sem Cosmos / não encontrado) ─
+  if (hasLlm) {
     const geminiOnly = await lookupWithGeminiBarcode(cleaned);
     console.log("[barcode] Gemini barcode-only result:", JSON.stringify(geminiOnly, null, 2));
     if (geminiOnly) return { success: true, data: geminiOnly };

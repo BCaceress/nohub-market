@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 const TabsCtx = createContext<{
   value: string;
   onValueChange: (v: string) => void;
-}>({ value: "", onValueChange: () => {} });
+  expandAll: boolean;
+}>({ value: "", onValueChange: () => {}, expandAll: false });
 
 /* ── Root ───────────────────────────────────────────────────── */
 
@@ -17,14 +18,17 @@ export function Tabs({
   onValueChange,
   children,
   className,
+  expandAll = false,
 }: {
   value: string;
   onValueChange: (v: string) => void;
   children: React.ReactNode;
   className?: string;
+  /** Renderiza todos os TabsContent empilhados (modo página única). */
+  expandAll?: boolean;
 }) {
   return (
-    <TabsCtx.Provider value={{ value, onValueChange }}>
+    <TabsCtx.Provider value={{ value, onValueChange, expandAll }}>
       <div className={cn("flex flex-col", className)}>{children}</div>
     </TabsCtx.Provider>
   );
@@ -146,7 +150,7 @@ export function TabsContent({
   children: React.ReactNode;
   className?: string;
 }) {
-  const { value: active } = useContext(TabsCtx);
-  if (active !== value) return null;
+  const { value: active, expandAll } = useContext(TabsCtx);
+  if (!expandAll && active !== value) return null;
   return <div className={cn("mt-0", className)}>{children}</div>;
 }

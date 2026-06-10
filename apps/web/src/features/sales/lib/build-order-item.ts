@@ -8,7 +8,7 @@
 
 import type { OrderChannel } from "@nohub/db";
 import { prisma } from "@nohub/db";
-import { resolvePrice, resolveTax } from "@nohub/db/catalog";
+import { convertQuantity, resolvePrice, resolveTax } from "@nohub/db/catalog";
 
 export type BuildOrderItemInput = {
   organizationId: string;
@@ -18,6 +18,19 @@ export type BuildOrderItemInput = {
   channel?: OrderChannel | null;
   quantity: number;
   discountAmount?: number;
+  // CUSTOM — ids das opções escolhidas no PDV (resolvidas server-side)
+  selectedOptionIds?: string[];
+};
+
+export type SelectionSnapshot = {
+  groupId: string;
+  optionId: string;
+  componentProductId: string;
+  componentVariantId: string | null;
+  groupNameSnapshot: string;
+  optionNameSnapshot: string;
+  quantitySnapshot: number;
+  priceDeltaSnapshot: number;
 };
 
 export type OrderItemSnapshot = {
@@ -34,6 +47,7 @@ export type OrderItemSnapshot = {
   discountAmount: number;
   lineTotal: number;
   isKit: boolean;
+  selections: SelectionSnapshot[];
 };
 
 export type BuildItemResult =
@@ -100,6 +114,80 @@ export async function buildOrderItem(input: BuildOrderItemInput): Promise<BuildI
     unitPrice = Number(priceResult.data.effectivePrice);
   }
 
+  // CUSTOM — resolve escolhas server-side (preço/nome vêm do banco, não do cliente)
+  const selections: SelectionSnapshot[] = [];
+  let customCost = 0; // custo somado dos componentes (fixos + escolhidos)
+  if (product.productType === "CUSTOM") {
+    const groups = await prisma.productOptionGroup.findMany({
+      where: { productId: input.productId, organizationId: input.organizationId },
+      include: {
+        options: {
+          include: { componentProduct: { select: { unit: true, costPrice: true } } },
+        },
+      },
+    });
+
+    const selectedIds = new Set(input.selectedOptionIds ?? []);
+
+    for (const group of groups) {
+      const chosen = group.options.filter((o) => selectedIds.has(o.id));
+      const count = chosen.length;
+
+      if (group.required && count < group.minSelect) {
+        return {
+          success: false,
+          error: `Escolha ao menos ${group.minSelect} em "${group.name}"`,
+        };
+      }
+      if (count > group.maxSelect) {
+        return {
+          success: false,
+          error: `Máximo de ${group.maxSelect} em "${group.name}"`,
+        };
+      }
+
+      for (const opt of chosen) {
+        // Converte da unidade do grupo para a unidade de estoque do insumo
+        const stockUnit = opt.componentProduct.unit;
+        const stockQty = convertQuantity(Number(opt.quantity), group.unit, stockUnit);
+        const cost = opt.componentProduct.costPrice ? Number(opt.componentProduct.costPrice) : 0;
+        customCost += cost * stockQty;
+
+        selections.push({
+          groupId: group.id,
+          optionId: opt.id,
+          componentProductId: opt.componentProductId,
+          componentVariantId: opt.componentVariantId,
+          groupNameSnapshot: group.name,
+          optionNameSnapshot: opt.name,
+          quantitySnapshot: stockQty, // já na unidade de estoque (baixa direta)
+          priceDeltaSnapshot: Number(opt.priceDelta),
+        });
+      }
+    }
+
+    // Rejeita ids enviados que não pertencem a nenhum grupo deste produto
+    const validIds = new Set(selections.map((s) => s.optionId));
+    for (const id of selectedIds) {
+      if (!validIds.has(id)) {
+        return { success: false, error: "Opção inválida para este produto" };
+      }
+    }
+
+    // Custo dos itens fixos (ProductKitComponent) — já na unidade do insumo
+    const fixed = await prisma.productKitComponent.findMany({
+      where: { kitProductId: input.productId },
+      include: { componentProduct: { select: { costPrice: true } } },
+    });
+    for (const f of fixed) {
+      const cost = f.componentProduct.costPrice ? Number(f.componentProduct.costPrice) : 0;
+      customCost += cost * Number(f.quantity);
+    }
+
+    // Acréscimo das escolhas soma ao preço unitário base
+    unitPrice += selections.reduce((s, sel) => s + sel.priceDeltaSnapshot, 0);
+  }
+
   // Resolve tax snapshot (Etapa 2 — best-effort)
   let taxSnapshot: Record<string, unknown> | null = null;
   const taxResult = await resolveTax({
@@ -139,13 +227,19 @@ export async function buildOrderItem(input: BuildOrderItemInput): Promise<BuildI
       skuSnapshot: product.sku ?? null,
       unitSnapshot: product.unit,
       unitPriceSnapshot: unitPrice,
-      costSnapshot: product.costPrice ? Number(product.costPrice) : null,
+      costSnapshot:
+        product.productType === "CUSTOM"
+          ? customCost
+          : product.costPrice
+            ? Number(product.costPrice)
+            : null,
       taxSnapshot,
       productTypeSnapshot: product.productType,
       quantity: input.quantity,
       discountAmount: discount,
       lineTotal,
       isKit: product.productType === "KIT",
+      selections,
     },
   };
 }

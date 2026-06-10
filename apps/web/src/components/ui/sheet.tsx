@@ -71,8 +71,10 @@ export function Sheet({ open, onClose, children, className, side = "right" }: Sh
         ref={overlayRef}
         aria-modal="true"
         className={cn(
-          "fixed top-0 z-50 m-0 flex h-full flex-col border-0 bg-card p-0 shadow-2xl transition-transform duration-300 ease-out",
-          side === "right" ? "right-0" : "left-0",
+          "fixed top-0 z-50 m-0 flex h-full flex-col border-0 bg-card text-foreground p-0 shadow-2xl transition-transform duration-300 ease-out",
+          side === "right"
+            ? "right-0 left-auto border-l border-border/60"
+            : "left-0 right-auto border-r border-border/60",
           side === "right"
             ? open
               ? "translate-x-0"
@@ -99,18 +101,18 @@ interface SheetHeaderProps {
 
 export function SheetHeader({ title, description, onClose, actions }: SheetHeaderProps) {
   return (
-    <div className="flex items-start gap-3 border-b border-border px-5 py-4 shrink-0">
+    <div className="flex items-start gap-3 border-b border-border bg-card px-5 py-4 shrink-0">
       <div className="flex-1 min-w-0">
-        <h2 className="text-base font-semibold leading-tight">{title}</h2>
+        <h2 className="text-sm font-semibold leading-tight text-foreground">{title}</h2>
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 shrink-0 pt-0.5">{actions}</div>}
       <button
         type="button"
         onClick={onClose}
-        className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="mt-0.5 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Fechar"
       >
         <X className="h-4 w-4" />
