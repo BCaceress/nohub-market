@@ -1,4 +1,5 @@
 "use client";
+
 import {
   ArrowLeft,
   Boxes,
@@ -26,7 +27,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
