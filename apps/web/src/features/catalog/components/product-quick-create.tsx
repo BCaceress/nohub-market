@@ -1,5 +1,4 @@
 "use client";
-
 import {
   ArrowLeft,
   Boxes,
@@ -27,6 +26,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -97,7 +97,12 @@ interface Props {
   product?: ExistingProduct;
   initialPackages?: ProductPackage[];
   /** Abas extras (ex.: Variantes, Composição) na edição — evita aba-sobre-aba. */
-  extraTabs?: { value: string; label: string; badge?: number; content: React.ReactNode }[];
+  extraTabs?: {
+    value: string;
+    label: string;
+    badge?: number;
+    content: React.ReactNode;
+  }[];
 }
 
 type ExistingTaxData = {
@@ -168,9 +173,24 @@ const PRODUCT_TYPE_OPTIONS: {
   hint: string;
   icon: LucideIcon;
 }[] = [
-  { value: "SIMPLE", label: "Simples", hint: "Produto unitário padrão", icon: Package },
-  { value: "FRACTIONED", label: "Fracionado", hint: "Vendido por peso/volume", icon: Scale },
-  { value: "KIT", label: "Combo / Kit", hint: "Baixa estoque dos componentes", icon: Layers },
+  {
+    value: "SIMPLE",
+    label: "Simples",
+    hint: "Produto unitário padrão",
+    icon: Package,
+  },
+  {
+    value: "FRACTIONED",
+    label: "Fracionado",
+    hint: "Vendido por peso/volume",
+    icon: Scale,
+  },
+  {
+    value: "KIT",
+    label: "Combo / Kit",
+    hint: "Baixa estoque dos componentes",
+    icon: Layers,
+  },
   {
     value: "CUSTOM",
     label: "Personalizado",
@@ -226,12 +246,21 @@ const TAX_ORIGIN_OPTIONS = [
   { value: "NACIONAL", label: "0 — Nacional" },
   { value: "IMPORTADO_DIRETO", label: "1 — Importado direto" },
   { value: "IMPORTADO_NACIONAL", label: "2 — Importado, nacional" },
-  { value: "NACIONAL_MAIS_40_IMPORTADO", label: "3 — Nacional, > 40% importado" },
-  { value: "NACIONAL_MENOS_40_IMPORTADO", label: "4 — Nacional, ≤ 40% importado" },
+  {
+    value: "NACIONAL_MAIS_40_IMPORTADO",
+    label: "3 — Nacional, > 40% importado",
+  },
+  {
+    value: "NACIONAL_MENOS_40_IMPORTADO",
+    label: "4 — Nacional, ≤ 40% importado",
+  },
   { value: "NACIONAL_SEM_SIMILAR", label: "5 — Nacional, sem similar" },
   { value: "ESTRANGEIRO_DIRETO", label: "6 — Estrangeiro direto" },
   { value: "ESTRANGEIRO_NACIONAL", label: "7 — Estrangeiro, mercado interno" },
-  { value: "NACIONAL_MENOS_70_IMPORTADO", label: "8 — Nacional, > 70% importado" },
+  {
+    value: "NACIONAL_MENOS_70_IMPORTADO",
+    label: "8 — Nacional, > 70% importado",
+  },
 ];
 
 type TaxForm = {
@@ -885,7 +914,15 @@ export function ProductQuickCreate({
     setKitItems((prev) =>
       prev.some((it) => it.componentProductId === p.id)
         ? prev
-        : [...prev, { componentProductId: p.id, name: p.name, unit: p.unit, quantity: "1" }],
+        : [
+            ...prev,
+            {
+              componentProductId: p.id,
+              name: p.name,
+              unit: p.unit,
+              quantity: "1",
+            },
+          ],
     );
     setKitQuery("");
     setKitResults([]);
@@ -961,7 +998,10 @@ export function ProductQuickCreate({
     if (existing && existing.id !== product?.id) {
       setBcStatus("duplicate");
       toast.error(`Já cadastrado: ${existing.name}`, {
-        action: { label: "Abrir", onClick: () => router.push(`/app/products/${existing.id}`) },
+        action: {
+          label: "Abrir",
+          onClick: () => router.push(`/app/products/${existing.id}`),
+        },
       });
       return;
     }
@@ -1280,7 +1320,11 @@ export function ProductQuickCreate({
       }
       if (mode === "new") {
         const next = await generateNextSkuAction(organizationId);
-        setForm({ sku: next.success ? next.sku : "", ...EMPTY, productType: creationType });
+        setForm({
+          sku: next.success ? next.sku : "",
+          ...EMPTY,
+          productType: creationType,
+        });
         setTax(EMPTY_TAX);
         setTags([]);
         setSupplierIds([]);
@@ -1925,8 +1969,8 @@ export function ProductQuickCreate({
                 <p className="text-xs text-muted-foreground">
                   Fardo, caixa, pacote… Cada nível tem seu código de barras (se houver) e quantos
                   itens do nível abaixo cabem nele. A última coluna mostra a equivalência na unidade
-                  de controle (<span className="font-mono uppercase">{form.unit || "UN"}</span>),
-                  convertida automaticamente em compras, vendas e movimentações.
+                  de controle (<span className="font-mono uppercase">{form.unit || "UN"}</span>
+                  ), convertida automaticamente em compras, vendas e movimentações.
                 </p>
                 <div className="overflow-hidden rounded-lg border border-border">
                   <div className="grid grid-cols-[1.1fr_1.6fr_0.9fr_0.8fr_auto] gap-2 bg-surface-1/50 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
