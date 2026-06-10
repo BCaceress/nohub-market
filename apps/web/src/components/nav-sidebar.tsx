@@ -49,91 +49,80 @@ type NavRoot = {
   children?: NavLeaf[];
 };
 
+type NavGroup = {
+  label: string;
+  items: NavRoot[];
+};
+
 const ALL: Role[] = ["owner", "admin", "manager", "operator", "viewer"];
 const MGMT: Role[] = ["owner", "admin", "manager"];
 const STAFF: Role[] = ["owner", "admin", "manager", "operator"];
 const ADMIN: Role[] = ["owner", "admin"];
 
-/* ── Tree ────────────────────────────────────────────────────── */
+/* ── Tree — agrupada por contexto de trabalho ───────────────── */
 
-const NAV: NavRoot[] = [
+const NAV_GROUPS: NavGroup[] = [
   {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: BarChart3,
-    href: "/app",
-    roles: ALL,
+    label: "Operação",
+    items: [
+      { key: "dashboard", label: "Dashboard", icon: BarChart3, href: "/app", roles: ALL },
+      { key: "pdv", label: "PDV", icon: ShoppingCart, href: "/app/sales/pos", roles: ALL },
+      { key: "online", label: "Online", icon: Globe, href: "/app/sales/online", roles: MGMT },
+      { key: "customers", label: "Clientes", icon: Users, href: "/app/customers", roles: STAFF },
+    ],
   },
   {
-    key: "pdv",
-    label: "PDV",
-    icon: ShoppingCart,
-    href: "/app/sales/pos",
-    roles: ALL,
+    label: "Catálogo",
+    items: [
+      {
+        key: "catalog",
+        label: "Produtos",
+        icon: ShoppingBag,
+        href: "/app/products",
+        roles: MGMT.concat("viewer"),
+      },
+      {
+        key: "inventory",
+        label: "Estoque",
+        icon: Boxes,
+        href: "/app/inventory",
+        roles: MGMT.concat("viewer"),
+      },
+      { key: "purchasing", label: "Compras", icon: Truck, href: "/app/purchasing", roles: MGMT },
+    ],
   },
   {
-    key: "online",
-    label: "Online",
-    icon: Globe,
-    href: "/app/sales/online",
-    roles: MGMT,
-  },
-  {
-    key: "customers",
-    label: "Clientes",
-    icon: Users,
-    href: "/app/customers",
-    roles: STAFF,
-  },
-  {
-    key: "catalog",
-    label: "Produtos",
-    icon: ShoppingBag,
-    href: "/app/products",
-    roles: MGMT.concat("viewer"),
-  },
-  {
-    key: "inventory",
-    label: "Estoque",
-    icon: Boxes,
-    href: "/app/inventory",
-    roles: MGMT.concat("viewer"),
-  },
-  {
-    key: "purchasing",
-    label: "Compras",
-    icon: Truck,
-    href: "/app/purchasing",
-    roles: MGMT,
-  },
-  {
-    key: "financeiro",
-    label: "Financeiro",
-    icon: Wallet,
-    href: "/app/financeiro",
-    roles: MGMT,
-  },
-  {
-    key: "reports",
-    label: "Relatórios",
-    icon: BarChart3,
-    href: "/app/reports",
-    roles: MGMT,
-  },
-  {
-    key: "settings",
-    label: "Configurar",
-    icon: Settings,
-    roles: ADMIN,
-    children: [
-      { href: "/app/settings", label: "Organização", icon: Building2, roles: ADMIN },
-      { href: "/app/settings/team", label: "Time", icon: Users, roles: ADMIN },
-      { href: "/app/locations", label: "Unidades", icon: MapPin, roles: ADMIN },
-      { href: "/app/suppliers", label: "Fornecedores", icon: Package, roles: ADMIN },
-      { href: "/app/fiscal/invoices", label: "Notas fiscais", icon: FileText, roles: ADMIN },
-      { href: "/app/fiscal/settings", label: "Fiscal", icon: Settings2, roles: ADMIN },
-      { href: "/app/fiscal/skip-numbers", label: "Inutilização", icon: SkipForward, roles: ADMIN },
-      { href: "/app/audit", label: "Auditoria", icon: History, roles: ADMIN },
+    label: "Gestão",
+    items: [
+      {
+        key: "financeiro",
+        label: "Financeiro",
+        icon: Wallet,
+        href: "/app/financeiro",
+        roles: MGMT,
+      },
+      { key: "reports", label: "Relatórios", icon: BarChart3, href: "/app/reports", roles: MGMT },
+      {
+        key: "settings",
+        label: "Configurar",
+        icon: Settings,
+        roles: ADMIN,
+        children: [
+          { href: "/app/settings", label: "Organização", icon: Building2, roles: ADMIN },
+          { href: "/app/settings/team", label: "Time", icon: Users, roles: ADMIN },
+          { href: "/app/locations", label: "Unidades", icon: MapPin, roles: ADMIN },
+          { href: "/app/suppliers", label: "Fornecedores", icon: Package, roles: ADMIN },
+          { href: "/app/fiscal/invoices", label: "Notas fiscais", icon: FileText, roles: ADMIN },
+          { href: "/app/fiscal/settings", label: "Fiscal", icon: Settings2, roles: ADMIN },
+          {
+            href: "/app/fiscal/skip-numbers",
+            label: "Inutilização",
+            icon: SkipForward,
+            roles: ADMIN,
+          },
+          { href: "/app/audit", label: "Auditoria", icon: History, roles: ADMIN },
+        ],
+      },
     ],
   },
 ];
@@ -145,15 +134,20 @@ function allowed(roles: Role[] | undefined, role: Role): boolean {
   return roles.includes(role);
 }
 
-function filterTree(tree: NavRoot[], role: Role): NavRoot[] {
-  return tree
-    .filter((r) => allowed(r.roles, role))
-    .map((r) => {
-      if (!r.children) return r;
-      const children = r.children.filter((c) => allowed(c.roles, role));
-      return { ...r, children };
-    })
-    .filter((r) => !r.children || r.children.length > 0);
+function filterGroups(groups: NavGroup[], role: Role): NavGroup[] {
+  return groups
+    .map((g) => ({
+      ...g,
+      items: g.items
+        .filter((r) => allowed(r.roles, role))
+        .map((r) => {
+          if (!r.children) return r;
+          const children = r.children.filter((c) => allowed(c.roles, role));
+          return { ...r, children };
+        })
+        .filter((r) => !r.children || r.children.length > 0),
+    }))
+    .filter((g) => g.items.length > 0);
 }
 
 function isPathActive(href: string, pathname: string): boolean {
@@ -190,12 +184,16 @@ export function NavSidebar({
   ) as Role;
   const pathname = usePathname();
 
-  const tree = useMemo(() => {
-    const filtered = filterTree(NAV, safeRole);
+  const groups = useMemo(() => {
+    const filtered = filterGroups(NAV_GROUPS, safeRole);
     if (!onlineBadge) return filtered;
-    return filtered.map((r) => (r.key === "online" ? { ...r, badge: String(onlineBadge) } : r));
+    return filtered.map((g) => ({
+      ...g,
+      items: g.items.map((r) => (r.key === "online" ? { ...r, badge: String(onlineBadge) } : r)),
+    }));
   }, [safeRole, onlineBadge]);
-  const activeKey = useMemo(() => rootActiveKey(tree, pathname), [tree, pathname]);
+  const allRoots = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const activeKey = useMemo(() => rootActiveKey(allRoots, pathname), [allRoots, pathname]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(activeKey);
@@ -288,19 +286,42 @@ export function NavSidebar({
         data-scrollarea="sidebar"
         className={cn(
           "flex flex-1 flex-col overflow-y-auto overflow-x-visible py-3",
-          collapsed ? "px-2 gap-1" : "px-2 gap-0.5",
+          collapsed ? "px-2" : "px-2",
         )}
       >
-        {tree.map((root) => (
-          <RootItem
-            key={root.key}
-            root={root}
-            collapsed={collapsed}
-            open={openKey === root.key}
-            active={activeKey === root.key}
-            pathname={pathname}
-            onToggle={() => toggleSection(root.key)}
-          />
+        {groups.map((group, gi) => (
+          <div
+            key={group.label}
+            className={cn("flex flex-col", collapsed ? "gap-1" : "gap-0.5", gi > 0 && "mt-1.5")}
+          >
+            {collapsed ? (
+              gi > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="mx-auto my-1 h-px w-6 rounded-full"
+                  style={{ background: "var(--sidebar-border)" }}
+                />
+              )
+            ) : (
+              <span
+                className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] opacity-45"
+                style={{ color: "var(--sidebar-foreground)" }}
+              >
+                {group.label}
+              </span>
+            )}
+            {group.items.map((root) => (
+              <RootItem
+                key={root.key}
+                root={root}
+                collapsed={collapsed}
+                open={openKey === root.key}
+                active={activeKey === root.key}
+                pathname={pathname}
+                onToggle={() => toggleSection(root.key)}
+              />
+            ))}
+          </div>
         ))}
       </nav>
 

@@ -63,6 +63,24 @@ const FEATURES = [
   },
 ] as const;
 
+const STATS = [
+  {
+    value: "10min",
+    label: "Configuração inicial",
+    desc: "Wizard guiado com CNPJ e CEP automático",
+  },
+  {
+    value: "3",
+    label: "Segmentos atendidos",
+    desc: "Conveniência, autônomo e delivery",
+  },
+  {
+    value: "R$0",
+    label: "Taxa de setup",
+    desc: "Sem custo inicial, sem fidelidade",
+  },
+] as const;
+
 const BENEFITS = [
   "Sem taxa de setup",
   "Cancele quando quiser",
@@ -76,12 +94,12 @@ export default function LandingPage() {
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 text-foreground no-underline">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="text-[11px] font-bold">N</span>
             </div>
-            <span className="text-sm font-semibold">NoHub Market</span>
-          </div>
+            <span className="text-sm font-semibold tracking-tight">NoHub Market</span>
+          </Link>
           <nav className="flex items-center gap-2">
             <Link
               href="/signin"
@@ -101,32 +119,41 @@ export default function LandingPage() {
       </header>
 
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-border/50 bg-background">
-        {/* Subtle radial background */}
+      <section className="relative overflow-hidden border-b border-border/50">
+        {/* Warm radial glow */}
         <div
+          aria-hidden="true"
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 50% -10%, rgb(37 99 235 / 0.06) 0%, transparent 70%)",
+              "radial-gradient(ellipse 90% 70% at 50% -10%, rgb(249 115 22 / 0.08) 0%, transparent 65%)",
           }}
+        />
+        {/* Dot grid */}
+        <div
           aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{
+            backgroundImage: "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0)",
+            backgroundSize: "32px 32px",
+          }}
         />
 
         <div className="relative mx-auto flex max-w-4xl flex-col items-center px-6 py-24 text-center sm:py-32">
           {/* Pill badge */}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
             SaaS para varejo de proximidade
           </span>
 
           {/* Headline */}
-          <h1 className="mt-8 text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
+          <h1 className="font-display mt-8 text-[2.75rem] font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-[4.5rem]">
             O sistema que cresce{" "}
             <span
               className="bg-clip-text text-transparent"
               style={{
                 backgroundImage:
-                  "linear-gradient(135deg, var(--foreground) 30%, var(--accent) 100%)",
+                  "linear-gradient(135deg, var(--primary) 0%, #fb923c 55%, #fbbf24 100%)",
               }}
             >
               com seu negócio
@@ -168,23 +195,53 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Stats strip ─────────────────────────────────────────── */}
+      <section className="border-b border-border/60">
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="overflow-hidden rounded-2xl border border-border bg-border">
+            <div className="grid grid-cols-1 gap-px sm:grid-cols-3">
+              {STATS.map(({ value, label, desc }) => (
+                <div key={label} className="bg-card px-8 py-8 text-center">
+                  <p className="font-display text-[2.5rem] font-bold leading-none text-foreground">
+                    {value}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{label}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ────────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="mb-14 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">Tudo que sua operação precisa</h2>
+          <h2 className="font-display text-3xl font-bold tracking-tight">
+            Tudo que sua operação precisa
+          </h2>
           <p className="mt-3 text-muted-foreground">
             Uma plataforma completa, do cadastro ao omnichannel.
           </p>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, color, title, desc }) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ icon: Icon, color, title, desc }, i) => (
             <div
               key={title}
-              className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
             >
+              {/* Ghost number decoration */}
+              <span
+                aria-hidden="true"
+                className="font-display pointer-events-none absolute -right-1 -top-4 select-none text-[6rem] font-bold leading-none"
+                style={{ color: "var(--foreground)", opacity: 0.025 }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </span>
+
               <div
-                className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg ${color}`}
+                className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${color}`}
               >
                 <Icon className="h-5 w-5" />
               </div>
@@ -196,18 +253,47 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA section ─────────────────────────────────────────── */}
-      <section className="border-y border-border bg-primary">
-        <div className="mx-auto flex max-w-4xl flex-col items-center px-6 py-20 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-primary-foreground">
+      <section
+        className="relative overflow-hidden border-y border-border"
+        style={{ background: "var(--sidebar-background)" }}
+      >
+        {/* Dot grid texture */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.04) 1px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+        {/* Orange glow center */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 50% 50%, rgb(249 115 22 / 0.12) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center px-6 py-20 text-center">
+          <h2
+            className="font-display text-4xl font-bold tracking-tight sm:text-5xl"
+            style={{ color: "var(--sidebar-brand)" }}
+          >
             Pronto para configurar seu negócio?
           </h2>
-          <p className="mt-4 max-w-lg text-sm leading-relaxed text-primary-foreground/70">
+          <p
+            className="mt-4 max-w-lg text-sm leading-relaxed"
+            style={{ color: "var(--sidebar-foreground)" }}
+          >
             Crie sua conta e tenha a operação no ar em menos de 10 minutos. Sem cartão de crédito,
             sem contrato de fidelidade.
           </p>
           <Link
             href="/signup"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-primary shadow-sm transition-opacity hover:opacity-90"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-4 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90"
           >
             Criar conta gratuita
             <ArrowRight className="h-4 w-4" />

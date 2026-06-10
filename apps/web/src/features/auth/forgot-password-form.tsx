@@ -24,24 +24,48 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Verifique sua caixa de entrada.{" "}
-        <Link href="/signin" className="underline">
-          Voltar
-        </Link>
-      </p>
+      <div
+        className="rounded-xl px-4 py-4 text-sm"
+        style={{
+          background: "var(--success-soft)",
+          border: "1px solid rgb(21 128 61 / 0.2)",
+        }}
+      >
+        <p className="font-semibold" style={{ color: "var(--success)" }}>
+          Email enviado!
+        </p>
+        <p className="mt-1 text-muted-foreground">
+          Verifique sua caixa de entrada e a pasta de spam.{" "}
+          <Link href="/signin" className="font-medium text-foreground hover:underline">
+            Voltar ao login
+          </Link>
+        </p>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" required />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="seu@email.com"
+        />
       </div>
-      <Button type="submit" disabled={loading}>
-        {loading ? "Enviando..." : "Enviar link"}
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? "Enviando…" : "Enviar link de redefinição"}
       </Button>
+      <p className="text-center text-sm text-muted-foreground">
+        Lembrou a senha?{" "}
+        <Link href="/signin" className="font-medium text-foreground hover:underline">
+          Entrar
+        </Link>
+      </p>
     </form>
   );
 }
