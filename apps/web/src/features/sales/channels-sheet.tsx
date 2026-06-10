@@ -14,6 +14,7 @@ import {
   syncCatalogAction,
 } from "@/features/sales/actions/channel-actions";
 import { CHANNEL_CATALOG, findChannel } from "./channel-catalog";
+import { ChannelLogo } from "./channel-logo";
 
 export type ChannelIntegration = {
   id: string;
@@ -132,8 +133,8 @@ export function ChannelsSheet({
         {/* Formulário de conexão inline */}
         {formChannel ? (
           <div className="rounded-lg border p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="text-xl">{formChannel.emoji}</span>
+            <div className="mb-3 flex items-center gap-2.5">
+              <ChannelLogo ch={formChannel} size={36} />
               <div>
                 <p className="text-sm font-semibold">Conectar {formChannel.name}</p>
                 <p className="text-xs text-muted-foreground">
@@ -190,7 +191,7 @@ export function ChannelsSheet({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-xl leading-none">{ch.emoji}</span>
+                    <ChannelLogo ch={ch} size={36} />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold">{ch.name}</p>
                       <p className="text-xs text-muted-foreground">{ch.description}</p>

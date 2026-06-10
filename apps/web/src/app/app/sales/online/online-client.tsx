@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CHANNEL_CATALOG } from "@/features/sales/channel-catalog";
+import { ChannelLogo } from "@/features/sales/channel-logo";
 import { type ChannelIntegration, ChannelsSheet } from "@/features/sales/channels-sheet";
 import { OrdersClient } from "../orders/orders-client";
 
@@ -205,7 +206,7 @@ export function OnlineClient({
                     : "hover:border-primary hover:bg-muted/40"
                 }`}
               >
-                <span className="text-3xl">{ch.emoji}</span>
+                <ChannelLogo ch={ch} size={48} />
                 <span className="flex items-center gap-2 font-semibold">
                   {ch.name}
                   {ch.comingSoon && (

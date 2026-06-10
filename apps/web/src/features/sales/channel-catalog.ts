@@ -1,7 +1,7 @@
 /**
  * Catálogo de canais de venda online — fonte única para a área Online.
- * Canais "reais" possuem integração funcional (conectar via credenciais).
- * Canais `comingSoon` são placeholders de roadmap (cards desabilitados).
+ * Marca renderizada via <ChannelLogo>: logo de marca (simple-icons) quando
+ * disponível, senão lettermark (iniciais na cor da marca) ou ícone genérico.
  */
 
 export type ChannelFieldDef = {
@@ -11,13 +11,24 @@ export type ChannelFieldDef = {
   placeholder: string;
 };
 
+/** Chaves de logo disponíveis no pacote simple-icons. */
+export type ChannelSiKey = "siIfood" | "siWhatsapp" | "siShopee";
+
 export type ChannelDef = {
   /** Valor do enum OrderChannel quando real; slug quando placeholder. */
   key: string;
   name: string;
   description: string;
-  /** Ícone visual simples (emoji) para os cards. */
-  emoji: string;
+  /** Cor da marca (hex sem #) — fundo do tile do logo. */
+  hex: string;
+  /** Cor do glifo/iniciais (default branco). */
+  fg?: string;
+  /** Iniciais para lettermark quando não há logo de marca. */
+  initials: string;
+  /** Logo de marca (simple-icons) quando existir. */
+  siKey?: ChannelSiKey;
+  /** Ícone genérico (lucide) quando não há marca — ex: Loja Virtual. */
+  lucide?: "globe";
   comingSoon?: boolean;
   fields?: ChannelFieldDef[];
 };
@@ -27,7 +38,10 @@ export const CHANNEL_CATALOG: ChannelDef[] = [
     key: "IFOOD",
     name: "iFood",
     description: "Receba pedidos do iFood automaticamente. Requer homologação junto ao iFood.",
-    emoji: "🍔",
+    hex: "EA1D2C",
+    initials: "iF",
+    siKey: "siIfood",
+    comingSoon: true,
     fields: [
       {
         key: "accessToken",
@@ -48,7 +62,10 @@ export const CHANNEL_CATALOG: ChannelDef[] = [
     key: "WHATSAPP",
     name: "WhatsApp Business",
     description: "Receba pedidos via WhatsApp (Meta Cloud API). Catálogo de produtos integrado.",
-    emoji: "💬",
+    hex: "25D366",
+    initials: "Wa",
+    siKey: "siWhatsapp",
+    comingSoon: true,
     fields: [
       { key: "accessToken", label: "Access Token", type: "password", placeholder: "Token da Meta" },
       { key: "phoneNumberId", label: "Phone Number ID", type: "text", placeholder: "ID do número" },
@@ -60,7 +77,10 @@ export const CHANNEL_CATALOG: ChannelDef[] = [
     key: "MERCADO_LIVRE",
     name: "Mercado Livre",
     description: "Sincronize produtos e receba pedidos do ML. Suporta FLEX e CLASSIC.",
-    emoji: "🛍️",
+    hex: "FFE600",
+    fg: "#2D3277",
+    initials: "ML",
+    comingSoon: true,
     fields: [
       {
         key: "accessToken",
@@ -81,21 +101,27 @@ export const CHANNEL_CATALOG: ChannelDef[] = [
     key: "AMAZON",
     name: "Amazon",
     description: "Venda no marketplace da Amazon. Integração em desenvolvimento.",
-    emoji: "📦",
+    hex: "232F3E",
+    fg: "#FF9900",
+    initials: "az",
     comingSoon: true,
   },
   {
     key: "OWN_ECOMMERCE",
     name: "Loja Virtual",
     description: "Conecte sua loja virtual própria. Integração em desenvolvimento.",
-    emoji: "🌐",
+    hex: "6366F1",
+    initials: "LV",
+    lucide: "globe",
     comingSoon: true,
   },
   {
     key: "SHOPEE",
     name: "Shopee",
     description: "Receba pedidos da Shopee. Integração em desenvolvimento.",
-    emoji: "🧡",
+    hex: "EE4D2D",
+    initials: "Sh",
+    siKey: "siShopee",
     comingSoon: true,
   },
 ];
