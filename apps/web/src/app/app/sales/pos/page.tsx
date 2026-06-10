@@ -89,11 +89,11 @@ export default async function POSPage() {
   for (const sb of stockBalances) {
     const available = Number(sb.quantityOnHand) - Number(sb.quantityReserved);
     stockQtyByLocation[sb.locationId] ??= {};
-    const loc = stockQtyByLocation[sb.locationId];
+    const loc = stockQtyByLocation[sb.locationId]!;
     loc[sb.productId] = (loc[sb.productId] ?? 0) + Math.max(0, available);
     if (available <= 0) continue;
     stockByLocation[sb.locationId] ??= [];
-    stockByLocation[sb.locationId].push(sb.productId);
+    stockByLocation[sb.locationId]!.push(sb.productId);
   }
 
   const locations = await prisma.location.findMany({
@@ -110,7 +110,7 @@ export default async function POSPage() {
   if (composableIds.length > 0) {
     for (const loc of locations) {
       stockByLocation[loc.id] ??= [];
-      stockByLocation[loc.id].push(...composableIds);
+      stockByLocation[loc.id]!.push(...composableIds);
     }
   }
 

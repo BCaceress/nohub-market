@@ -410,7 +410,7 @@ export async function lookupCnpjAction(cnpj: string): Promise<Result<CnpjData>> 
     return {
       success: true,
       data: {
-        cnpj: str("cnpj"),
+        cnpj: str("cnpj") ?? "",
         razaoSocial: str("razao_social") ?? "",
         nomeFantasia: str("nome_fantasia") ?? "",
         email: str("email"),

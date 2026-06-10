@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Tag } from "lucide-react";
+import { Loader2, Plus, Tag } from "lucide-react";
 import {
   forwardRef,
   useCallback,

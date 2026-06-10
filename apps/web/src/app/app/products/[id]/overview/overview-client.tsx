@@ -178,7 +178,7 @@ export function ProductOverviewClient({
 
   const [isPending, startTransition] = useTransition();
 
-  const typeCfg = TYPE_CONFIG[product.productType] ?? TYPE_CONFIG.SIMPLE;
+  const typeCfg = (TYPE_CONFIG[product.productType] ?? TYPE_CONFIG.SIMPLE)!;
   const totalStock = stockEntries.reduce((s, e) => s + e.quantity, 0);
   const belowMin = stockEntries.some((e) => e.minQuantity !== null && e.quantity < e.minQuantity);
 
