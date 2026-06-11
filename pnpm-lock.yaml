@@ -38,6 +38,9 @@ importers:
       '@google/genai':
         specifier: ^2.5.0
         version: 2.5.0
+      '@neondatabase/serverless':
+        specifier: ^0.10.4
+        version: 0.10.4
       '@nohub/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -47,6 +50,12 @@ importers:
       '@nohub/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@prisma/adapter-neon':
+        specifier: ^6.2.1
+        version: 6.19.3
+      '@prisma/client':
+        specifier: ^6.2.1
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.1.16
         version: 2.1.16(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

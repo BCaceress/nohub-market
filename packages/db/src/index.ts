@@ -1,5 +1,4 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
-// Import the WASM build so webpack bundles the WASM engine instead of the native binary
 import { PrismaClient } from "@prisma/client/wasm";
 
 function createPrismaClient(): PrismaClient {
