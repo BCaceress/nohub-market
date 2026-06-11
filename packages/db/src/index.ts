@@ -1,5 +1,5 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "@prisma/client/wasm";
+import { PrismaClient } from "@prisma/client";
 
 function createPrismaClient(): PrismaClient {
   const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
@@ -19,4 +19,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "@prisma/client/wasm";
+export * from "@prisma/client";

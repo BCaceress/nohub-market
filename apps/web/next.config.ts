@@ -13,7 +13,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@nohub/auth", "@nohub/db", "@nohub/shared"],
-  serverExternalPackages: ["@prisma/adapter-neon", "@neondatabase/serverless"],
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-neon", "@neondatabase/serverless"],
   outputFileTracingRoot: path.join(__dirname, "../../"),
   webpack(config) {
     config.experiments = { ...config.experiments, asyncWebAssembly: true };
