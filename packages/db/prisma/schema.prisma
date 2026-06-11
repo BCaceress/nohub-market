@@ -4,8 +4,7 @@
 // Etapa 2: catálogo completo (productType, variantes, kits, preço dimensional, fiscal BR)
 
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
