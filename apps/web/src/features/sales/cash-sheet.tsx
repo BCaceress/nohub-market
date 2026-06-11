@@ -300,7 +300,7 @@ export function CashSheet({
                   }}
                 >
                   <X className="mr-1 h-3 w-3" />
-                  Fechar
+                  Fechar Caixa
                 </Button>
               </div>
             </div>

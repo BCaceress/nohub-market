@@ -479,7 +479,12 @@ export function POSClient({
     setCart((prev) => prev.filter((i) => i.lineId !== lineId));
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    setPaymentMethod("CASH");
+    setReceivedAmount("");
+    setDiscountTotal("");
+  };
 
   /* ── Custom builder helpers ──────────────────────────────── */
   const customGroups = customDialog ? (optionGroupsByProduct[customDialog.id] ?? []) : [];
@@ -645,6 +650,7 @@ export function POSClient({
         setSearch("");
         setReceivedAmount("");
         setDiscountTotal("");
+        setPaymentMethod("CASH");
         setCustomer(null);
       }
     } finally {
@@ -1645,17 +1651,26 @@ function CustomerPicker({
     if (!open) {
       setQuery("");
       setResults([]);
+      setLoading(false);
+      return;
+    }
+    const q = query.trim();
+    // Só busca após o usuário digitar (mín. 2 caracteres) — sem lista ao abrir.
+    if (q.length < 2) {
+      setResults([]);
+      setLoading(false);
       return;
     }
     let active = true;
     setLoading(true);
+    // Debounce: espera parar de digitar antes do GET.
     const t = setTimeout(async () => {
-      const res = await searchCustomersAction(query);
+      const res = await searchCustomersAction(q);
       if (active) {
         setResults(res);
         setLoading(false);
       }
-    }, 250);
+    }, 400);
     return () => {
       active = false;
       clearTimeout(t);
@@ -1678,7 +1693,7 @@ function CustomerPicker({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" onClose={onClose}>
         <DialogHeader>
           <DialogTitle>Vincular cliente</DialogTitle>
         </DialogHeader>
@@ -1701,7 +1716,9 @@ function CustomerPicker({
               </div>
             ) : results.length === 0 ? (
               <div className="px-3 py-6 text-center text-[13px] text-muted-foreground">
-                {query.trim() ? "Nenhum cliente encontrado." : "Digite para buscar."}
+                {query.trim().length < 2
+                  ? "Digite nome ou CPF para buscar."
+                  : "Nenhum cliente encontrado."}
               </div>
             ) : (
               results.map((c) => (
@@ -1727,7 +1744,7 @@ function CustomerPicker({
             )}
           </div>
 
-          {query.trim() && !loading && (
+          {query.trim().length >= 2 && !loading && (
             <Button
               variant="outline"
               className="w-full"
