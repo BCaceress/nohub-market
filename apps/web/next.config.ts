@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const securityHeaders = [
@@ -13,6 +14,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   transpilePackages: ["@nohub/auth", "@nohub/db", "@nohub/shared"],
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  outputFileTracingRoot: path.join(__dirname, "../../"),
+  outputFileTracingIncludes: {
+    "/api/**/*": [
+      "./node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/**",
+      "./node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client/query_engine_bg.wasm",
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
