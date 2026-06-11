@@ -12,6 +12,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@nohub/auth", "@nohub/db", "@nohub/shared"],
+  serverExternalPackages: ["@prisma/client", ".prisma/client"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
