@@ -4,7 +4,23 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "DATABASE_URL",
+        "DIRECT_DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_APP_NAME",
+        "RESEND_API_KEY",
+        "EMAIL_FROM",
+        "BRASILAPI_URL",
+        "GOOGLE_GEMINI_API_KEY",
+        "COSMOS_API_TOKEN",
+        "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
+        "NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET",
+        "ANTHROPIC_API_KEY"
+      ]
     },
     "dev": {
       "cache": false,

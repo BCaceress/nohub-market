@@ -5,7 +5,7 @@
  * Atualiza o status do pagamento e avança o pedido se pago.
  */
 
-import { prisma } from "@nohub/db";
+import { type Prisma, prisma } from "@nohub/db";
 import { type NextRequest, NextResponse } from "next/server";
 import { getPaymentProvider } from "@/features/sales/adapters/payment-adapter";
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     if (payment && payment.status !== "CONFIRMED") {
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.payment.update({
           where: { id: payment.id },
           data: { status: "CONFIRMED", confirmedAt: event.paidAt ?? new Date() },
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const allPayments = await tx.payment.findMany({
           where: { orderId: payment.orderId, status: "CONFIRMED" },
         });
-        const totalPaid = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+        const totalPaid = allPayments.reduce<number>((s, p) => s + Number(p.amount), 0);
 
         if (totalPaid >= Number(payment.order.total) && payment.order.status === "CONFIRMED") {
           await tx.order.update({
