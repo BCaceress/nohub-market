@@ -1,8 +1,9 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { PrismaClient } from "@prisma/client";
+// Import the WASM build so webpack bundles the WASM engine instead of the native binary
+import { PrismaClient } from "@prisma/client/wasm";
 
 function createPrismaClient(): PrismaClient {
-  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
+  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
@@ -19,4 +20,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
 
-export * from "@prisma/client";
+export * from "@prisma/client/wasm";

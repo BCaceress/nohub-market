@@ -13,7 +13,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@nohub/auth", "@nohub/db", "@nohub/shared"],
-  serverExternalPackages: ["@prisma/client", "@prisma/adapter-neon", "@neondatabase/serverless"],
+  serverExternalPackages: [
+    "@prisma/client",
+    "@prisma/client/wasm",
+    "@prisma/adapter-neon",
+    "@neondatabase/serverless",
+  ],
   outputFileTracingRoot: path.join(__dirname, "../../"),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
