@@ -127,6 +127,8 @@ const SESSION_STATUS: Record<string, StatusMeta> = {
 };
 const METHOD_LABELS: Record<string, string> = {
   CARD_PRESENT: "Cartão presencial",
+  CARD_CREDIT: "Cartão crédito",
+  CARD_DEBIT: "Cartão débito",
   CARD_ONLINE: "Cartão online",
 };
 

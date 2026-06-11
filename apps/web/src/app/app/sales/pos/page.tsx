@@ -191,6 +191,69 @@ export default async function POSPage() {
     }),
   ]);
 
+  // Vendas (pagamentos confirmados) e movimentos por sessão de caixa aberta —
+  // alimentam o breakdown por método no painel de Caixa do PDV.
+  const openSessionIds = openCashSessions.map((s) => s.id);
+  const [sessionPayments, sessionMovements] = await Promise.all([
+    openSessionIds.length > 0
+      ? prisma.payment.findMany({
+          where: { status: "CONFIRMED", order: { cashSessionId: { in: openSessionIds } } },
+          select: { method: true, amount: true, order: { select: { cashSessionId: true } } },
+        })
+      : Promise.resolve([]),
+    openSessionIds.length > 0
+      ? prisma.cashMovement.groupBy({
+          by: ["cashSessionId", "type"],
+          where: { cashSessionId: { in: openSessionIds }, type: { in: ["SUPPLY", "BLEED"] } },
+          _sum: { amount: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  type SalesByMethod = {
+    dinheiro: number;
+    pix: number;
+    credito: number;
+    debito: number;
+    voucher: number;
+    total: number;
+  };
+  const emptySales = (): SalesByMethod => ({
+    dinheiro: 0,
+    pix: 0,
+    credito: 0,
+    debito: 0,
+    voucher: 0,
+    total: 0,
+  });
+  const salesBySession = new Map<string, SalesByMethod>();
+  for (const p of sessionPayments) {
+    const sid = p.order.cashSessionId;
+    if (!sid) continue;
+    const s = salesBySession.get(sid) ?? emptySales();
+    const amt = Number(p.amount);
+    if (p.method === "CASH") s.dinheiro += amt;
+    else if (p.method === "PIX_MANUAL" || p.method === "PIX_DYNAMIC") s.pix += amt;
+    else if (p.method === "CARD_DEBIT") s.debito += amt;
+    // CARD_PRESENT/CARD_ONLINE (legado) contam como crédito por padrão.
+    else if (
+      p.method === "CARD_CREDIT" ||
+      p.method === "CARD_PRESENT" ||
+      p.method === "CARD_ONLINE"
+    )
+      s.credito += amt;
+    else if (p.method === "VOUCHER") s.voucher += amt;
+    s.total += amt;
+    salesBySession.set(sid, s);
+  }
+  const movementBySession = new Map<string, { supply: number; bleed: number }>();
+  for (const m of sessionMovements) {
+    const rec = movementBySession.get(m.cashSessionId) ?? { supply: 0, bleed: 0 };
+    if (m.type === "SUPPLY") rec.supply += Number(m._sum.amount ?? 0);
+    else if (m.type === "BLEED") rec.bleed += Number(m._sum.amount ?? 0);
+    movementBySession.set(m.cashSessionId, rec);
+  }
+
   // Bleed-out of the main padding for full PDV canvas
   return (
     <div className="-mx-4 -my-6 md:-mx-8 md:-my-8 h-[calc(100vh-3.5rem)] overflow-hidden">
@@ -214,22 +277,30 @@ export default async function POSPage() {
         defaultLocationId={defaultLocationId}
         organizationId={orgId}
         actorId={userId}
-        openSessions={openCashSessions.map((s) => ({
-          id: s.id,
-          locationId: s.locationId,
-          location: s.location,
-          openingAmount: Number(s.openingAmount),
-          status: s.status,
-          openedAt: s.openedAt.toISOString(),
-          movements: s.movements.map((m) => ({
-            id: m.id,
-            type: m.type,
-            amount: Number(m.amount),
-            note: m.note,
-            createdAt: m.createdAt.toISOString(),
-          })),
-          _count: s._count,
-        }))}
+        openSessions={openCashSessions.map((s) => {
+          const sales = salesBySession.get(s.id) ?? emptySales();
+          const mv = movementBySession.get(s.id) ?? { supply: 0, bleed: 0 };
+          // Dinheiro físico na gaveta = abertura + vendas em dinheiro + suprimentos − sangrias.
+          const cashOnHand = Number(s.openingAmount) + sales.dinheiro + mv.supply - mv.bleed;
+          return {
+            id: s.id,
+            locationId: s.locationId,
+            location: s.location,
+            openingAmount: Number(s.openingAmount),
+            status: s.status,
+            openedAt: s.openedAt.toISOString(),
+            movements: s.movements.map((m) => ({
+              id: m.id,
+              type: m.type,
+              amount: Number(m.amount),
+              note: m.note,
+              createdAt: m.createdAt.toISOString(),
+            })),
+            _count: s._count,
+            sales,
+            cashOnHand,
+          };
+        })}
         recentClosed={recentClosedSessions.map((s) => ({
           id: s.id,
           location: s.location,

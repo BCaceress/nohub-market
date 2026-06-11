@@ -1350,7 +1350,9 @@ enum PaymentMethod {
   CASH // dinheiro
   PIX_MANUAL // Pix sem QR (manual)
   PIX_DYNAMIC // Pix QR dinâmico (webhook adquirente)
-  CARD_PRESENT // cartão presente (maquininha)
+  CARD_PRESENT // cartão presente (maquininha) — legado/genérico
+  CARD_CREDIT // cartão de crédito (maquininha)
+  CARD_DEBIT // cartão de débito (maquininha)
   CARD_ONLINE // cartão online (tokenizado)
   VOUCHER // vale / crédito interno
 }

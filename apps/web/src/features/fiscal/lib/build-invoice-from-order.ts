@@ -94,6 +94,8 @@ const PAYMENT_CODE_MAP: Record<string, string> = {
   PIX_MANUAL: "17",
   PIX_DYNAMIC: "17",
   CARD_PRESENT: "03",
+  CARD_CREDIT: "03",
+  CARD_DEBIT: "04",
   CARD_ONLINE: "03",
   VOUCHER: "99",
 };

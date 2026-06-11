@@ -32,6 +32,14 @@ type Movement = {
   note: string | null;
   createdAt: string;
 };
+export type SalesByMethod = {
+  dinheiro: number;
+  pix: number;
+  credito: number;
+  debito: number;
+  voucher: number;
+  total: number;
+};
 export type OpenSession = {
   id: string;
   locationId: string;
@@ -41,6 +49,8 @@ export type OpenSession = {
   openedAt: string;
   movements: Movement[];
   _count: { orders: number };
+  sales: SalesByMethod;
+  cashOnHand: number;
 };
 export type ClosedSession = {
   id: string;
@@ -63,6 +73,15 @@ type Props = {
 };
 
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function SalesRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between text-[12.5px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono tabular-nums">{fmt(value)}</span>
+    </div>
+  );
+}
 
 export function CashSheet({
   open,
@@ -184,10 +203,19 @@ export function CashSheet({
           </div>
         ) : (
           openSessions.map((session) => (
-            <div key={session.id} className="rounded-lg border border-green-200 p-4">
+            <div
+              key={session.id}
+              className="rounded-lg border border-success/30 bg-success-soft/30 p-4"
+            >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">{session.location.name}</p>
-                <Badge className="bg-green-100 text-green-700">Aberto</Badge>
+                <Badge className="border-transparent bg-success-soft text-success">
+                  <span className="relative mr-1 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/50" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+                  </span>
+                  Aberto
+                </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Aberto em{" "}
@@ -200,10 +228,36 @@ export function CashSheet({
                 {" · "}
                 {session._count.orders} venda{session._count.orders !== 1 ? "s" : ""}
               </p>
-              <div className="mt-3 flex justify-between text-sm">
-                <span className="text-muted-foreground">Abertura</span>
-                <span className="font-medium">{fmt(session.openingAmount)}</span>
+
+              {/* Vendas por método durante a sessão */}
+              <div className="mt-3 space-y-1.5 rounded-lg bg-card p-3 ring-1 ring-border">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">
+                  Vendas no caixa
+                </p>
+                <SalesRow label="Dinheiro" value={session.sales.dinheiro} />
+                <SalesRow label="Pix" value={session.sales.pix} />
+                <SalesRow label="Cartão crédito" value={session.sales.credito} />
+                <SalesRow label="Cartão débito" value={session.sales.debito} />
+                <SalesRow label="Voucher" value={session.sales.voucher} />
+                <Separator className="my-1.5" />
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>Total vendido</span>
+                  <span className="font-display tabular-nums">{fmt(session.sales.total)}</span>
+                </div>
               </div>
+
+              {/* Dinheiro físico na gaveta — destaque */}
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-success-soft px-3 py-2">
+                <span className="text-[12.5px] font-semibold text-success">Dinheiro em caixa</span>
+                <span className="font-display text-[17px] font-semibold tabular-nums text-success">
+                  {fmt(session.cashOnHand)}
+                </span>
+              </div>
+              <p className="mt-1 flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+                <span>Abertura {fmt(session.openingAmount)}</span>
+                <span>+ vendas em dinheiro · ± sangria/suprimento</span>
+              </p>
+
               <Separator className="my-3" />
               <div className="flex gap-2">
                 <Button

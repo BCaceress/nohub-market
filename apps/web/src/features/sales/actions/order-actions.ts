@@ -37,6 +37,8 @@ const quickSaleSchema = z.object({
     "PIX_MANUAL",
     "PIX_DYNAMIC",
     "CARD_PRESENT",
+    "CARD_CREDIT",
+    "CARD_DEBIT",
     "CARD_ONLINE",
     "VOUCHER",
   ]),

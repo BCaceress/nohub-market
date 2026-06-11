@@ -5,6 +5,7 @@ import {
   Boxes,
   Check,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
   Loader2,
   Lock,
@@ -34,6 +35,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Select } from "@/components/ui/select";
@@ -103,12 +110,28 @@ type Props = {
   recentClosed: ClosedSession[];
 };
 
+/** Métodos válidos no estado de pagamento (cartão guarda crédito/débito). */
 const PAYMENT_OPTIONS = [
   { value: "CASH", label: "Dinheiro", icon: Banknote },
   { value: "PIX_MANUAL", label: "Pix", icon: Zap },
-  { value: "CARD_PRESENT", label: "Cartão", icon: CreditCard },
+  { value: "CARD_CREDIT", label: "Crédito", icon: CreditCard },
+  { value: "CARD_DEBIT", label: "Débito", icon: CreditCard },
   { value: "VOUCHER", label: "Voucher", icon: Tag },
 ] as const;
+
+/** Chips simples (cartão é tratado à parte, com menu crédito/débito). */
+const SIMPLE_PAYMENTS = [
+  { value: "CASH", label: "Dinheiro", icon: Banknote },
+  { value: "PIX_MANUAL", label: "Pix", icon: Zap },
+] as const;
+
+const paymentChipClass = (active: boolean) =>
+  cn(
+    "flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-semibold transition-all touch-target",
+    active
+      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+      : "border-border bg-card text-foreground hover:border-border-strong hover:bg-surface-1",
+  );
 
 const BRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -522,6 +545,13 @@ export function POSClient({
   const received = parseBRLMask(receivedAmount);
   const change = paymentMethod === "CASH" ? Math.max(0, received - total) : 0;
   const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const isCardPayment = paymentMethod === "CARD_CREDIT" || paymentMethod === "CARD_DEBIT";
+  const cardPaymentLabel =
+    paymentMethod === "CARD_CREDIT"
+      ? "Crédito"
+      : paymentMethod === "CARD_DEBIT"
+        ? "Débito"
+        : "Cartão";
 
   /* ── Keyboard shortcuts ──────────────────────────────────── */
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyboard shortcut should use the current checkout state.
@@ -627,7 +657,7 @@ export function POSClient({
       {/* ═══════════════════════════════════════════════════════
           LEFT — Product catalog
           ═══════════════════════════════════════════════════════ */}
-      <div className="flex min-w-0 flex-1 flex-col border-r border-border bg-background">
+      <div className="flex min-w-0 flex-1 flex-col bg-background bg-dot-grid">
         {/* Top bar — search + location */}
         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-3">
           <div className="relative flex-1">
@@ -696,17 +726,19 @@ export function POSClient({
             className={cn(
               "flex h-12 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-medium transition-colors",
               currentSession
-                ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+                ? "border-success/30 bg-success-soft text-success hover:bg-success-soft/70"
                 : "border-border bg-card text-muted-foreground hover:bg-surface-1 hover:text-foreground",
             )}
             title={currentSession ? "Caixa aberto" : "Caixa fechado — clique para abrir"}
           >
             {currentSession ? (
               <>
-                <Wallet className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  Caixa · {BRL(currentSession.openingAmount)}
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/50" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                 </span>
+                <Wallet className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Caixa · {BRL(currentSession.cashOnHand)}</span>
               </>
             ) : (
               <>
@@ -786,7 +818,7 @@ export function POSClient({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2.5">
               {filtered.map((p) => {
                 const inCartQty = cartQtyById.get(p.id) ?? 0;
                 const inCart = inCartQty > 0;
@@ -897,7 +929,7 @@ export function POSClient({
       {/* ═══════════════════════════════════════════════════════
           RIGHT — Cart + checkout (largura fixa, mais enxuta)
           ═══════════════════════════════════════════════════════ */}
-      <div className="flex w-[320px] shrink-0 flex-col bg-card xl:w-[360px] 2xl:w-[400px]">
+      <div className="flex w-[348px] shrink-0 flex-col border-l border-border-strong bg-card shadow-[-12px_0_32px_-18px_rgb(26_24_20/0.22)] lg:w-[384px] xl:w-[428px] 2xl:w-[468px]">
         {/* Cart header */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3.5">
           <div className="flex items-center gap-2">
@@ -975,12 +1007,12 @@ export function POSClient({
                 return (
                   <li
                     key={item.lineId}
-                    className="rounded-xl border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-border-strong"
+                    className="rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-xs transition-colors hover:border-border-strong"
                   >
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-center gap-2.5">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-[13px] font-semibold text-foreground">
+                          <p className="truncate text-[12.5px] font-semibold leading-tight text-foreground">
                             {item.name}
                           </p>
                           {itemBadge && (
@@ -997,32 +1029,35 @@ export function POSClient({
                             </span>
                           )}
                         </div>
-                        {item.selectionSummary && (
-                          <p className="truncate text-[11px] text-primary">
+                        {item.selectionSummary ? (
+                          <p className="truncate text-[10.5px] leading-tight text-primary">
                             {item.selectionSummary}
+                          </p>
+                        ) : (
+                          <p className="font-mono text-[10px] leading-tight text-muted-foreground tabular-nums">
+                            {BRL(item.price)} un.
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.lineId)}
-                        aria-label="Remover"
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive-soft hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-1 p-0.5">
+                      {/* Stepper — diminuir até 0 remove a linha */}
+                      <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-surface-1 p-0.5">
                         <button
                           type="button"
-                          onClick={() => updateQty(item.lineId, -1)}
-                          aria-label="Diminuir"
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground touch-target"
+                          onClick={() =>
+                            item.quantity <= 1
+                              ? removeItem(item.lineId)
+                              : updateQty(item.lineId, -1)
+                          }
+                          aria-label={item.quantity <= 1 ? "Remover item" : "Diminuir"}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-destructive touch-target"
                         >
-                          <Minus className="h-3.5 w-3.5" />
+                          {item.quantity <= 1 ? (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <Minus className="h-3.5 w-3.5" />
+                          )}
                         </button>
-                        <span className="w-7 text-center font-mono text-[13px] font-semibold tabular-nums">
+                        <span className="w-6 text-center font-mono text-[13px] font-semibold tabular-nums">
                           {item.quantity}
                         </span>
                         <button
@@ -1034,14 +1069,9 @@ export function POSClient({
                           <Plus className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="text-right">
-                        <p className="font-display text-[14px] font-semibold leading-none tabular-nums">
-                          {BRL(item.price * item.quantity)}
-                        </p>
-                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground tabular-nums">
-                          {BRL(item.price)} un.
-                        </p>
-                      </div>
+                      <span className="w-[68px] shrink-0 text-right font-display text-[13.5px] font-semibold leading-none tabular-nums">
+                        {BRL(item.price * item.quantity)}
+                      </span>
                     </div>
                   </li>
                 );
@@ -1052,28 +1082,66 @@ export function POSClient({
 
         {/* Checkout panel */}
         <div className="shrink-0 border-t border-border bg-surface-1/40 p-3.5 safe-bottom">
-          {/* Payment chips */}
-          <div className="mb-3 grid grid-cols-2 gap-1.5">
-            {PAYMENT_OPTIONS.map((opt) => {
-              const Active = paymentMethod === opt.value;
+          {/* Payment chips — Cartão abre menu Crédito/Débito */}
+          <div className="mb-3 flex gap-1.5">
+            {SIMPLE_PAYMENTS.map((opt) => {
               const Icon = opt.icon;
               return (
                 <button
                   type="button"
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-semibold transition-all touch-target",
-                    Active
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-card text-foreground hover:border-border-strong hover:bg-surface-1",
-                  )}
+                  className={paymentChipClass(paymentMethod === opt.value)}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {opt.label}
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{opt.label}</span>
                 </button>
               );
             })}
+
+            {/* Cartão — escolhe crédito ou débito no menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className={paymentChipClass(isCardPayment)} aria-label="Cartão">
+                <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{cardPaymentLabel}</span>
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                side="top"
+                className="min-w-[170px] rounded-xl border-border bg-popover p-1.5 shadow-lg"
+              >
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-md text-[13px]"
+                  onClick={() => setPaymentMethod("CARD_CREDIT")}
+                >
+                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                  Crédito
+                  {paymentMethod === "CARD_CREDIT" && (
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-md text-[13px]"
+                  onClick={() => setPaymentMethod("CARD_DEBIT")}
+                >
+                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                  Débito
+                  {paymentMethod === "CARD_DEBIT" && (
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("VOUCHER")}
+              className={paymentChipClass(paymentMethod === "VOUCHER")}
+            >
+              <Tag className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Voucher</span>
+            </button>
           </div>
 
           {/* Quick inputs */}

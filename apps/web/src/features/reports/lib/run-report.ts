@@ -24,6 +24,8 @@ const PAYMENT_LABELS: Record<string, string> = {
   PIX_MANUAL: "Pix manual",
   PIX_DYNAMIC: "Pix QR",
   CARD_PRESENT: "Cartão presente",
+  CARD_CREDIT: "Cartão crédito",
+  CARD_DEBIT: "Cartão débito",
   CARD_ONLINE: "Cartão online",
   VOUCHER: "Vale",
 };

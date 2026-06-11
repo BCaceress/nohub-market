@@ -31,7 +31,9 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
   CASH: "01", // Dinheiro
   PIX_MANUAL: "17", // Pix
   PIX_DYNAMIC: "17", // Pix
-  CARD_PRESENT: "03", // Cartão de Crédito (simplificado — usar método real)
+  CARD_PRESENT: "03", // Cartão de Crédito (legado/genérico)
+  CARD_CREDIT: "03", // Cartão de Crédito
+  CARD_DEBIT: "04", // Cartão de Débito
   CARD_ONLINE: "03",
   VOUCHER: "99", // Outros
 };

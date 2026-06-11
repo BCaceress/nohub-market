@@ -8,6 +8,8 @@ import {
   FileWarning,
   LifeBuoy,
   LogOut,
+  Maximize2,
+  Minimize2,
   Package,
   Plus,
   Receipt,
@@ -149,6 +151,9 @@ export function AppTopbar({
         {/* Notifications */}
         <NotificationBell notifications={notifications} />
 
+        {/* Fullscreen */}
+        <FullscreenToggle />
+
         {/* Help */}
         <Link
           href="https://nohub.com.br/help"
@@ -229,6 +234,44 @@ export function AppTopbar({
 
       {searchOpen && <CommandPalette onClose={() => setSearchOpen(false)} />}
     </>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
+   Fullscreen toggle — expande o sistema (ideal para PDV em tablet)
+   ─────────────────────────────────────────────────────────────── */
+
+function FullscreenToggle() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggle = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {});
+    } else {
+      void document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+      title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+      className={cn(
+        "hidden h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-xs md:flex",
+        "transition-colors duration-150 hover:bg-surface-1 hover:text-foreground hover:border-border-strong",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      )}
+    >
+      {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+    </button>
   );
 }
 

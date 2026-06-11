@@ -9,7 +9,7 @@ import { getFinanceSettings } from "./finance-settings";
  * Idempotente: paymentId é @unique; se já existe, não duplica.
  * Métodos não-cartão são ignorados (retorna null).
  */
-const CARD_METHODS: PaymentMethod[] = ["CARD_PRESENT", "CARD_ONLINE"];
+const CARD_METHODS: PaymentMethod[] = ["CARD_PRESENT", "CARD_CREDIT", "CARD_DEBIT", "CARD_ONLINE"];
 
 export async function computeSettlement(input: {
   organizationId: string;
@@ -27,7 +27,7 @@ export async function computeSettlement(input: {
   if (existing) return { settlementId: existing.id };
 
   const settings = await getFinanceSettings(input.organizationId);
-  const rate = settings.cardFeeRates[input.method as "CARD_PRESENT" | "CARD_ONLINE"] ?? 0;
+  const rate = settings.cardFeeRates[input.method as keyof typeof settings.cardFeeRates] ?? 0;
   const gross = input.amount;
   const fee = Math.round(gross * rate * 100) / 100;
   const net = Math.round((gross - fee) * 100) / 100;
