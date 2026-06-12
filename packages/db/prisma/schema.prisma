@@ -4,8 +4,8 @@
 // Etapa 2: catálogo completo (productType, variantes, kits, preço dimensional, fiscal BR)
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {

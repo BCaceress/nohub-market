@@ -8,6 +8,7 @@
     "./catalog": "./src/catalog/index.ts"
   },
   "scripts": {
+    "build": "prisma generate",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "push": "prisma db push",
@@ -20,12 +21,14 @@
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1"
+    "@neondatabase/serverless": "^0.10.4",
+    "@prisma/adapter-neon": "^6.19.3",
+    "@prisma/client": "^6.19.3"
   },
   "devDependencies": {
     "@nohub/config": "workspace:*",
     "@types/node": "^22.10.5",
-    "prisma": "^6.2.1",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
