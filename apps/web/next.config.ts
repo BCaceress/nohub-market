@@ -26,8 +26,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
   // Globs resolvidos relativos ao dir do app (apps/web) — subir 2 níveis até
   // a raiz onde o pnpm store guarda o .prisma/client com o .wasm.
+  // Chave "/**" cobre TODAS as funções (rotas /api E server components como
+  // /app), não só /api — senão o wasm não é incluído na função do dashboard
+  // e o Prisma falha ao inicializar ("Invalid prisma.X invocation").
   outputFileTracingIncludes: {
-    "/api/**": [
+    "/**": [
       "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/*",
       "../../node_modules/.prisma/client/*",
     ],
