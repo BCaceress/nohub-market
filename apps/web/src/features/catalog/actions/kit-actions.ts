@@ -45,7 +45,12 @@ export async function setKitComponentsAction(
     where: { id: kitProductId, organizationId, deletedAt: null },
   });
   if (!kit) return { success: false, error: "Kit não encontrado" };
-  if (kit.productType !== "KIT") return { success: false, error: "Produto não é do tipo KIT" };
+  if (kit.productType !== "KIT" && kit.productType !== "CUSTOM") {
+    return {
+      success: false,
+      error: "Produto não aceita composição (deve ser KIT ou Personalizado)",
+    };
+  }
 
   // RN-C04: check no component is a KIT
   const componentIds = components.map((c) => c.componentProductId);

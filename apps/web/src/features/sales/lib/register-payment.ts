@@ -7,6 +7,7 @@
 
 import type { PaymentMethod } from "@nohub/db";
 import { prisma } from "@nohub/db";
+import { computeSettlement } from "@/features/financeiro/lib/compute-settlement";
 import { enqueueIssuance } from "@/features/fiscal/lib/enqueue-issuance";
 import { writeAudit } from "@/lib/audit";
 import { canTransition } from "./can-transition";
@@ -111,6 +112,16 @@ export async function registerPayment(input: RegisterPaymentInput): Promise<Regi
       orderStatus: newStatus,
     },
   });
+
+  // Conciliação de cartão — gera liquidação D+N (líquido de taxa). Falha
+  // silenciosa: não bloqueia o pagamento se o financeiro não estiver pronto.
+  await computeSettlement({
+    organizationId: input.organizationId,
+    paymentId: payment.id,
+    method: input.method,
+    amount: input.amount,
+    provider: input.provider ?? null,
+  }).catch(() => {});
 
   return {
     success: true,

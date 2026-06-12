@@ -8,7 +8,16 @@ import { registerPayment } from "../lib/register-payment";
 const registerPaymentSchema = z.object({
   organizationId: z.string(),
   orderId: z.string(),
-  method: z.enum(["CASH", "PIX_MANUAL", "PIX_DYNAMIC", "CARD_PRESENT", "CARD_ONLINE", "VOUCHER"]),
+  method: z.enum([
+    "CASH",
+    "PIX_MANUAL",
+    "PIX_DYNAMIC",
+    "CARD_PRESENT",
+    "CARD_CREDIT",
+    "CARD_DEBIT",
+    "CARD_ONLINE",
+    "VOUCHER",
+  ]),
   amount: z.coerce.number().positive(),
   receivedAmount: z.coerce.number().min(0).optional(),
   actorId: z.string(),

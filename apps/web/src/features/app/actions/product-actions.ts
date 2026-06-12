@@ -19,7 +19,6 @@ const productSchema = z.object({
   active: z.boolean().default(true),
   hasAgeRestriction: z.boolean().default(false),
   minAge: z.coerce.number().int().min(0).optional(),
-  expiryDays: z.coerce.number().int().min(1).optional(),
   allowFractioned: z.boolean().default(false),
 });
 
@@ -101,7 +100,6 @@ export async function createProductAction(
       costPrice: costPrice ?? null,
       supplierId: rest.supplierId || null,
       minAge: rest.hasAgeRestriction ? (rest.minAge ?? null) : null,
-      expiryDays: rest.expiryDays ?? null,
     },
   });
 
@@ -145,7 +143,6 @@ export async function updateProductAction(
       costPrice: costPrice ?? null,
       supplierId: rest.supplierId || null,
       minAge: rest.hasAgeRestriction ? (rest.minAge ?? null) : null,
-      expiryDays: rest.expiryDays ?? null,
     },
   });
 

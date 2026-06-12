@@ -7,24 +7,16 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  ClipboardList,
-  DollarSign,
-  Download,
   FileText,
+  Globe,
   History,
-  Link2,
   MapPin,
   Package,
-  PackagePlus,
-  Radio,
-  Receipt,
-  RotateCcw,
   Settings,
   Settings2,
   ShoppingBag,
   ShoppingCart,
   SkipForward,
-  Sparkles,
   Truck,
   User,
   Users,
@@ -53,79 +45,84 @@ type NavRoot = {
   icon: React.ElementType;
   href?: string;
   roles?: Role[];
+  badge?: string;
   children?: NavLeaf[];
+};
+
+type NavGroup = {
+  label: string;
+  items: NavRoot[];
 };
 
 const ALL: Role[] = ["owner", "admin", "manager", "operator", "viewer"];
 const MGMT: Role[] = ["owner", "admin", "manager"];
+const STAFF: Role[] = ["owner", "admin", "manager", "operator"];
 const ADMIN: Role[] = ["owner", "admin"];
 
-/* ── Tree ────────────────────────────────────────────────────── */
+/* ── Tree — agrupada por contexto de trabalho ───────────────── */
 
-const NAV: NavRoot[] = [
+const NAV_GROUPS: NavGroup[] = [
   {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: BarChart3,
-    href: "/app",
-    roles: ALL,
-  },
-  {
-    key: "sales",
-    label: "Vendas",
-    icon: ShoppingCart,
-    roles: ALL,
-    children: [
-      { href: "/app/sales/pos", label: "PDV", icon: ShoppingCart, roles: ALL },
-      { href: "/app/sales/cash", label: "Caixa", icon: Wallet, roles: ALL },
-      { href: "/app/sales/orders", label: "Pedidos", icon: Receipt, roles: MGMT },
-      { href: "/app/sales/channels", label: "Canais de venda", icon: Link2, roles: MGMT },
+    label: "Operação",
+    items: [
+      { key: "dashboard", label: "Dashboard", icon: BarChart3, href: "/app", roles: ALL },
+      { key: "pdv", label: "PDV", icon: ShoppingCart, href: "/app/sales/pos", roles: ALL },
+      { key: "online", label: "Online", icon: Globe, href: "/app/sales/online", roles: MGMT },
+      { key: "customers", label: "Clientes", icon: Users, href: "/app/customers", roles: STAFF },
     ],
   },
   {
-    key: "catalog",
-    label: "Produtos",
-    icon: ShoppingBag,
-    href: "/app/products",
-    roles: MGMT.concat("viewer"),
-  },
-  {
-    key: "inventory",
-    label: "Estoque",
-    icon: Boxes,
-    href: "/app/inventory",
-    roles: MGMT.concat("viewer"),
-  },
-  {
-    key: "purchasing",
-    label: "Compras",
-    icon: Truck,
-    roles: MGMT,
-    children: [
-      { href: "/app/purchasing/orders", label: "Pedidos", icon: Truck, roles: MGMT },
-      { href: "/app/purchasing/receive", label: "Recebimento", icon: PackagePlus, roles: MGMT },
-      { href: "/app/purchasing/nfe-import", label: "Importar NFe", icon: Download, roles: MGMT },
-      { href: "/app/purchasing/payables", label: "Contas a pagar", icon: DollarSign, roles: MGMT },
-      { href: "/app/purchasing/suggestions", label: "Sugestões", icon: Sparkles, roles: MGMT },
-      { href: "/app/purchasing/quotations", label: "Cotações", icon: ClipboardList, roles: MGMT },
-      { href: "/app/purchasing/returns", label: "Devoluções", icon: RotateCcw, roles: MGMT },
+    label: "Catálogo",
+    items: [
+      {
+        key: "catalog",
+        label: "Produtos",
+        icon: ShoppingBag,
+        href: "/app/products",
+        roles: MGMT.concat("viewer"),
+      },
+      {
+        key: "inventory",
+        label: "Estoque",
+        icon: Boxes,
+        href: "/app/inventory",
+        roles: MGMT.concat("viewer"),
+      },
+      { key: "purchasing", label: "Compras", icon: Truck, href: "/app/purchasing", roles: MGMT },
     ],
   },
   {
-    key: "settings",
-    label: "Configurar",
-    icon: Settings,
-    roles: ADMIN,
-    children: [
-      { href: "/app/settings", label: "Organização", icon: Building2, roles: ADMIN },
-      { href: "/app/settings/team", label: "Time", icon: Users, roles: ADMIN },
-      { href: "/app/locations", label: "Unidades", icon: MapPin, roles: ADMIN },
-      { href: "/app/channels", label: "Canais", icon: Radio, roles: ADMIN },
-      { href: "/app/suppliers", label: "Fornecedores", icon: Package, roles: ADMIN },
-      { href: "/app/fiscal/invoices", label: "Notas fiscais", icon: FileText, roles: ADMIN },
-      { href: "/app/fiscal/settings", label: "Fiscal", icon: Settings2, roles: ADMIN },
-      { href: "/app/fiscal/skip-numbers", label: "Inutilização", icon: SkipForward, roles: ADMIN },
-      { href: "/app/audit", label: "Auditoria", icon: History, roles: ADMIN },
+    label: "Gestão",
+    items: [
+      {
+        key: "financeiro",
+        label: "Financeiro",
+        icon: Wallet,
+        href: "/app/financeiro",
+        roles: MGMT,
+      },
+      { key: "reports", label: "Relatórios", icon: BarChart3, href: "/app/reports", roles: MGMT },
+      {
+        key: "settings",
+        label: "Configurar",
+        icon: Settings,
+        roles: ADMIN,
+        children: [
+          { href: "/app/settings", label: "Organização", icon: Building2, roles: ADMIN },
+          { href: "/app/settings/team", label: "Time", icon: Users, roles: ADMIN },
+          { href: "/app/locations", label: "Unidades", icon: MapPin, roles: ADMIN },
+          { href: "/app/suppliers", label: "Fornecedores", icon: Package, roles: ADMIN },
+          { href: "/app/fiscal/invoices", label: "Notas fiscais", icon: FileText, roles: ADMIN },
+          { href: "/app/fiscal/settings", label: "Fiscal", icon: Settings2, roles: ADMIN },
+          {
+            href: "/app/fiscal/skip-numbers",
+            label: "Inutilização",
+            icon: SkipForward,
+            roles: ADMIN,
+          },
+          { href: "/app/audit", label: "Auditoria", icon: History, roles: ADMIN },
+        ],
+      },
     ],
   },
 ];
@@ -137,15 +134,20 @@ function allowed(roles: Role[] | undefined, role: Role): boolean {
   return roles.includes(role);
 }
 
-function filterTree(tree: NavRoot[], role: Role): NavRoot[] {
-  return tree
-    .filter((r) => allowed(r.roles, role))
-    .map((r) => {
-      if (!r.children) return r;
-      const children = r.children.filter((c) => allowed(c.roles, role));
-      return { ...r, children };
-    })
-    .filter((r) => !r.children || r.children.length > 0);
+function filterGroups(groups: NavGroup[], role: Role): NavGroup[] {
+  return groups
+    .map((g) => ({
+      ...g,
+      items: g.items
+        .filter((r) => allowed(r.roles, role))
+        .map((r) => {
+          if (!r.children) return r;
+          const children = r.children.filter((c) => allowed(c.roles, role));
+          return { ...r, children };
+        })
+        .filter((r) => !r.children || r.children.length > 0),
+    }))
+    .filter((g) => g.items.length > 0);
 }
 
 function isPathActive(href: string, pathname: string): boolean {
@@ -168,14 +170,30 @@ const OPEN_KEY = "nohub-sidebar-open";
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 
-export function NavSidebar({ orgName, role }: { orgName: string; role: string }) {
+export function NavSidebar({
+  orgName,
+  role,
+  onlineBadge,
+}: {
+  orgName: string;
+  role: string;
+  onlineBadge?: number;
+}) {
   const safeRole = (
     ["owner", "admin", "manager", "operator", "viewer"].includes(role) ? role : "viewer"
   ) as Role;
   const pathname = usePathname();
 
-  const tree = useMemo(() => filterTree(NAV, safeRole), [safeRole]);
-  const activeKey = useMemo(() => rootActiveKey(tree, pathname), [tree, pathname]);
+  const groups = useMemo(() => {
+    const filtered = filterGroups(NAV_GROUPS, safeRole);
+    if (!onlineBadge) return filtered;
+    return filtered.map((g) => ({
+      ...g,
+      items: g.items.map((r) => (r.key === "online" ? { ...r, badge: String(onlineBadge) } : r)),
+    }));
+  }, [safeRole, onlineBadge]);
+  const allRoots = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const activeKey = useMemo(() => rootActiveKey(allRoots, pathname), [allRoots, pathname]);
 
   const [collapsed, setCollapsed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(activeKey);
@@ -189,13 +207,14 @@ export function NavSidebar({ orgName, role }: { orgName: string; role: string })
     setHydrated(true);
   }, []);
 
-  // Auto-open the section that matches current route.
+  // Auto-open the section that matches current route on navigation.
   useEffect(() => {
-    if (activeKey && activeKey !== openKey) {
+    if (activeKey) {
       setOpenKey(activeKey);
       localStorage.setItem(OPEN_KEY, activeKey);
     }
-  }, [activeKey, openKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
 
   const toggleCollapse = () => {
     setCollapsed((c) => {
@@ -218,8 +237,8 @@ export function NavSidebar({ orgName, role }: { orgName: string; role: string })
       data-collapsed={collapsed || undefined}
       className={cn(
         "relative flex h-screen shrink-0 flex-col border-r transition-[width] duration-200",
-        hydrated && collapsed ? "w-[64px]" : "w-[232px]",
-        !hydrated && "w-[232px]",
+        hydrated && collapsed ? "w-16" : "w-58",
+        !hydrated && "w-58",
       )}
       style={{
         background: "var(--sidebar-background)",
@@ -267,19 +286,42 @@ export function NavSidebar({ orgName, role }: { orgName: string; role: string })
         data-scrollarea="sidebar"
         className={cn(
           "flex flex-1 flex-col overflow-y-auto overflow-x-visible py-3",
-          collapsed ? "px-2 gap-1" : "px-2 gap-0.5",
+          collapsed ? "px-2" : "px-2",
         )}
       >
-        {tree.map((root) => (
-          <RootItem
-            key={root.key}
-            root={root}
-            collapsed={collapsed}
-            open={openKey === root.key}
-            active={activeKey === root.key}
-            pathname={pathname}
-            onToggle={() => toggleSection(root.key)}
-          />
+        {groups.map((group, gi) => (
+          <div
+            key={group.label}
+            className={cn("flex flex-col", collapsed ? "gap-1" : "gap-0.5", gi > 0 && "mt-1.5")}
+          >
+            {collapsed ? (
+              gi > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="mx-auto my-1 h-px w-6 rounded-full"
+                  style={{ background: "var(--sidebar-border)" }}
+                />
+              )
+            ) : (
+              <span
+                className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.13em] opacity-45"
+                style={{ color: "var(--sidebar-foreground)" }}
+              >
+                {group.label}
+              </span>
+            )}
+            {group.items.map((root) => (
+              <RootItem
+                key={root.key}
+                root={root}
+                collapsed={collapsed}
+                open={openKey === root.key}
+                active={activeKey === root.key}
+                pathname={pathname}
+                onToggle={() => toggleSection(root.key)}
+              />
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -297,7 +339,7 @@ export function NavSidebar({ orgName, role }: { orgName: string; role: string })
           onClick={toggleCollapse}
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           className={cn(
-            "flex items-center rounded-md text-[12px] transition-colors hover:bg-[var(--sidebar-hover)]",
+            "flex items-center rounded-md text-[12px] transition-colors hover:bg-(--sidebar-hover)",
             collapsed ? "h-8 w-8 justify-center" : "h-8 w-full justify-between px-2.5",
           )}
           style={{ color: "var(--sidebar-foreground)" }}
@@ -364,7 +406,7 @@ function RootItem({
     <span
       aria-hidden="true"
       className={cn(
-        "absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--sidebar-primary)]",
+        "absolute left-0 top-1/2 h-5 w-0.75 -translate-y-1/2 rounded-r-full bg-[var(--sidebar-primary)]",
         "transition-opacity duration-200",
         active ? "opacity-100" : "opacity-0",
       )}
@@ -374,7 +416,7 @@ function RootItem({
   const iconEl = (
     <Icon
       className={cn(
-        "h-[17px] w-[17px] shrink-0 transition-colors",
+        "h-4.25 w-4.25 shrink-0 transition-colors",
         active
           ? "text-[var(--sidebar-primary)]"
           : "text-[var(--sidebar-foreground)] group-hover:text-[var(--sidebar-foreground-strong)]",
@@ -393,6 +435,14 @@ function RootItem({
           {indicator}
           {iconEl}
           {!collapsed && <span className="flex-1 truncate">{root.label}</span>}
+          {root.badge &&
+            (collapsed ? (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-(--sidebar-primary)" />
+            ) : (
+              <span className="rounded-md bg-(--sidebar-primary) px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                {root.badge}
+              </span>
+            ))}
         </Link>
       ) : collapsed && children[0] ? (
         <Link
@@ -419,7 +469,7 @@ function RootItem({
 
       {/* Expanded accordion children */}
       {!collapsed && hasChildren && open && (
-        <ul className="mt-0.5 flex flex-col gap-0.5 pb-1 pl-[34px] pr-1">
+        <ul className="mt-0.5 flex flex-col gap-0.5 pb-1 pl-8.5 pr-1">
           {children.map((c) => (
             <SubLink key={c.href} item={c} pathname={pathname} />
           ))}
@@ -430,7 +480,7 @@ function RootItem({
       {collapsed && hasChildren && flyoutOpen && (
         // biome-ignore lint/a11y/noStaticElementInteractions: flyout do menu colapsado; hover só mantém aberto, links reais dentro
         <div
-          className="absolute left-full top-0 z-40 ml-2 min-w-[200px] animate-in-right"
+          className="absolute left-full top-0 z-40 ml-2 min-w-50 animate-in-right"
           onMouseEnter={enter}
           onMouseLeave={leave}
         >

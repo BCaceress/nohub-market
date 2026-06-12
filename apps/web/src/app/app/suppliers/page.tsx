@@ -1,11 +1,12 @@
 import { prisma } from "@nohub/db";
-import { Truck } from "lucide-react";
+import { Plus, Truck } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { getSuppliersAction } from "@/features/app/actions/supplier-actions";
-import { SuppliersManager } from "@/features/app/suppliers-manager";
 import { getSession } from "@/lib/auth-server";
+import { SupplierListClient } from "./supplier-list-client";
 
 export const metadata = { title: "Fornecedores — NoHub Market" };
 
@@ -27,20 +28,34 @@ export default async function SuppliersPage() {
         icon={<Truck className="h-5 w-5" />}
         iconTone="primary"
         title="Fornecedores"
-        description={`${suppliers.length} fornecedor${suppliers.length !== 1 ? "es" : ""} vinculado${suppliers.length !== 1 ? "s" : ""} à organização.`}
+        description={`${suppliers.length} fornecedor${suppliers.length !== 1 ? "es" : ""} cadastrado${suppliers.length !== 1 ? "s" : ""}.`}
+        actions={
+          <Button asChild size="sm">
+            <Link href="/app/suppliers/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo fornecedor
+            </Link>
+          </Button>
+        }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cadastro de fornecedores</CardTitle>
-          <CardDescription>
-            Fornecedores serão vinculados ao catálogo em etapa futura.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SuppliersManager organizationId={member.organizationId} initialSuppliers={suppliers} />
-        </CardContent>
-      </Card>
+      {suppliers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-16 text-center">
+          <Truck className="h-10 w-10 text-muted-foreground mb-4" />
+          <p className="font-semibold text-foreground">Nenhum fornecedor cadastrado</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-5">
+            Cadastre seus fornecedores para gerenciar compras, preços e relacionamento comercial.
+          </p>
+          <Button asChild size="sm">
+            <Link href="/app/suppliers/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Cadastrar fornecedor
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <SupplierListClient organizationId={member.organizationId} suppliers={suppliers} />
+      )}
     </div>
   );
 }

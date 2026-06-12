@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { type LocationOption, LocationSwitcher } from "@/components/location-switcher";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,9 @@ export default async function InventoryPage({
   const effectiveLocationId =
     sp.locationId ?? (cookieSelected === ALL_LOCATIONS ? undefined : cookieSelected);
 
+  const scopedLocations = locations.filter((l) => scopedIds.includes(l.id)) as LocationOption[];
+  const switcherSelected = effectiveLocationId ?? ALL_LOCATIONS;
+
   const [balances, alerts] = await Promise.all([
     getBalanceSummaryAction(member.organizationId, effectiveLocationId),
     getAlertsAction(member.organizationId),
@@ -72,10 +76,13 @@ export default async function InventoryPage({
         title="Estoque"
         description="Saldos físicos, reservas e disponibilidade em tempo real."
         meta={
-          locations.length > 1 && effectiveLocationId ? (
-            <Badge variant="soft" dotColor="primary">
-              filtro: {locations.find((l) => l.id === effectiveLocationId)?.name ?? "—"}
-            </Badge>
+          scopedLocations.length > 0 ? (
+            <LocationSwitcher
+              organizationId={member.organizationId}
+              locations={scopedLocations}
+              selectedId={switcherSelected}
+              allowAll={scopedLocations.length > 1}
+            />
           ) : null
         }
         actions={
@@ -143,11 +150,16 @@ export default async function InventoryPage({
       {(alerts.lowStockCount > 0 || alerts.expiringCount > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
           {alerts.lowStockCount > 0 && (
-            <Card>
+            <Card className="border-warning/25">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-warning">
-                  <AlertTriangle className="h-4 w-4" />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning-soft">
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
                   Estoque abaixo do mínimo
+                  <Badge variant="warning" className="ml-auto">
+                    {alerts.lowStockCount}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-1.5">
@@ -178,11 +190,16 @@ export default async function InventoryPage({
           )}
 
           {alerts.expiringCount > 0 && (
-            <Card>
+            <Card className="border-destructive/25">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-destructive">
-                  <CalendarClock className="h-4 w-4" />
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive-soft">
+                    <CalendarClock className="h-4 w-4" />
+                  </span>
                   Lotes vencendo em 30 dias
+                  <Badge variant="destructive" className="ml-auto">
+                    {alerts.expiringCount}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-1.5">
@@ -213,10 +230,15 @@ export default async function InventoryPage({
 
       {/* ── Balance table ──────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-[17px] font-semibold tracking-tight">
-            Saldo por produto
-          </h2>
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="font-display text-[17px] font-semibold tracking-tight">
+              Saldo por produto
+            </h2>
+            <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+              Busque, filtre por status e ajuste o estoque mínimo de cada item.
+            </p>
+          </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/app/inventory/movements" className="gap-1">
               Movimentações <ChevronRight className="h-3.5 w-3.5" />

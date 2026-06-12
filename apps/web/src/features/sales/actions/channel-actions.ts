@@ -6,6 +6,48 @@ import { z } from "zod";
 import { writeAudit } from "@/lib/audit";
 import { enqueueOutboxEvent } from "../outbox/producer";
 
+/**
+ * Reconciliação ChannelIntegration ↔ SalesChannel.
+ * ChannelIntegration = estado de conexão/credenciais (pipeline de pedidos).
+ * SalesChannel = canal habilitado + roteamento de fulfillment (channelLocations).
+ * Conectar/desconectar reflete no SalesChannel (enabled) sem fundir os modelos,
+ * mantendo o estado "habilitado" consistente e sem ambiguidade entre tabelas.
+ */
+const RECONCILABLE = ["IFOOD", "WHATSAPP", "MERCADO_LIVRE"] as const;
+type ReconcilableChannel = (typeof RECONCILABLE)[number];
+
+const SALES_CHANNEL_NAME: Record<ReconcilableChannel, string> = {
+  IFOOD: "iFood",
+  WHATSAPP: "WhatsApp",
+  MERCADO_LIVRE: "Mercado Livre",
+};
+
+async function reconcileSalesChannel(
+  organizationId: string,
+  channel: ReconcilableChannel,
+  enabled: boolean,
+) {
+  const existing = await prisma.salesChannel.findFirst({
+    where: { organizationId, type: channel },
+  });
+  if (existing) {
+    if (existing.enabled !== enabled) {
+      await prisma.salesChannel.update({ where: { id: existing.id }, data: { enabled } });
+    }
+    return;
+  }
+  // Não cria registro só para desabilitar.
+  if (enabled) {
+    await prisma.salesChannel.create({
+      data: { organizationId, type: channel, name: SALES_CHANNEL_NAME[channel], enabled: true },
+    });
+  }
+}
+
+function isReconcilable(channel: string): channel is ReconcilableChannel {
+  return (RECONCILABLE as readonly string[]).includes(channel);
+}
+
 const connectSchema = z.object({
   organizationId: z.string(),
   channel: z.enum(["IFOOD", "WHATSAPP", "MERCADO_LIVRE", "POS", "SELF_SERVICE"]),
@@ -40,6 +82,10 @@ export async function connectChannelAction(input: z.infer<typeof connectSchema>)
     },
   });
 
+  if (isReconcilable(channel)) {
+    await reconcileSalesChannel(organizationId, channel, true);
+  }
+
   await writeAudit({
     organizationId,
     actorId,
@@ -66,6 +112,10 @@ export async function disconnectChannelAction(
     where: { id: integration.id },
     data: { status: "DISCONNECTED", credentials: undefined },
   });
+
+  if (isReconcilable(channel)) {
+    await reconcileSalesChannel(organizationId, channel, false);
+  }
 
   await writeAudit({
     organizationId,

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetBody, SheetHeader } from "@/components/ui/sheet";
 import {
   bleedCashAction,
   closeCashSessionAction,
@@ -32,46 +32,66 @@ type Movement = {
   note: string | null;
   createdAt: string;
 };
-type OpenSession = {
+export type SalesByMethod = {
+  dinheiro: number;
+  pix: number;
+  credito: number;
+  debito: number;
+  voucher: number;
+  total: number;
+};
+export type OpenSession = {
   id: string;
   locationId: string;
   location: { name: string };
   openingAmount: number;
-  closingAmount: number | null;
-  systemAmount: number | null;
-  divergence: number | null;
   status: string;
   openedAt: string;
   movements: Movement[];
   _count: { orders: number };
+  sales: SalesByMethod;
+  cashOnHand: number;
 };
-type ClosedSession = {
+export type ClosedSession = {
   id: string;
-  locationId: string;
   location: { name: string };
-  openingAmount: number;
   closingAmount: number | null;
-  systemAmount: number | null;
   divergence: number | null;
-  status: string;
   openedAt: string;
   closedAt: string | null;
 };
 
 type Props = {
+  open: boolean;
+  onClose: () => void;
   locations: Location[];
   openSessions: OpenSession[];
   recentClosed: ClosedSession[];
   organizationId: string;
   actorId: string;
+  defaultLocationId?: string;
 };
 
-export function CashClient({
+const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function SalesRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between text-[12.5px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono tabular-nums">{fmt(value)}</span>
+    </div>
+  );
+}
+
+export function CashSheet({
+  open,
+  onClose,
   locations,
   openSessions,
   recentClosed,
   organizationId,
   actorId,
+  defaultLocationId,
 }: Props) {
   const router = useRouter();
   const [openDialog, setOpenDialog] = useState(false);
@@ -80,28 +100,22 @@ export function CashClient({
     sessionId: string;
     type: "BLEED" | "SUPPLY";
   } | null>(null);
-  const [_confirmDisconnect, _setConfirmDisconnect] = useState<string | null>(null);
 
-  // Open form
-  const [openLocationId, setOpenLocationId] = useState(locations[0]?.id ?? "");
+  const [openLocationId, setOpenLocationId] = useState(defaultLocationId ?? locations[0]?.id ?? "");
   const [openingAmount, setOpeningAmount] = useState("");
   const [openNote, setOpenNote] = useState("");
   const [openLoading, setOpenLoading] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
 
-  // Close form
   const [closingAmount, setClosingAmount] = useState("");
   const [closeNote, setCloseNote] = useState("");
   const [closeLoading, setCloseLoading] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
 
-  // Movement form
   const [movementAmount, setMovementAmount] = useState("");
   const [movementNote, setMovementNote] = useState("");
   const [movementLoading, setMovementLoading] = useState(false);
   const [movementError, setMovementError] = useState<string | null>(null);
-
-  const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   const handleOpen = async () => {
     setOpenLoading(true);
@@ -170,110 +184,137 @@ export function CashClient({
   };
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {openSessions.length} caixa{openSessions.length !== 1 ? "s" : ""} aberto
-            {openSessions.length !== 1 ? "s" : ""}
-          </p>
-          <Button onClick={() => setOpenDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Abrir Caixa
+    <Sheet open={open} onClose={onClose} className="w-full max-w-md">
+      <SheetHeader
+        title="Caixa"
+        description="Abertura, sangria, suprimento e fechamento do caixa do PDV."
+        onClose={onClose}
+        actions={
+          <Button size="sm" onClick={() => setOpenDialog(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Abrir
           </Button>
-        </div>
-
+        }
+      />
+      <SheetBody className="space-y-4">
         {openSessions.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Nenhum caixa aberto. Clique em &quot;Abrir Caixa&quot; para iniciar.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {openSessions.map((session) => (
-              <Card key={session.id} className="border-green-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{session.location.name}</CardTitle>
-                    <Badge className="bg-green-100 text-green-700">Aberto</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Aberto em{" "}
-                    {new Date(session.openedAt).toLocaleString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {" · "}
-                    {session._count.orders} venda{session._count.orders !== 1 ? "s" : ""}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Abertura</span>
-                    <span className="font-medium">{fmt(session.openingAmount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        setMovementDialog({ sessionId: session.id, type: "BLEED" });
-                        setMovementAmount("");
-                        setMovementNote("");
-                        setMovementError(null);
-                      }}
-                    >
-                      <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
-                      Sangria
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        setMovementDialog({ sessionId: session.id, type: "SUPPLY" });
-                        setMovementAmount("");
-                        setMovementNote("");
-                        setMovementError(null);
-                      }}
-                    >
-                      <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-                      Suprimento
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="flex-1"
-                      onClick={() => {
-                        setCloseSessionId(session.id);
-                        setClosingAmount("");
-                        setCloseNote("");
-                        setCloseError(null);
-                      }}
-                    >
-                      <X className="mr-1 h-3 w-3" />
-                      Fechar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+            Nenhum caixa aberto. Clique em &quot;Abrir&quot; para iniciar.
           </div>
+        ) : (
+          openSessions.map((session) => (
+            <div
+              key={session.id}
+              className="rounded-lg border border-success/30 bg-success-soft/30 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{session.location.name}</p>
+                <Badge className="border-transparent bg-success-soft text-success">
+                  <span className="relative mr-1 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/50" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+                  </span>
+                  Aberto
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Aberto em{" "}
+                {new Date(session.openedAt).toLocaleString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {" · "}
+                {session._count.orders} venda{session._count.orders !== 1 ? "s" : ""}
+              </p>
+
+              {/* Vendas por método durante a sessão */}
+              <div className="mt-3 space-y-1.5 rounded-lg bg-card p-3 ring-1 ring-border">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-subtle">
+                  Vendas no caixa
+                </p>
+                <SalesRow label="Dinheiro" value={session.sales.dinheiro} />
+                <SalesRow label="Pix" value={session.sales.pix} />
+                <SalesRow label="Cartão crédito" value={session.sales.credito} />
+                <SalesRow label="Cartão débito" value={session.sales.debito} />
+                <SalesRow label="Voucher" value={session.sales.voucher} />
+                <Separator className="my-1.5" />
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>Total vendido</span>
+                  <span className="font-display tabular-nums">{fmt(session.sales.total)}</span>
+                </div>
+              </div>
+
+              {/* Dinheiro físico na gaveta — destaque */}
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-success-soft px-3 py-2">
+                <span className="text-[12.5px] font-semibold text-success">Dinheiro em caixa</span>
+                <span className="font-display text-[17px] font-semibold tabular-nums text-success">
+                  {fmt(session.cashOnHand)}
+                </span>
+              </div>
+              <p className="mt-1 flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+                <span>Abertura {fmt(session.openingAmount)}</span>
+                <span>+ vendas em dinheiro · ± sangria/suprimento</span>
+              </p>
+
+              <Separator className="my-3" />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setMovementDialog({ sessionId: session.id, type: "BLEED" });
+                    setMovementAmount("");
+                    setMovementNote("");
+                    setMovementError(null);
+                  }}
+                >
+                  <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+                  Sangria
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setMovementDialog({ sessionId: session.id, type: "SUPPLY" });
+                    setMovementAmount("");
+                    setMovementNote("");
+                    setMovementError(null);
+                  }}
+                >
+                  <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
+                  Suprimento
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => {
+                    setCloseSessionId(session.id);
+                    setClosingAmount("");
+                    setCloseNote("");
+                    setCloseError(null);
+                  }}
+                >
+                  <X className="mr-1 h-3 w-3" />
+                  Fechar Caixa
+                </Button>
+              </div>
+            </div>
+          ))
         )}
 
         {recentClosed.length > 0 && (
           <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Fechamentos recentes
-            </h2>
-            <div className="rounded-lg border divide-y">
+            </h3>
+            <div className="divide-y rounded-lg border">
               {recentClosed.map((session) => (
-                <div key={session.id} className="flex items-center gap-4 px-4 py-3 text-sm">
+                <div key={session.id} className="flex items-center gap-4 px-3 py-2.5 text-sm">
                   <div className="flex-1">
                     <p className="font-medium">{session.location.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -284,7 +325,9 @@ export function CashClient({
                     <p className="font-medium">{fmt(session.closingAmount ?? 0)}</p>
                     {session.divergence !== null && session.divergence !== 0 && (
                       <p
-                        className={`text-xs flex items-center gap-1 justify-end ${session.divergence < 0 ? "text-red-500" : "text-green-600"}`}
+                        className={`flex items-center justify-end gap-1 text-xs ${
+                          session.divergence < 0 ? "text-red-500" : "text-green-600"
+                        }`}
                       >
                         <AlertTriangle className="h-3 w-3" />
                         {session.divergence > 0 ? "+" : ""}
@@ -297,7 +340,7 @@ export function CashClient({
             </div>
           </div>
         )}
-      </div>
+      </SheetBody>
 
       {/* Dialog — Abrir Caixa */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -358,8 +401,8 @@ export function CashClient({
       {/* Dialog — Fechar Caixa */}
       <Dialog
         open={!!closeSessionId}
-        onOpenChange={(open) => {
-          if (!open) setCloseSessionId(null);
+        onOpenChange={(o) => {
+          if (!o) setCloseSessionId(null);
         }}
       >
         <DialogContent className="max-w-sm">
@@ -407,8 +450,8 @@ export function CashClient({
       {/* Dialog — Sangria / Suprimento */}
       <Dialog
         open={!!movementDialog}
-        onOpenChange={(open) => {
-          if (!open) setMovementDialog(null);
+        onOpenChange={(o) => {
+          if (!o) setMovementDialog(null);
         }}
       >
         <DialogContent className="max-w-sm">
@@ -452,6 +495,6 @@ export function CashClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </Sheet>
   );
 }

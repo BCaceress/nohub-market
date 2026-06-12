@@ -6,6 +6,7 @@
 
 import type { OrderStatus } from "@nohub/db";
 import { prisma } from "@nohub/db";
+import { explodeCustomForSale } from "@/features/inventory/lib/explode-custom-for-sale";
 import { explodeKitForSale } from "@/features/inventory/lib/explode-kit-for-sale";
 import { consumeReservation } from "@/features/inventory/lib/reserve-stock";
 import { writeAudit } from "@/lib/audit";
@@ -26,7 +27,7 @@ export type FulfillOrderResult =
 export async function fulfillOrder(input: FulfillOrderInput): Promise<FulfillOrderResult> {
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
-    include: { items: true },
+    include: { items: { include: { selections: true } } },
   });
 
   if (!order || order.organizationId !== input.organizationId) {
@@ -60,6 +61,28 @@ export async function fulfillOrder(input: FulfillOrderInput): Promise<FulfillOrd
 
       if (!kitResult.success) {
         return { success: false, error: kitResult.error, code: "KIT_EXPLODE_FAILED" };
+      }
+    } else if (item.productTypeSnapshot === "CUSTOM") {
+      // Personalizado: baixa componentes fixos + opções escolhidas
+      const customResult = await explodeCustomForSale({
+        organizationId: input.organizationId,
+        locationId: order.locationId,
+        customProductId: item.productId,
+        saleQuantity: Number(item.quantity),
+        selections: item.selections.map((s) => ({
+          componentProductId: s.componentProductId ?? "",
+          componentVariantId: s.componentVariantId,
+          quantitySnapshot: Number(s.quantitySnapshot),
+          optionNameSnapshot: s.optionNameSnapshot,
+        })),
+        actorId: input.actorId,
+        actorName: input.actorName,
+        referenceType: "ORDER",
+        referenceId: order.id,
+      });
+
+      if (!customResult.success) {
+        return { success: false, error: customResult.error, code: "CUSTOM_EXPLODE_FAILED" };
       }
     } else {
       // Produto simples: consumir reservas ativas para este pedido

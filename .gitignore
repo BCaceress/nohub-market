@@ -15,6 +15,9 @@ out/
 
 # prisma
 packages/db/prisma/generated/
+# cliente Prisma gerado nunca deve ser commitado (vem do node_modules em runtime)
+**/.prisma/client/
+packages/apps/
 
 # logs
 *.log
@@ -31,3 +34,4 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+.vercel

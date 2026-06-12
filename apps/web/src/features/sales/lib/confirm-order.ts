@@ -69,9 +69,9 @@ export async function confirmOrder(input: ConfirmOrderInput): Promise<ConfirmOrd
   for (const item of order.items) {
     if (!item.productId) continue;
 
-    // Kits: reserva por componentes é feita no fulfillOrder (via explodeKitForSale)
-    // Aqui reservamos a unidade do kit como referência
-    if (item.productTypeSnapshot === "KIT") continue;
+    // Kits/CUSTOM: baixa por componentes é feita no fulfillOrder (via explode*ForSale).
+    // Produtos sem estoque próprio não reservam aqui.
+    if (item.productTypeSnapshot === "KIT" || item.productTypeSnapshot === "CUSTOM") continue;
 
     const reserve = await reserveStock({
       organizationId: input.organizationId,

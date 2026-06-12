@@ -13,7 +13,8 @@
       "!**/node_modules",
       "!**/.turbo",
       "!**/.claude",
-      "!**/prisma/generated"
+      "!**/prisma/generated",
+      "!**/.prisma"
     ]
   },
   "formatter": {

@@ -64,7 +64,7 @@ export function DialogContent({
           type="button"
           onClick={onClose}
           aria-label="Fechar"
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
+          className="absolute right-3 top-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-1 hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

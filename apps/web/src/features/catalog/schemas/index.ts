@@ -76,7 +76,9 @@ export const productSchema = z.object({
   packBarcode: z.string().max(20).optional().or(z.literal("")),
   tags: z.array(z.string().max(50)).default([]),
 
-  productType: z.enum(["SIMPLE", "VARIANT_PARENT", "KIT", "FRACTIONED"]).default("SIMPLE"),
+  productType: z
+    .enum(["SIMPLE", "VARIANT_PARENT", "KIT", "FRACTIONED", "CUSTOM"])
+    .default("SIMPLE"),
 
   // Unidades
   unit: z
@@ -115,7 +117,6 @@ export const productSchema = z.object({
   isActive: z.boolean().default(true),
   hasAgeRestriction: z.boolean().default(false),
   minAge: z.coerce.number().int().min(0).max(99).optional(),
-  expiryDays: z.coerce.number().int().min(1).optional(),
   // Armazenagem própria do produto (não herda mais da subcategoria)
   storageTemperature: z.enum(["AMBIENTE", "REFRIGERADO", "CONGELADO"]).optional().or(z.literal("")),
 });
@@ -163,6 +164,43 @@ export const kitComponentSchema = z.object({
   position: z.coerce.number().int().min(0).default(0),
 });
 export type KitComponentInput = z.infer<typeof kitComponentSchema>;
+
+// ─────────────────────────────────────────────────────────────────────
+// Produto CUSTOM — grupos de opção e opções
+// ─────────────────────────────────────────────────────────────────────
+
+export const productOptionSchema = z.object({
+  componentProductId: z.string().cuid(),
+  componentVariantId: z.string().cuid().optional().or(z.literal("")),
+  name: z.string().min(1, "Nome da opção obrigatório").max(100),
+  quantity: z.coerce.number().positive("Quantidade deve ser positiva").default(1),
+  priceDelta: z.coerce.number().min(0, "Acréscimo não pode ser negativo").default(0),
+  isDefault: z.boolean().default(false),
+  position: z.coerce.number().int().min(0).default(0),
+});
+export type ProductOptionInput = z.infer<typeof productOptionSchema>;
+
+export const productOptionGroupSchema = z
+  .object({
+    name: z.string().min(1, "Nome do grupo obrigatório").max(100),
+    unit: z
+      .enum(["UN", "KG", "G", "L", "ML", "CX", "PCT", "FARDO", "DZ", "BANDEJA", "CENTO"])
+      .default("UN"),
+    required: z.boolean().default(true),
+    minSelect: z.coerce.number().int().min(0).default(1),
+    maxSelect: z.coerce.number().int().min(1).default(1),
+    position: z.coerce.number().int().min(0).default(0),
+    options: z.array(productOptionSchema).min(1, "Grupo precisa de ao menos 1 opção"),
+  })
+  .refine((g) => g.maxSelect >= g.minSelect, {
+    message: "maxSelect deve ser ≥ minSelect",
+    path: ["maxSelect"],
+  })
+  .refine((g) => g.maxSelect <= g.options.length, {
+    message: "maxSelect não pode exceder o número de opções",
+    path: ["maxSelect"],
+  });
+export type ProductOptionGroupInput = z.infer<typeof productOptionGroupSchema>;
 
 // ─────────────────────────────────────────────────────────────────────
 // Preço dimensional

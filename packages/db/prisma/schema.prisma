@@ -48,24 +48,24 @@ enum TaxRegime {
 // Segmento operacional — define experiência, módulos, fluxos.
 // RN: 1 conta = 1 segmento, imutável após onboarding.
 enum SegmentType {
-  BEVERAGE_CONVENIENCE  // Conveniência de bebidas
-  SUPERMARKET           // Supermercado
-  UNMANNED_MARKET       // Mercado autônomo
+  BEVERAGE_CONVENIENCE // Conveniência de bebidas
+  SUPERMARKET // Supermercado
+  UNMANNED_MARKET // Mercado autônomo
 }
 
 // Estrutura de estoque escolhida no onboarding.
 enum StockStructureType {
-  LOCAL        // estoque local por loja, sem CD
-  CENTRAL_DC   // centro de distribuição abastece lojas
-  HYBRID       // CD + estoque local
+  LOCAL // estoque local por loja, sem CD
+  CENTRAL_DC // centro de distribuição abastece lojas
+  HYBRID // CD + estoque local
 }
 
 enum LocationType {
   STORE
   DC
   HYBRID
-  WAREHOUSE   // depósito auxiliar sem PDV
-  DARK_STORE  // fulfillment-only, sem atendimento presencial
+  WAREHOUSE // depósito auxiliar sem PDV
+  DARK_STORE // fulfillment-only, sem atendimento presencial
 }
 
 enum SalesChannelType {
@@ -78,17 +78,17 @@ enum SalesChannelType {
 }
 
 enum ProductUnit {
-  UN      // unidade
-  KG      // quilograma
-  G       // grama
-  L       // litro
-  ML      // mililitro
-  CX      // caixa
-  PCT     // pacote
-  FARDO   // fardo
-  DZ      // dúzia
+  UN // unidade
+  KG // quilograma
+  G // grama
+  L // litro
+  ML // mililitro
+  CX // caixa
+  PCT // pacote
+  FARDO // fardo
+  DZ // dúzia
   BANDEJA // bandeja
-  CENTO   // cento (100 unidades)
+  CENTO // cento (100 unidades)
 }
 
 enum MovementType {
@@ -100,9 +100,9 @@ enum MovementType {
   TRANSFER_OUT
   ADJUSTMENT
   // Etapa 3 (novos)
-  INBOUND           // entrada formal (compra / recebimento)
-  OUTBOUND          // saída por venda confirmada
-  RESERVATION       // reserva preventiva (anti-oversell)
+  INBOUND // entrada formal (compra / recebimento)
+  OUTBOUND // saída por venda confirmada
+  RESERVATION // reserva preventiva (anti-oversell)
   RESERVATION_RELEASE // liberação de reserva (cancelamento)
 }
 
@@ -111,29 +111,29 @@ enum MovementType {
 // ─────────────────────────────────────────────────────────────────────
 
 enum MovementReason {
-  PURCHASE        // entrada por compra
-  SALE            // saída por venda
+  PURCHASE // entrada por compra
+  SALE // saída por venda
   INVENTORY_COUNT // acerto de inventário
-  DAMAGE          // dano/quebra
-  EXPIRY          // vencimento
-  THEFT           // furto
-  TRANSFER        // transferência entre locais
-  MANUAL          // ajuste manual com justificativa
-  RETURN          // devolução de cliente
-  INITIAL         // saldo inicial ao configurar
+  DAMAGE // dano/quebra
+  EXPIRY // vencimento
+  THEFT // furto
+  TRANSFER // transferência entre locais
+  MANUAL // ajuste manual com justificativa
+  RETURN // devolução de cliente
+  INITIAL // saldo inicial ao configurar
 }
 
 enum ReservationStatus {
-  ACTIVE     // reserva em aberto
-  CONSUMED   // convertida em OUTBOUND (pedido confirmado)
-  RELEASED   // cancelada (pedido cancelado/expirado)
-  EXPIRED    // expirou sem confirmação
+  ACTIVE // reserva em aberto
+  CONSUMED // convertida em OUTBOUND (pedido confirmado)
+  RELEASED // cancelada (pedido cancelado/expirado)
+  EXPIRED // expirou sem confirmação
 }
 
 enum InventoryCountStatus {
-  DRAFT       // sendo montada, itens ainda não contados
+  DRAFT // sendo montada, itens ainda não contados
   IN_PROGRESS // contagem iniciada, operador em campo
-  CLOSED      // fechada — ajustes já gerados
+  CLOSED // fechada — ajustes já gerados
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -141,10 +141,18 @@ enum InventoryCountStatus {
 // ─────────────────────────────────────────────────────────────────────
 
 enum ProductType {
-  SIMPLE          // produto unitário padrão
-  VARIANT_PARENT  // produto pai de variantes (não vendível diretamente)
-  KIT             // combo — sem estoque próprio, baixa componentes
-  FRACTIONED      // vendido por peso/volume (stockUnit ≠ saleUnit)
+  SIMPLE // produto unitário padrão
+  VARIANT_PARENT // produto pai de variantes (não vendível diretamente)
+  KIT // combo — sem estoque próprio, baixa componentes
+  FRACTIONED // vendido por peso/volume (stockUnit ≠ saleUnit)
+  CUSTOM // personalizado — componentes fixos + grupos de opção escolhidos na venda
+}
+
+// Subtipo de KIT — diferencia combo (produtos prontos, qtd inteira) de
+// receita (insumos, qtd fracionada). Ambos baixam componentes na venda.
+enum CompositionKind {
+  COMBO // kit/combo: produtos simples vendidos juntos, quantidade inteira
+  RECIPE // produzido/receita: insumos fracionados (ml, g, kg, l)
 }
 
 enum ProductBarcodeType {
@@ -156,15 +164,15 @@ enum ProductBarcodeType {
 
 // Origem do produto — tabela SEFAZ (0-8)
 enum TaxOrigin {
-  NACIONAL                      // 0
-  IMPORTADO_DIRETO              // 1
-  IMPORTADO_NACIONAL            // 2
-  NACIONAL_MAIS_40_IMPORTADO    // 3
-  NACIONAL_MENOS_40_IMPORTADO   // 4
-  NACIONAL_SEM_SIMILAR          // 5
-  ESTRANGEIRO_DIRETO            // 6
-  ESTRANGEIRO_NACIONAL          // 7
-  NACIONAL_MENOS_70_IMPORTADO   // 8
+  NACIONAL // 0
+  IMPORTADO_DIRETO // 1
+  IMPORTADO_NACIONAL // 2
+  NACIONAL_MAIS_40_IMPORTADO // 3
+  NACIONAL_MENOS_40_IMPORTADO // 4
+  NACIONAL_SEM_SIMILAR // 5
+  ESTRANGEIRO_DIRETO // 6
+  ESTRANGEIRO_NACIONAL // 7
+  NACIONAL_MENOS_70_IMPORTADO // 8
 }
 
 // Temperatura de armazenagem — perfil operacional herdável da subcategoria
@@ -192,14 +200,14 @@ enum FiscalSegment {
 // ─────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
+  email         String  @unique
+  emailVerified Boolean @default(false)
   image         String?
   phone         String?
-  locale        String   @default("pt-BR")
-  timezone      String   @default("America/Sao_Paulo")
+  locale        String  @default("pt-BR")
+  timezone      String  @default("America/Sao_Paulo")
 
   twoFactorEnabled Boolean @default(false)
 
@@ -215,7 +223,7 @@ model User {
   accounts    Account[]
   twoFactors  TwoFactor[]
   members     Member[]
-  invitations Invitation[] @relation("InvitedBy")
+  invitations Invitation[]     @relation("InvitedBy")
   preferences UserPreferences?
   auditLogs   AuditLog[]
 
@@ -290,13 +298,13 @@ model TwoFactor {
 // ─────────────────────────────────────────────────────────────────────
 
 model Organization {
-  id           String        @id @default(cuid())
-  slug         String        @unique
+  id           String       @id @default(cuid())
+  slug         String       @unique
   legalName    String
   tradeName    String?
   // Document opcional no onboarding — segmento + lojas vêm primeiro; CNPJ pode ser preenchido em settings depois.
-  document     String?       @unique
-  documentType DocumentType  @default(CNPJ)
+  document     String?      @unique
+  documentType DocumentType @default(CNPJ)
   taxRegime    TaxRegime?
 
   // Segmentação operacional — definida no onboarding, imutável.
@@ -316,56 +324,65 @@ model Organization {
   onboardingStep      Int     @default(1)
   onboardingData      Json?
 
+  // Financeiro — taxas de adquirente e prazo de liquidação D+N
+  // { cardFeeRates: { CARD_PRESENT: number, CARD_ONLINE: number }, settlementDays: number }
+  financeSettings Json?
+
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  members             Member[]
-  invitations         Invitation[]
-  capabilities        OrganizationCapability[]
-  locations           Location[]
-  salesChannels       SalesChannel[]
-  suppliers           Supplier[]
-  products            Product[]
-  auditLogs           AuditLog[]
-  stockEntries        StockEntry[]
-  stockMovements      StockMovement[]
-  stockTransfers      StockTransfer[]
+  members                     Member[]
+  invitations                 Invitation[]
+  capabilities                OrganizationCapability[]
+  locations                   Location[]
+  salesChannels               SalesChannel[]
+  suppliers                   Supplier[]
+  products                    Product[]
+  auditLogs                   AuditLog[]
+  stockEntries                StockEntry[]
+  stockMovements              StockMovement[]
+  stockTransfers              StockTransfer[]
   // Etapa 2
-  categories          Category[]
-  productBarcodes     ProductBarcode[]
-  productVariants     ProductVariant[]
-  productPrices       ProductPrice[]
-  productTaxes        ProductTax[]
-  categoryTaxDefaults CategoryTaxDefault[]
+  categories                  Category[]
+  productBarcodes             ProductBarcode[]
+  productVariants             ProductVariant[]
+  productOptionGroups         ProductOptionGroup[]
+  productPrices               ProductPrice[]
+  productTaxes                ProductTax[]
+  categoryTaxDefaults         CategoryTaxDefault[]
   // Etapa 3
-  stockBalances       StockBalance[]
-  stockLots           StockLot[]
-  stockReservations   StockReservation[]
-  inventoryCounts     InventoryCount[]
+  stockBalances               StockBalance[]
+  stockLots                   StockLot[]
+  stockReservations           StockReservation[]
+  inventoryCounts             InventoryCount[]
   // Etapa 4
-  customers           Customer[]
-  orders              Order[]
-  cashSessions        CashSession[]
-  channelIntegrations ChannelIntegration[]
-  outboxEvents        OutboxEvent[]
-  inboundEvents       InboundEvent[]
+  customers                   Customer[]
+  orders                      Order[]
+  cashSessions                CashSession[]
+  channelIntegrations         ChannelIntegration[]
+  outboxEvents                OutboxEvent[]
+  inboundEvents               InboundEvent[]
   // Etapa 5
-  invoices            Invoice[]
-  fiscalCertificate   FiscalCertificate?
-  fiscalConfig        FiscalConfig?
-  invoiceNumberSkips  InvoiceNumberSkip[]
+  invoices                    Invoice[]
+  fiscalCertificate           FiscalCertificate?
+  fiscalConfig                FiscalConfig?
+  invoiceNumberSkips          InvoiceNumberSkip[]
   // Etapa 6
-  purchaseOrders         PurchaseOrder[]
-  goodsReceipts          GoodsReceipt[]
-  supplierReturns        SupplierReturn[]
-  accountPayables        AccountPayable[]
-  quotations             Quotation[]
-  purchaseSuggestions    PurchaseSuggestion[]
-  nfeImports             NfeImport[]
-  supplierProductMappings SupplierProductMapping[]
-  tags                    Tag[]
-  brands                  Brand[]
+  purchaseOrders              PurchaseOrder[]
+  goodsReceipts               GoodsReceipt[]
+  supplierReturns             SupplierReturn[]
+  accountPayables             AccountPayable[]
+  accountReceivables          AccountReceivable[]
+  paymentSettlements          PaymentSettlement[]
+  financeCategories           FinanceCategory[]
+  quotations                  Quotation[]
+  purchaseSuggestions         PurchaseSuggestion[]
+  nfeImports                  NfeImport[]
+  supplierProductMappings     SupplierProductMapping[]
+  supplierProductPriceHistory SupplierProductPriceHistory[]
+  tags                        Tag[]
+  brands                      Brand[]
 
   @@index([document])
   @@index([deletedAt])
@@ -454,23 +471,23 @@ model Location {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  channelLocations ChannelLocation[]
-  stockEntries     StockEntry[]      @relation("LocationStock")
-  stockMovements   StockMovement[]   @relation("LocationMovements")
-  outTransfers     StockTransfer[]   @relation("TransferFrom")
-  inTransfers      StockTransfer[]   @relation("TransferTo")
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelLocations    ChannelLocation[]
+  stockEntries        StockEntry[]         @relation("LocationStock")
+  stockMovements      StockMovement[]      @relation("LocationMovements")
+  outTransfers        StockTransfer[]      @relation("TransferFrom")
+  inTransfers         StockTransfer[]      @relation("TransferTo")
   // Etapa 2
-  productPrices    ProductPrice[]
+  productPrices       ProductPrice[]
   // Etapa 3
-  stockBalances    StockBalance[]
-  stockReservations StockReservation[]
-  inventoryCounts  InventoryCount[]
+  stockBalances       StockBalance[]
+  stockReservations   StockReservation[]
+  inventoryCounts     InventoryCount[]
   // Etapa 4
-  orders           Order[]
-  cashSessions     CashSession[]
+  orders              Order[]
+  cashSessions        CashSession[]
   // Etapa 5
-  invoices         Invoice[]
+  invoices            Invoice[]
   // Etapa 6
   purchaseOrders      PurchaseOrder[]
   purchaseSuggestions PurchaseSuggestion[]
@@ -496,10 +513,10 @@ model SalesChannel {
 }
 
 model ChannelLocation {
-  id             String @id @default(cuid())
-  organizationId String
-  salesChannelId String
-  locationId     String
+  id              String @id @default(cuid())
+  organizationId  String
+  salesChannelId  String
+  locationId      String
   fulfillmentRank Int    @default(0)
 
   createdAt DateTime @default(now())
@@ -515,29 +532,64 @@ model Supplier {
   id             String  @id @default(cuid())
   organizationId String
   name           String
+  tradeName      String? // nome fantasia
   document       String?
   email          String?
   phone          String?
+  website        String?
+  contactName    String? // pessoa de contato principal
+  segment        String? // segmento/categoria (ex: bebidas, alimentos)
+
+  // Endereço
+  addressStreet     String?
+  addressNumber     String?
+  addressComplement String?
+  addressDistrict   String?
+  addressCity       String?
+  addressState      String?
+  addressZip        String?
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  // Etapa 6 — campos opcionais de compras
-  defaultPaymentTerms Json?
-  defaultLeadTimeDays Int?
-  minOrderAmount      Decimal? @db.Decimal(10, 2)
-  notes               String?
+  // Condições comerciais padrão
+  defaultPaymentTerms    Json? // { termsDays: Int, type: "NET"|"INSTALLMENT", installments?: [{days,percent}] }
+  defaultLeadTimeDays    Int?
+  minOrderAmount         Decimal? @db.Decimal(10, 2)
+  deliveryDays           Json? // ["MONDAY","THURSDAY"]
+  defaultDiscountPercent Decimal? @db.Decimal(5, 2)
+  freightFixedAmount     Decimal? @db.Decimal(10, 2)
+  freightFreeAbove       Decimal? @db.Decimal(10, 2)
+  freightNotes           String?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  products     Product[]
-  // Etapa 6
+  notes String?
+
+  organization            Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products                Product[]
   supplierProductMappings SupplierProductMapping[]
   purchaseOrders          PurchaseOrder[]
   supplierReturns         SupplierReturn[]
   accountPayables         AccountPayable[]
   quotationResponses      QuotationSupplierResponse[]
+  auditLogs               SupplierAuditLog[]
 
+  @@index([organizationId])
+}
+
+model SupplierAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  supplierId     String
+  userId         String?
+  userName       String?
+  action         String // CREATED | UPDATED | DELETED
+  changedFields  Json? // { fieldName: { from: value, to: value } }
+  createdAt      DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
   @@index([organizationId])
 }
 
@@ -600,16 +652,16 @@ model Category {
 // ─────────────────────────────────────────────────────────────────────
 
 model Product {
-  id             String      @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   supplierId     String?
-  categoryId     String?     // FK → Category (Etapa 2)
-  brandId        String?     // FK → Brand
+  categoryId     String? // FK → Category (Etapa 2)
+  brandId        String? // FK → Brand
 
-  name             String
-  posName          String?   // nome curto p/ PDV e cupom fiscal (≤40 chars)
-  description      String?
-  brand            String?   // legacy plain-text brand — still writable
+  name        String
+  posName     String? // nome curto p/ PDV e cupom fiscal (≤40 chars)
+  description String?
+  brand       String? // legacy plain-text brand — still writable
 
   // SKU único por org — validado na camada de aplicação (null não computa no unique)
   sku     String?
@@ -618,20 +670,23 @@ model Product {
   tags    String[] @default([])
 
   // Discriminador de tipo — imutável após criação (RN-C02)
-  productType ProductType @default(SIMPLE)
+  productType     ProductType      @default(SIMPLE)
+  // Subtipo de KIT: COMBO (qtd inteira) ou RECIPE (insumos fracionados). null p/ não-KIT.
+  compositionKind CompositionKind?
 
   // Unidades: stock = como o estoque conta; sale = como o cliente vê
-  unit             ProductUnit  @default(UN) // alias de stockUnit, mantido por compat
-  saleUnit         ProductUnit  @default(UN)
-  conversionFactor Decimal      @db.Decimal(10, 6) @default(1)
+  unit             ProductUnit @default(UN) // alias de stockUnit, mantido por compat
+  saleUnit         ProductUnit @default(UN)
+  conversionFactor Decimal     @default(1) @db.Decimal(10, 6)
 
   // Unidade de embalagem/compra (ex: FARDO) e quantas unit cabem nela (ex: 8)
-  packUnit         ProductUnit? // unidade maior de compra/embalagem
-  packSize         Int?         // quantas `unit` formam 1 `packUnit`
+  packUnit ProductUnit? // unidade maior de compra/embalagem
+  packSize Int? // quantas `unit` formam 1 `packUnit`
 
   // Preço legado — mantido para acesso simples; canonical em ProductPrice
-  price     Decimal  @db.Decimal(10, 2) @default(0)
-  costPrice Decimal? @db.Decimal(10, 2)
+  price     Decimal  @default(0) @db.Decimal(10, 2)
+  // 4 casas: custo de insumo granular (ex: R$/ml) usado em produto CUSTOM
+  costPrice Decimal? @db.Decimal(10, 4)
 
   weight   Decimal? @db.Decimal(10, 3) // kg
   // Dimensões logísticas (cm) — frete e expedição
@@ -643,7 +698,7 @@ model Product {
   // Estoque
   stockMin   Decimal? @db.Decimal(10, 3) // ponto de reposição
   stockIdeal Decimal? @db.Decimal(10, 3) // nível alvo de reposição
-  location   String?                     // corredor / prateleira / posição
+  location   String? // corredor / prateleira / posição
 
   isActive Boolean @default(true)
   // Legado — mantido para compat com código Etapa 1
@@ -651,13 +706,12 @@ model Product {
 
   hasAgeRestriction Boolean @default(false)
   minAge            Int?
-  expiryDays        Int?
   allowFractioned   Boolean @default(false)
 
   // Overrides do perfil herdado da subcategoria — null = herda da Category
   storageTemperature StorageTemperature? // null = usa o da subcategoria
-  controlsExpiry     Boolean?            // null = herda; true/false = sobrescreve
-  controlsLot        Boolean?            // null = herda; true/false = sobrescreve
+  controlsExpiry     Boolean? // null = herda; true/false = sobrescreve
+  controlsLot        Boolean? // null = herda; true/false = sobrescreve
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -671,24 +725,27 @@ model Product {
   stockTransfers StockTransfer[]
 
   // Relações Etapa 2
-  category        Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brandRef        Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  barcodes        ProductBarcode[]
-  variants        ProductVariant[]
-  kitComponents   ProductKitComponent[] @relation("KitProduct")
-  asComponent     ProductKitComponent[] @relation("ComponentProduct")
-  prices          ProductPrice[]
-  taxData         ProductTax[]
+  category                Category?                @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandRef                Brand?                   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  barcodes                ProductBarcode[]
+  variants                ProductVariant[]
+  kitComponents           ProductKitComponent[]    @relation("KitProduct")
+  asComponent             ProductKitComponent[]    @relation("ComponentProduct")
+  // CUSTOM — grupos de opção (deste produto) e uso como insumo de opção
+  optionGroups            ProductOptionGroup[]
+  asOption                ProductOption[]          @relation("OptionComponentProduct")
+  prices                  ProductPrice[]
+  taxData                 ProductTax[]
   // Relações Etapa 3
-  stockBalances      StockBalance[]
-  stockLots          StockLot[]
-  stockReservations  StockReservation[]
-  inventoryCountItems InventoryCountItem[]
+  stockBalances           StockBalance[]
+  stockLots               StockLot[]
+  stockReservations       StockReservation[]
+  inventoryCountItems     InventoryCountItem[]
   // Relações Etapa 6
-  purchaseOrderItems     PurchaseOrderItem[]
-  goodsReceiptItems      GoodsReceiptItem[]
+  purchaseOrderItems      PurchaseOrderItem[]
+  goodsReceiptItems       GoodsReceiptItem[]
   supplierProductMappings SupplierProductMapping[]
-  quotationItems         QuotationItem[]
+  quotationItems          QuotationItem[]
   purchaseSuggestionItems PurchaseSuggestionItem[]
   productTags             ProductTag[]
 
@@ -712,12 +769,12 @@ model ProductBarcode {
   // Multi-embalagem: nome da embalagem ("Unidade", "Fardo 6", "Caixa 24")
   // e quantas `unit` cada bipada representa (1, 6, 24).
   label     String? // exibido no PDV / cadastro
-  factor    Decimal @db.Decimal(10, 3) @default(1) // multiplicador de quantidade
+  factor    Decimal @default(1) @db.Decimal(10, 3) // multiplicador de quantidade
   isDefault Boolean @default(false)
   sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -733,7 +790,7 @@ model ProductVariant {
   id             String  @id @default(cuid())
   organizationId String
   productId      String
-  name           String  // ex: "350ml", "P", "Morango"
+  name           String // ex: "350ml", "P", "Morango"
   sku            String?
   attributes     Json    @default("{}") // {"volume":"350ml","flavor":"cola"}
   isActive       Boolean @default(true)
@@ -742,17 +799,18 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  product      Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
-  barcodes     ProductBarcode[]
-  prices       ProductPrice[]
-  taxData      ProductTax[]
-  asComponent  ProductKitComponent[] @relation("ComponentVariant")
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product                 Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcodes                ProductBarcode[]
+  prices                  ProductPrice[]
+  taxData                 ProductTax[]
+  asComponent             ProductKitComponent[]    @relation("ComponentVariant")
+  asOption                ProductOption[]          @relation("OptionComponentVariant")
   // Etapa 3
-  stockMovements    StockMovement[]   @relation("VariantMovements")
-  stockBalances     StockBalance[]
-  stockLots         StockLot[]
-  stockReservations StockReservation[]
+  stockMovements          StockMovement[]          @relation("VariantMovements")
+  stockBalances           StockBalance[]
+  stockLots               StockLot[]
+  stockReservations       StockReservation[]
   // Etapa 6
   purchaseOrderItems      PurchaseOrderItem[]
   goodsReceiptItems       GoodsReceiptItem[]
@@ -766,12 +824,12 @@ model ProductVariant {
 
 // Composição de um KIT — componentes não podem ser KIT (RN-C04)
 model ProductKitComponent {
-  id                 String  @id @default(cuid())
+  id                 String   @id @default(cuid())
   kitProductId       String
   componentProductId String
   componentVariantId String?
-  quantity           Decimal @db.Decimal(10, 3)
-  position           Int     @default(0)
+  quantity           Decimal  @db.Decimal(10, 3)
+  position           Int      @default(0)
   createdAt          DateTime @default(now())
 
   kitProduct       Product         @relation("KitProduct", fields: [kitProductId], references: [id], onDelete: Cascade)
@@ -780,6 +838,57 @@ model ProductKitComponent {
 
   @@unique([kitProductId, componentProductId, componentVariantId])
   @@index([kitProductId])
+  @@index([componentProductId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// CATÁLOGO — Produto CUSTOM (personalizado)
+// Itens fixos reaproveitam ProductKitComponent. Grupos de opção abaixo
+// são as escolhas montadas no momento da venda (ex: "Escolha da Vodka").
+// ─────────────────────────────────────────────────────────────────────
+
+// Grupo de escolha de um produto CUSTOM (radio se maxSelect=1, checkbox se >1)
+model ProductOptionGroup {
+  id             String      @id @default(cuid())
+  organizationId String
+  productId      String
+  name           String // "Escolha da Vodka"
+  unit           ProductUnit @default(UN) // unidade das quantidades das opções (ml, un…)
+  required       Boolean     @default(true)
+  minSelect      Int         @default(1) // mínimo de opções a escolher
+  maxSelect      Int         @default(1) // máximo (1 = exclusivo)
+  position       Int         @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options      ProductOption[]
+
+  @@index([organizationId])
+  @@index([productId])
+}
+
+// Opção de um grupo — aponta para Product/Variant real (estoque/custo/fiscal)
+model ProductOption {
+  id                 String  @id @default(cuid())
+  groupId            String
+  componentProductId String
+  componentVariantId String?
+  name               String // rótulo exibido (default = nome do componente)
+  quantity           Decimal @default(1) @db.Decimal(10, 3) // quanto baixa do insumo
+  priceDelta         Decimal @default(0) @db.Decimal(10, 2) // acréscimo no preço
+  isDefault          Boolean @default(false)
+  position           Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  group            ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  componentProduct Product            @relation("OptionComponentProduct", fields: [componentProductId], references: [id])
+  componentVariant ProductVariant?    @relation("OptionComponentVariant", fields: [componentVariantId], references: [id])
+
+  @@index([groupId])
   @@index([componentProductId])
 }
 
@@ -822,36 +931,36 @@ model ProductPrice {
 // ─────────────────────────────────────────────────────────────────────
 
 model ProductTax {
-  id             String    @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   productId      String
   variantId      String?
 
-  ncm            String    // 8 dígitos (RN-C07)
-  cest           String?   // 7 dígitos (RN-C07)
-  cfopInternal   String?   // operações internas  ex: "5102"
-  cfopInterstate String?   // operações interestaduais ex: "6102"
+  ncm            String // 8 dígitos (RN-C07)
+  cest           String? // 7 dígitos (RN-C07)
+  cfopInternal   String? // operações internas  ex: "5102"
+  cfopInterstate String? // operações interestaduais ex: "6102"
 
-  origin         TaxOrigin @default(NACIONAL)
+  origin TaxOrigin @default(NACIONAL)
 
   // ICMS — use CST (Normal) OU CSOSN (Simples) conforme taxRegime da org
-  icmsCst    String?        // "00","10","20","30","40","41","50","51","60","70","90"
-  icmsCsosn  String?        // "101","102","103","201","202","203","300","400","500","900"
-  icmsRate   Decimal?       @db.Decimal(5, 2)
+  icmsCst   String? // "00","10","20","30","40","41","50","51","60","70","90"
+  icmsCsosn String? // "101","102","103","201","202","203","300","400","500","900"
+  icmsRate  Decimal? @db.Decimal(5, 2)
 
   // PIS
-  pisCst     String?        // "01"-"09","49","50","99"
-  pisRate    Decimal?       @db.Decimal(5, 4)
+  pisCst  String? // "01"-"09","49","50","99"
+  pisRate Decimal? @db.Decimal(5, 4)
 
   // COFINS
   cofinsCst  String?
-  cofinsRate Decimal?       @db.Decimal(5, 4)
+  cofinsRate Decimal? @db.Decimal(5, 4)
 
   // IPI
   ipiCst  String?
   ipiRate Decimal? @db.Decimal(5, 2)
 
-  unitTaxable Boolean       @default(true)
+  unitTaxable Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -867,9 +976,9 @@ model ProductTax {
 
 // Fiscal padrão por categoria — herança (RN-C13)
 model CategoryTaxDefault {
-  id             String    @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
-  categoryId     String    @unique
+  categoryId     String @unique
 
   ncm            String?
   cest           String?
@@ -898,23 +1007,23 @@ model CategoryTaxDefault {
 // Templates fiscais globais — pré-populados por segmento (diferencial competitivo)
 // Tabela GLOBAL (não por tenant) — seed em seed-fiscal.ts
 model FiscalTemplate {
-  id           String        @id @default(cuid())
-  segment      FiscalSegment
-  productName  String
-  barcode      String?       // EAN13 canônico para lookup automático
+  id          String        @id @default(cuid())
+  segment     FiscalSegment
+  productName String
+  barcode     String? // EAN13 canônico para lookup automático
 
   suggestedNcm          String
   suggestedCest         String?
   defaultCfopInternal   String  @default("5102")
   defaultCfopInterstate String  @default("6102")
 
-  icmsCst    String?
-  icmsCsosn  String?
-  pisCst     String?  @default("01")
-  cofinsCst  String?  @default("01")
-  origin     TaxOrigin @default(NACIONAL)
+  icmsCst   String?
+  icmsCsosn String?
+  pisCst    String?   @default("01")
+  cofinsCst String?   @default("01")
+  origin    TaxOrigin @default(NACIONAL)
 
-  description String?  // nome técnico / observação para o operador
+  description String? // nome técnico / observação para o operador
 
   createdAt DateTime @default(now())
 
@@ -928,12 +1037,12 @@ model FiscalTemplate {
 // ─────────────────────────────────────────────────────────────────────
 
 model StockEntry {
-  id             String    @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   locationId     String
   productId      String
 
-  quantity      Decimal   @db.Decimal(10, 3) @default(0)
+  quantity      Decimal   @default(0) @db.Decimal(10, 3)
   minQuantity   Decimal?  @db.Decimal(10, 3)
   maxQuantity   Decimal?  @db.Decimal(10, 3)
   shelfLocation String?
@@ -956,7 +1065,7 @@ model StockEntry {
 }
 
 model StockMovement {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   locationId     String
   productId      String
@@ -965,21 +1074,21 @@ model StockMovement {
   quantity    Decimal      @db.Decimal(10, 3)
   previousQty Decimal      @db.Decimal(10, 3)
   newQty      Decimal      @db.Decimal(10, 3)
-  transferId  String?      // legado Etapa 1
-  notes       String?      // legado Etapa 1
+  transferId  String? // legado Etapa 1
+  notes       String? // legado Etapa 1
   userId      String
   userName    String?
 
   // Etapa 3 — campos adicionais (todos nullable para compat)
-  variantId       String?         // FK → ProductVariant
-  lotId           String?         // FK → StockLot
+  variantId       String? // FK → ProductVariant
+  lotId           String? // FK → StockLot
   unitCost        Decimal?        @db.Decimal(10, 4) // custo unitário nesta entrada
   reason          MovementReason? // motivo estruturado
-  referenceType   String?         // "ORDER" | "PURCHASE" | "TRANSFER" ...
-  referenceId     String?         // ID da entidade que originou o movimento
-  transferGroupId String?         // par TRANSFER_OUT+IN — mesmo grupo
-  idempotencyKey  String?         // retry-safe (único por org quando presente)
-  note            String?         // alias mais limpo para notes (Etapa 3)
+  referenceType   String? // "ORDER" | "PURCHASE" | "TRANSFER" ...
+  referenceId     String? // ID da entidade que originou o movimento
+  transferGroupId String? // par TRANSFER_OUT+IN — mesmo grupo
+  idempotencyKey  String? // retry-safe (único por org quando presente)
+  note            String? // alias mais limpo para notes (Etapa 3)
 
   createdAt DateTime @default(now())
 
@@ -1004,7 +1113,7 @@ model StockMovement {
 }
 
 model StockTransfer {
-  id             String  @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   fromLocationId String
   toLocationId   String
@@ -1035,22 +1144,22 @@ model StockTransfer {
 
 // Lote/validade — só criado quando capability product.expiry_tracking (RN-E05)
 model StockLot {
-  id             String   @id @default(cuid())
-  organizationId String
-  productId      String
-  variantId      String?
-  code           String   // código do lote (fornecedor ou gerado)
-  expiryDate     DateTime?
+  id              String    @id @default(cuid())
+  organizationId  String
+  productId       String
+  variantId       String?
+  code            String // código do lote (fornecedor ou gerado)
+  expiryDate      DateTime?
   manufactureDate DateTime?
-  receivedAt     DateTime @default(now())
-  isActive       Boolean  @default(true)
+  receivedAt      DateTime  @default(now())
+  isActive        Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  product      Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant?    @relation(fields: [variantId], references: [id], onDelete: SetNull)
   movements    StockMovement[]
   balances     StockBalance[]
   reservations StockReservation[]
@@ -1072,8 +1181,8 @@ model StockBalance {
   locationId     String
   lotId          String?
 
-  quantityOnHand   Decimal @db.Decimal(10, 3) @default(0) // físico
-  quantityReserved Decimal @db.Decimal(10, 3) @default(0) // reservado
+  quantityOnHand   Decimal @default(0) @db.Decimal(10, 3) // físico
+  quantityReserved Decimal @default(0) @db.Decimal(10, 3) // reservado
   // quantityAvailable = quantityOnHand - quantityReserved (calculada na query)
 
   averageCost   Decimal? @db.Decimal(10, 4) // custo médio móvel (RN-E09)
@@ -1099,7 +1208,7 @@ model StockBalance {
 
 // Reserva ativa — espelha movimentos de RESERVATION (anti-oversell RN-E07)
 model StockReservation {
-  id             String            @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   productId      String
   variantId      String?
@@ -1107,10 +1216,10 @@ model StockReservation {
   lotId          String?
 
   quantity      Decimal           @db.Decimal(10, 3)
-  referenceType String            // "ORDER", "CART", etc.
-  referenceId   String            // ID do pedido/carrinho
+  referenceType String // "ORDER", "CART", etc.
+  referenceId   String // ID do pedido/carrinho
   status        ReservationStatus @default(ACTIVE)
-  expiresAt     DateTime?         // null = sem expiração automática
+  expiresAt     DateTime? // null = sem expiração automática
 
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
@@ -1134,7 +1243,7 @@ model InventoryCount {
   organizationId String
   locationId     String
   status         InventoryCountStatus @default(DRAFT)
-  startedBy      String               // userId
+  startedBy      String // userId
   note           String?
 
   startedAt DateTime  @default(now())
@@ -1221,29 +1330,31 @@ model AuditLog {
 // ─────────────────────────────────────────────────────────────────────
 
 enum OrderChannel {
-  POS           // PDV operado (caixa)
-  SELF_SERVICE  // autônomo / kiosk
+  POS // PDV operado (caixa)
+  SELF_SERVICE // autônomo / kiosk
   IFOOD
   WHATSAPP
   MERCADO_LIVRE
 }
 
 enum OrderStatus {
-  DRAFT      // carrinho aberto / comanda
-  CONFIRMED  // confirmado, estoque reservado
-  PAID       // pagamento confirmado
-  FULFILLED  // separado / expedido
-  COMPLETED  // entregue / concluído
-  CANCELED   // cancelado (imutável)
+  DRAFT // carrinho aberto / comanda
+  CONFIRMED // confirmado, estoque reservado
+  PAID // pagamento confirmado
+  FULFILLED // separado / expedido
+  COMPLETED // entregue / concluído
+  CANCELED // cancelado (imutável)
 }
 
 enum PaymentMethod {
-  CASH         // dinheiro
-  PIX_MANUAL   // Pix sem QR (manual)
-  PIX_DYNAMIC  // Pix QR dinâmico (webhook adquirente)
-  CARD_PRESENT // cartão presente (maquininha)
-  CARD_ONLINE  // cartão online (tokenizado)
-  VOUCHER      // vale / crédito interno
+  CASH // dinheiro
+  PIX_MANUAL // Pix sem QR (manual)
+  PIX_DYNAMIC // Pix QR dinâmico (webhook adquirente)
+  CARD_PRESENT // cartão presente (maquininha) — legado/genérico
+  CARD_CREDIT // cartão de crédito (maquininha)
+  CARD_DEBIT // cartão de débito (maquininha)
+  CARD_ONLINE // cartão online (tokenizado)
+  VOUCHER // vale / crédito interno
 }
 
 enum PaymentStatus {
@@ -1259,10 +1370,10 @@ enum CashSessionStatus {
 }
 
 enum CashMovementType {
-  OPEN    // abertura
-  CLOSE   // fechamento
-  BLEED   // sangria
-  SUPPLY  // suprimento
+  OPEN // abertura
+  CLOSE // fechamento
+  BLEED // sangria
+  SUPPLY // suprimento
 }
 
 enum ChannelStatus {
@@ -1280,9 +1391,9 @@ enum OutboxStatus {
 }
 
 enum MlLogisticMode {
-  FULL     // estoque e entrega ML
-  FLEX     // entrega própria, MarketOS faz fulfillment
-  CLASSIC  // retira ou entrega por conta
+  FULL // estoque e entrega ML
+  FLEX // entrega própria, MarketOS faz fulfillment
+  CLASSIC // retira ou entrega por conta
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -1293,21 +1404,54 @@ enum MlLogisticMode {
 model Customer {
   id             String  @id @default(cuid())
   organizationId String
+  personType     String  @default("PF") // PF | PJ
   name           String?
-  document       String? // CPF (PII)
+  document       String? // CPF/CNPJ (PII)
   phone          String? // (PII)
+  whatsapp       String? // (PII)
   email          String? // (PII)
+  contactName    String? // pessoa de contato (PJ)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Endereço
+  addressStreet     String?
+  addressNumber     String?
+  addressComplement String?
+  addressDistrict   String?
+  addressCity       String?
+  addressState      String?
+  addressZip        String?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notes String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   orders       Order[]
-  invoices     Invoice[]   // Etapa 5
+  invoices     Invoice[] // Etapa 5
+  receivables  AccountReceivable[]
+  auditLogs    CustomerAuditLog[]
 
   @@index([organizationId])
   @@index([organizationId, document])
   @@index([organizationId, phone])
+}
+
+model CustomerAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  userId         String?
+  userName       String?
+  action         String // CREATED | UPDATED | DELETED | REACTIVATED | DEACTIVATED
+  changedFields  Json? // { fieldName: { from: value, to: value } }
+  createdAt      DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([organizationId])
 }
 
 // Pedido — agregador genérico; canal é adapter (RN-V01)
@@ -1320,9 +1464,9 @@ model Order {
   customerId     String?
   cashSessionId  String?
 
-  subtotal      Decimal @db.Decimal(10, 2) @default(0)
-  discountTotal Decimal @db.Decimal(10, 2) @default(0)
-  total         Decimal @db.Decimal(10, 2) @default(0)
+  subtotal      Decimal @default(0) @db.Decimal(10, 2)
+  discountTotal Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @default(0) @db.Decimal(10, 2)
 
   // Idempotência dupla (RN-V09)
   idempotencyKey String? // interno — @@unique abaixo
@@ -1344,7 +1488,8 @@ model Order {
   items         OrderItem[]
   statusHistory OrderStatusHistory[]
   payments      Payment[]
-  invoice       Invoice?          // Etapa 5
+  receivables   AccountReceivable[]
+  invoice       Invoice? // Etapa 5
 
   // NULL values in PG unique constraints are treated as distinct — múltiplos NULLs OK
   @@unique([organizationId, channel, externalId])
@@ -1373,21 +1518,48 @@ model OrderItem {
   unitSnapshot        String?
   unitPriceSnapshot   Decimal  @db.Decimal(10, 2)
   costSnapshot        Decimal? @db.Decimal(10, 4)
-  taxSnapshot         Json?    // {ncm, cst, pisCst, cofinsRate, ...}
+  taxSnapshot         Json? // {ncm, cst, pisCst, cofinsRate, ...}
   productTypeSnapshot String   @default("SIMPLE")
 
   quantity       Decimal @db.Decimal(10, 3)
-  discountAmount Decimal @db.Decimal(10, 2) @default(0)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
   lineTotal      Decimal @db.Decimal(10, 2)
 
   isKit Boolean @default(false) // true = componentes explodidos no estoque (RN-V10)
 
   createdAt DateTime @default(now())
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  selections OrderItemSelection[]
 
   @@index([orderId])
   @@index([productId])
+}
+
+// Escolha feita num item CUSTOM no momento da venda — snapshot congelado.
+// Dirige a baixa de estoque dos insumos escolhidos no fulfillOrder.
+model OrderItemSelection {
+  id          String @id @default(cuid())
+  orderItemId String
+
+  // Referências fracas (relatório "qual opção mais vende")
+  groupId            String?
+  optionId           String?
+  componentProductId String?
+  componentVariantId String?
+
+  // SNAPSHOT congelado
+  groupNameSnapshot  String
+  optionNameSnapshot String
+  quantitySnapshot   Decimal @default(1) @db.Decimal(10, 3)
+  priceDeltaSnapshot Decimal @default(0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([componentProductId])
 }
 
 // Histórico imutável de transições de estado
@@ -1414,14 +1586,14 @@ model Payment {
   orderId String
 
   method            PaymentMethod
-  provider          String?       // "pagarme" | "stone" | "mercadopago"
+  provider          String? // "pagarme" | "stone" | "mercadopago"
   amount            Decimal       @db.Decimal(10, 2)
   receivedAmount    Decimal?      @db.Decimal(10, 2) // dinheiro recebido
   changeAmount      Decimal?      @db.Decimal(10, 2) // troco
   status            PaymentStatus @default(PENDING)
-  externalPaymentId String?       // id na adquirente
-  pixQrCode         String?       // QR copia-e-cola
-  pixQrCodeUrl      String?       // QR imagem (data URL)
+  externalPaymentId String? // id na adquirente
+  pixQrCode         String? // QR copia-e-cola
+  pixQrCodeUrl      String? // QR imagem (data URL)
   pixExpiresAt      DateTime?
 
   confirmedAt DateTime?
@@ -1431,7 +1603,8 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  settlement PaymentSettlement?
 
   @@index([orderId])
   @@index([status])
@@ -1443,7 +1616,7 @@ model CashSession {
   id             String            @id @default(cuid())
   organizationId String
   locationId     String
-  operatorId     String            // userId
+  operatorId     String // userId
   status         CashSessionStatus @default(OPEN)
 
   openingAmount Decimal  @db.Decimal(10, 2) // fundo de troco
@@ -1474,12 +1647,15 @@ model CashMovement {
   amount        Decimal          @db.Decimal(10, 2)
   note          String?
   actorId       String?
+  categoryId    String?
 
   createdAt DateTime @default(now())
 
-  cashSession CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  cashSession CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  category    FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([cashSessionId])
+  @@index([categoryId])
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -1488,13 +1664,13 @@ model CashMovement {
 
 // Configuração e credenciais de canal por organização
 model ChannelIntegration {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  channel        OrderChannel  // IFOOD | WHATSAPP | MERCADO_LIVRE
+  channel        OrderChannel // IFOOD | WHATSAPP | MERCADO_LIVRE
 
   status       ChannelStatus @default(DISCONNECTED)
-  credentials  Json?         // access_token, refresh_token, expiresAt — cifrado em prod
-  settings     Json?         // {mlLogisticMode, whatsappNumber, ifoodMerchantId, ...}
+  credentials  Json? // access_token, refresh_token, expiresAt — cifrado em prod
+  settings     Json? // {mlLogisticMode, whatsappNumber, ifoodMerchantId, ...}
   lastSyncAt   DateTime?
   lastErrorAt  DateTime?
   lastErrorMsg String?
@@ -1518,7 +1694,7 @@ model ChannelProductMapping {
   productId            String
   variantId            String?
   channel              OrderChannel
-  externalId           String       // id no iFood/ML/WhatsApp
+  externalId           String // id no iFood/ML/WhatsApp
   externalSku          String?
   syncedAt             DateTime?
 
@@ -1541,9 +1717,9 @@ model ChannelProductMapping {
 model OutboxEvent {
   id             String       @id @default(cuid())
   organizationId String
-  aggregateType  String       // "Order" | "Payment" | "ChannelIntegration"
-  aggregateId    String       // id do agregado
-  eventType      String       // "ORDER_CONFIRMED" | "PUSH_STATUS_IFOOD" | "SYNC_CATALOG"
+  aggregateType  String // "Order" | "Payment" | "ChannelIntegration"
+  aggregateId    String // id do agregado
+  eventType      String // "ORDER_CONFIRMED" | "PUSH_STATUS_IFOOD" | "SYNC_CATALOG"
   payload        Json
   status         OutboxStatus @default(PENDING)
   priority       Int          @default(0) // maior = mais prioritário; 10 = SLA iFood (RN-V07)
@@ -1571,7 +1747,7 @@ model InboundEvent {
   id              String       @id @default(cuid())
   organizationId  String
   channel         OrderChannel
-  externalEventId String       // id único no canal externo
+  externalEventId String // id único no canal externo
   eventType       String?
   payload         Json
   processedAt     DateTime?
@@ -1598,74 +1774,74 @@ enum InvoiceType {
 }
 
 enum InvoiceStatus {
-  PENDING          // aguardando worker
-  SENDING          // enviado ao BaaS/SEFAZ, aguardando resposta
-  IN_CONTINGENCY   // SEFAZ fora; cupom emitido localmente (EPEC/SVC)
-  AUTHORIZED       // autorizada pela SEFAZ
-  REJECTED         // rejeitada pela SEFAZ (reemitível após correção)
-  DENIED           // denegada pela SEFAZ (não reemitível com mesmos dados)
-  CANCELED         // cancelada dentro do prazo (terminal)
+  PENDING // aguardando worker
+  SENDING // enviado ao BaaS/SEFAZ, aguardando resposta
+  IN_CONTINGENCY // SEFAZ fora; cupom emitido localmente (EPEC/SVC)
+  AUTHORIZED // autorizada pela SEFAZ
+  REJECTED // rejeitada pela SEFAZ (reemitível após correção)
+  DENIED // denegada pela SEFAZ (não reemitível com mesmos dados)
+  CANCELED // cancelada dentro do prazo (terminal)
 }
 
 enum InvoiceEventType {
-  SUBMITTED               // enviada ao BaaS
-  AUTHORIZED              // autorizada pela SEFAZ
-  REJECTED                // rejeitada
-  DENIED                  // denegada
-  CONTINGENCY_ENTERED     // entrou em contingência
+  SUBMITTED // enviada ao BaaS
+  AUTHORIZED // autorizada pela SEFAZ
+  REJECTED // rejeitada
+  DENIED // denegada
+  CONTINGENCY_ENTERED // entrou em contingência
   CONTINGENCY_TRANSMITTED // transmitida após SEFAZ voltar
-  CANCEL_REQUESTED        // cancelamento solicitado
-  CANCELED                // cancelada
-  INUTILIZED              // número inutilizado (InvoiceNumberSkip)
-  RETRY_SCHEDULED         // retry agendado
+  CANCEL_REQUESTED // cancelamento solicitado
+  CANCELED // cancelada
+  INUTILIZED // número inutilizado (InvoiceNumberSkip)
+  RETRY_SCHEDULED // retry agendado
 }
 
 enum InvoiceEventSource {
-  INTERNAL         // ação da lib interna
-  WORKER           // disparado pelo worker do Outbox
+  INTERNAL // ação da lib interna
+  WORKER // disparado pelo worker do Outbox
   PROVIDER_WEBHOOK // webhook do BaaS (Focus/TecnoSpeed)
-  MANUAL           // ação manual de admin
+  MANUAL // ação manual de admin
 }
 
 enum FiscalEnvironment {
   HOMOLOGATION // sandbox do BaaS — notas sem validade fiscal
-  PRODUCTION   // produção real — notas com validade fiscal
+  PRODUCTION // produção real — notas com validade fiscal
 }
 
 enum FiscalProviderEnum {
-  FOCUS_NFE   // Focus NFe (Acras Tecnologia)
-  TECNOSPEED  // TecnoSpeed
+  FOCUS_NFE // Focus NFe (Acras Tecnologia)
+  TECNOSPEED // TecnoSpeed
 }
 
 enum ContingencyMode {
   EPEC // Emissão em Contingência via EPEC
-  SVC  // Sefaz Virtual de Contingência
+  SVC // Sefaz Virtual de Contingência
 }
 
 enum NumberSkipStatus {
-  REQUESTED  // solicitação criada
+  REQUESTED // solicitação criada
   INUTILIZED // inutilizada com sucesso
-  REJECTED   // rejeitada pelo BaaS/SEFAZ
+  REJECTED // rejeitada pelo BaaS/SEFAZ
 }
 
 // Nota fiscal eletrônica (NFCe) — uma por pedido (RN-F03)
 model Invoice {
-  id             String        @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   locationId     String
-  orderId        String        @unique // uma nota por pedido — idempotência (RN-F03)
+  orderId        String  @unique // uma nota por pedido — idempotência (RN-F03)
   customerId     String?
 
   type   InvoiceType   @default(NFCE)
   status InvoiceStatus @default(PENDING)
 
   // Numeração SEFAZ (atribuída na autorização)
-  series  Int     @default(1)
-  number  Int?    // número sequencial do BaaS/SEFAZ
+  series Int  @default(1)
+  number Int? // número sequencial do BaaS/SEFAZ
 
   // Chaves de autorização
-  accessKey String?  // chave 44 dígitos
-  protocol  String?  // protocolo de autorização SEFAZ
+  accessKey String? // chave 44 dígitos
+  protocol  String? // protocolo de autorização SEFAZ
 
   // Timestamps de lifecycle
   issuedAt     DateTime?
@@ -1673,41 +1849,41 @@ model Invoice {
   canceledAt   DateTime?
 
   // Valores fiscais
-  totalAmount Decimal @db.Decimal(10, 2) @default(0)
-  totalTax    Decimal @db.Decimal(10, 2) @default(0)
+  totalAmount Decimal @default(0) @db.Decimal(10, 2)
+  totalTax    Decimal @default(0) @db.Decimal(10, 2)
 
   // BaaS
   provider          FiscalProviderEnum
-  providerInvoiceId String?    // id no BaaS — único por provider+org
-  xmlIssued         String?    @db.Text // XML autorizado (≤ 512KB)
-  xmlCanceled       String?    @db.Text // XML de cancelamento
-  qrCode            String?    // URL/payload do QR Code
-  danfeUrl          String?    // URL do DANFE/PDF
+  providerInvoiceId String? // id no BaaS — único por provider+org
+  xmlIssued         String?            @db.Text // XML autorizado (≤ 512KB)
+  xmlCanceled       String?            @db.Text // XML de cancelamento
+  qrCode            String? // URL/payload do QR Code
+  danfeUrl          String? // URL do DANFE/PDF
 
   // Rejeição
   rejectionReason String?
-  rejectionCode   String?    // código SEFAZ (ex: "539", "999")
+  rejectionCode   String? // código SEFAZ (ex: "539", "999")
 
   // Cancelamento
   cancelReason   String?
-  cancelDeadline DateTime?  // prazo para cancelar (calculado de authorizedAt)
+  cancelDeadline DateTime? // prazo para cancelar (calculado de authorizedAt)
 
   // Contingência
   contingencyMode ContingencyMode?
 
   // Idempotência + retry
-  idempotencyKey  String   @unique // geralmente orderId
-  attemptCount    Int      @default(0)
-  lastAttemptAt   DateTime?
-  nextRetryAt     DateTime?
+  idempotencyKey String    @unique // geralmente orderId
+  attemptCount   Int       @default(0)
+  lastAttemptAt  DateTime?
+  nextRetryAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  location     Location      @relation(fields: [locationId], references: [id])
-  order        Order         @relation(fields: [orderId], references: [id])
-  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  location     Location       @relation(fields: [locationId], references: [id])
+  order        Order          @relation(fields: [orderId], references: [id])
+  customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   events       InvoiceEvent[]
 
   @@index([organizationId])
@@ -1720,15 +1896,15 @@ model Invoice {
 
 // Trilha imutável de eventos — evidência legal (RN-F16)
 model InvoiceEvent {
-  id        String             @id @default(cuid())
-  invoiceId String
-  eventType InvoiceEventType
-  fromStatus InvoiceStatus?
-  toStatus   InvoiceStatus
-  actorId    String?           // null = sistema/webhook
-  source     InvoiceEventSource @default(INTERNAL)
-  providerResponse Json?       // payload bruto do BaaS (auditoria, nunca expor na UI padrão)
-  note       String?
+  id               String             @id @default(cuid())
+  invoiceId        String
+  eventType        InvoiceEventType
+  fromStatus       InvoiceStatus?
+  toStatus         InvoiceStatus
+  actorId          String? // null = sistema/webhook
+  source           InvoiceEventSource @default(INTERNAL)
+  providerResponse Json? // payload bruto do BaaS (auditoria, nunca expor na UI padrão)
+  note             String?
 
   createdAt DateTime @default(now())
 
@@ -1740,18 +1916,18 @@ model InvoiceEvent {
 
 // Certificado A1 do cliente — cifrado (RN-F08)
 model FiscalCertificate {
-  id             String  @id @default(cuid())
-  organizationId String  @unique // um certificado ativo por org
+  id             String @id @default(cuid())
+  organizationId String @unique // um certificado ativo por org
 
-  subject           String    // CNPJ do titular do certificado
+  subject           String // CNPJ do titular do certificado
   validFrom         DateTime
   validTo           DateTime
-  encryptedPfx      Bytes     // .pfx cifrado (AES-256-GCM)
-  encryptedPassword Bytes     // senha cifrada
-  iv                Bytes     // IV da cifra (salvo junto)
+  encryptedPfx      Bytes // .pfx cifrado (AES-256-GCM)
+  encryptedPassword Bytes // senha cifrada
+  iv                Bytes // IV da cifra (salvo junto)
 
   isActive   Boolean   @default(true)
-  uploadedBy String    // userId de quem fez upload
+  uploadedBy String // userId de quem fez upload
   uploadedAt DateTime  @default(now())
   revokedAt  DateTime?
   revokedBy  String?
@@ -1766,13 +1942,13 @@ model FiscalConfig {
   id             String @id @default(cuid())
   organizationId String @unique
 
-  environment  FiscalEnvironment  @default(HOMOLOGATION)
-  provider     FiscalProviderEnum @default(FOCUS_NFE)
+  environment FiscalEnvironment  @default(HOMOLOGATION)
+  provider    FiscalProviderEnum @default(FOCUS_NFE)
 
   // NFCe
   nfceSeries   Int     @default(1)
   nfceCscId    String? // ID do CSC (Código de Segurança do Contribuinte)
-  nfceCscToken Bytes?  // CSC cifrado
+  nfceCscToken Bytes? // CSC cifrado
 
   // Credenciais do BaaS — cifradas
   providerCredentials Bytes? // JSON cifrado {token, cnpj, ...}
@@ -1791,16 +1967,16 @@ model FiscalConfig {
 
 // Inutilização de numeração — compliance SEFAZ (RN-F15)
 model InvoiceNumberSkip {
-  id             String           @id @default(cuid())
-  organizationId String
-  series         Int
-  numberStart    Int
-  numberEnd      Int
-  reason         String
-  status         NumberSkipStatus @default(REQUESTED)
-  requestedBy    String           // userId
-  requestedAt    DateTime         @default(now())
-  processedAt    DateTime?
+  id               String           @id @default(cuid())
+  organizationId   String
+  series           Int
+  numberStart      Int
+  numberEnd        Int
+  reason           String
+  status           NumberSkipStatus @default(REQUESTED)
+  requestedBy      String // userId
+  requestedAt      DateTime         @default(now())
+  processedAt      DateTime?
   providerResponse Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -1814,16 +1990,16 @@ model InvoiceNumberSkip {
 // ─────────────────────────────────────────────────────────────────────
 
 enum PurchaseOrderStatus {
-  DRAFT      // rascunho — em elaboração
-  SENT       // enviado ao fornecedor
-  CONFIRMED  // fornecedor confirmou prazo/condições
-  RECEIVING  // recebimento parcial em andamento
-  RECEIVED   // todo o pedido recebido
-  CANCELED   // cancelado
+  DRAFT // rascunho — em elaboração
+  SENT // enviado ao fornecedor
+  CONFIRMED // fornecedor confirmou prazo/condições
+  RECEIVING // recebimento parcial em andamento
+  RECEIVED // todo o pedido recebido
+  CANCELED // cancelado
 }
 
 enum GoodsReceiptStatus {
-  DRAFT     // em conferência — operador pode ajustar
+  DRAFT // em conferência — operador pode ajustar
   CONFIRMED // conferência encerrada; estoque atualizado
   CANCELED
 }
@@ -1835,18 +2011,18 @@ enum SupplierReturnStatus {
 }
 
 enum SupplierReturnReason {
-  DEFECT       // defeito / avaria
-  EXPIRY       // vencido / próximo do vencimento
-  WRONG_ITEM   // item errado entregue
-  OVERSTOCK    // excesso de estoque
+  DEFECT // defeito / avaria
+  EXPIRY // vencido / próximo do vencimento
+  WRONG_ITEM // item errado entregue
+  OVERSTOCK // excesso de estoque
   OTHER
 }
 
 enum DivergenceType {
-  NONE     // sem divergência
+  NONE // sem divergência
   QUANTITY // quantidade diverge do PO
-  COST     // custo diverge do PO
-  QUALITY  // problema de qualidade
+  COST // custo diverge do PO
+  QUALITY // problema de qualidade
 }
 
 enum AccountPayableStatus {
@@ -1857,23 +2033,23 @@ enum AccountPayableStatus {
 }
 
 enum QuotationStatus {
-  OPEN      // aguardando respostas
-  CLOSED    // encerrada sem converter
+  OPEN // aguardando respostas
+  CLOSED // encerrada sem converter
   CONVERTED // convertida em PO
 }
 
 enum PurchaseSuggestionStatus {
-  PENDING   // aguardando revisão do usuário
+  PENDING // aguardando revisão do usuário
   CONVERTED // convertida em PO
   DISMISSED // descartada
 }
 
 enum NfeImportStatus {
-  PENDING   // XML recebido, aguardando parse
-  PARSED    // parser OK, aguardando mapping
-  MAPPED    // todos os itens mapeados
+  PENDING // XML recebido, aguardando parse
+  PARSED // parser OK, aguardando mapping
+  MAPPED // todos os itens mapeados
   CONFIRMED // PO + recebimento criados
-  REJECTED  // falha no parse ou validação
+  REJECTED // falha no parse ou validação
 }
 
 enum PoHistorySource {
@@ -1892,45 +2068,87 @@ model SupplierProductMapping {
   supplierProductCode String
   supplierProductName String
 
-  productId  String
-  variantId  String?
+  productId String
+  variantId String?
 
-  defaultPackQuantity Decimal? @db.Decimal(10, 3)
-  lastCost            Decimal? @db.Decimal(10, 4)
+  // ── Condições comerciais do fornecedor para este produto ──────────
+  defaultPackQuantity Decimal?     @db.Decimal(10, 3) // quantas `unit` por embalagem de compra
+  purchaseUnit        ProductUnit? // unidade comprada (CX, FARDO, PCT…)
+  minOrderQuantity    Decimal?     @db.Decimal(10, 3) // pedido mínimo (em purchaseUnit)
+  barcode             String? // EAN/código de barras próprio do fornecedor
+  leadTimeDays        Int? // prazo de entrega — override de Supplier.defaultLeadTimeDays
+  discountPercent     Decimal?     @db.Decimal(5, 2) // desconto negociado (%)
+
+  // ── Custos (snapshot; série completa em SupplierProductPriceHistory) ─
+  lastCost       Decimal?  @db.Decimal(10, 4) // preço de compra atual
+  previousCost   Decimal?  @db.Decimal(10, 4) // preço de compra anterior
+  lastPurchaseAt DateTime? // data da última compra deste produto neste fornecedor
+
+  // ── Status ────────────────────────────────────────────────────────
+  isPreferred Boolean @default(false) // fornecedor preferencial para este produto
+  active      Boolean @default(true) // desativa sem apagar histórico
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier     Supplier        @relation(fields: [supplierId],     references: [id], onDelete: Cascade)
-  product      Product         @relation(fields: [productId],      references: [id], onDelete: Cascade)
-  variant      ProductVariant? @relation(fields: [variantId],      references: [id], onDelete: SetNull)
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier     Supplier                      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product      Product                       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant?               @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  priceHistory SupplierProductPriceHistory[]
 
   @@unique([supplierId, supplierProductCode])
   @@index([organizationId])
   @@index([productId])
+  @@index([productId, isPreferred])
+}
+
+// ── Histórico de preço de compra por mapeamento fornecedor↔produto ───
+// Alimentado no recebimento (GoodsReceipt) e na importação de NFe.
+// Base para: menor preço já pago, preço médio, economia potencial.
+model SupplierProductPriceHistory {
+  id             String      @id @default(cuid())
+  organizationId String
+  mappingId      String
+  unitCost       Decimal     @db.Decimal(10, 4)
+  source         PriceSource @default(MANUAL)
+  sourceId       String? // id do GoodsReceipt / NfeImport / PurchaseOrder que originou
+  recordedAt     DateTime    @default(now())
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mapping      SupplierProductMapping @relation(fields: [mappingId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([mappingId, recordedAt])
+}
+
+enum PriceSource {
+  PURCHASE_ORDER
+  GOODS_RECEIPT
+  NFE_IMPORT
+  MANUAL
 }
 
 // ── Pedido de compra — espelha Order (RN-P01) ────────────────────────
 
 model PurchaseOrder {
-  id             String              @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   supplierId     String
   locationId     String
 
-  status        PurchaseOrderStatus @default(DRAFT)
-  number        Int?
+  status PurchaseOrderStatus @default(DRAFT)
+  number Int?
 
   paymentTerms  Json?
   expectedDate  DateTime?
   confirmedDate DateTime?
   notes         String?
 
-  subtotal      Decimal @db.Decimal(10, 2) @default(0)
-  discountTotal Decimal @db.Decimal(10, 2) @default(0)
-  freight       Decimal @db.Decimal(10, 2) @default(0)
-  total         Decimal @db.Decimal(10, 2) @default(0)
+  subtotal      Decimal @default(0) @db.Decimal(10, 2)
+  discountTotal Decimal @default(0) @db.Decimal(10, 2)
+  freight       Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @default(0) @db.Decimal(10, 2)
 
   originSuggestionId String?
   originQuotationId  String?
@@ -1940,15 +2158,15 @@ model PurchaseOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization     Organization               @relation(fields: [organizationId],     references: [id], onDelete: Cascade)
-  supplier         Supplier                   @relation(fields: [supplierId],          references: [id])
-  location         Location                   @relation(fields: [locationId],          references: [id])
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier         Supplier                     @relation(fields: [supplierId], references: [id])
+  location         Location                     @relation(fields: [locationId], references: [id])
   items            PurchaseOrderItem[]
   history          PurchaseOrderStatusHistory[]
   receipts         GoodsReceipt[]
   accountPayables  AccountPayable[]
-  originSuggestion PurchaseSuggestion?        @relation(fields: [originSuggestionId], references: [id], onDelete: SetNull)
-  originQuotation  Quotation?                 @relation(fields: [originQuotationId],  references: [id], onDelete: SetNull)
+  originSuggestion PurchaseSuggestion?          @relation(fields: [originSuggestionId], references: [id], onDelete: SetNull)
+  originQuotation  Quotation?                   @relation(fields: [originQuotationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -1957,24 +2175,24 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   purchaseOrderId String
   productId       String
   variantId       String?
 
   productNameSnapshot  String
-  expectedQuantity     Decimal @db.Decimal(10, 3)
-  unitCost             Decimal @db.Decimal(10, 4)
-  lineTotal            Decimal @db.Decimal(10, 2)
+  expectedQuantity     Decimal  @db.Decimal(10, 3)
+  unitCost             Decimal  @db.Decimal(10, 4)
+  lineTotal            Decimal  @db.Decimal(10, 2)
   fiscalDataSnapshot   Json?
   expectedPackQuantity Decimal? @db.Decimal(10, 3)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchaseOrder PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product       Product          @relation(fields: [productId],       references: [id])
-  variant       ProductVariant?  @relation(fields: [variantId],       references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product            @relation(fields: [productId], references: [id])
+  variant       ProductVariant?    @relation(fields: [variantId], references: [id], onDelete: SetNull)
   receiptItems  GoodsReceiptItem[]
 
   @@index([purchaseOrderId])
@@ -1999,10 +2217,10 @@ model PurchaseOrderStatusHistory {
 // ── Recebimento de mercadoria (RN-P03) ────────────────────────────────
 
 model GoodsReceipt {
-  id              String             @id @default(cuid())
+  id              String   @id @default(cuid())
   organizationId  String
   purchaseOrderId String
-  receivedAt      DateTime           @default(now())
+  receivedAt      DateTime @default(now())
   receivedBy      String
 
   supplierInvoiceNumber    String?
@@ -2016,7 +2234,7 @@ model GoodsReceipt {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization    Organization       @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
   items           GoodsReceiptItem[]
   supplierReturns SupplierReturn[]
@@ -2029,7 +2247,7 @@ model GoodsReceipt {
 }
 
 model GoodsReceiptItem {
-  id                  String @id @default(cuid())
+  id                  String  @id @default(cuid())
   goodsReceiptId      String
   purchaseOrderItemId String?
 
@@ -2048,10 +2266,10 @@ model GoodsReceiptItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  goodsReceipt      GoodsReceipt      @relation(fields: [goodsReceiptId],       references: [id], onDelete: Cascade)
-  purchaseOrderItem PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
-  product           Product            @relation(fields: [productId],            references: [id])
-  variant           ProductVariant?    @relation(fields: [variantId],            references: [id], onDelete: SetNull)
+  goodsReceipt        GoodsReceipt         @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItem   PurchaseOrderItem?   @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+  product             Product              @relation(fields: [productId], references: [id])
+  variant             ProductVariant?      @relation(fields: [variantId], references: [id], onDelete: SetNull)
   supplierReturnItems SupplierReturnItem[]
 
   @@index([goodsReceiptId])
@@ -2061,7 +2279,7 @@ model GoodsReceiptItem {
 // ── Devolução ao fornecedor (RN-P09) ──────────────────────────────────
 
 model SupplierReturn {
-  id             String               @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   goodsReceiptId String
   supplierId     String
@@ -2075,9 +2293,9 @@ model SupplierReturn {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  goodsReceipt GoodsReceipt        @relation(fields: [goodsReceiptId], references: [id])
-  supplier     Supplier             @relation(fields: [supplierId],    references: [id])
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goodsReceipt GoodsReceipt         @relation(fields: [goodsReceiptId], references: [id])
+  supplier     Supplier             @relation(fields: [supplierId], references: [id])
   items        SupplierReturnItem[]
 
   @@index([organizationId])
@@ -2095,8 +2313,8 @@ model SupplierReturnItem {
   stockMovementId            String?
   accountPayableAdjustmentId String?
 
-  supplierReturn   SupplierReturn   @relation(fields: [supplierReturnId],    references: [id], onDelete: Cascade)
-  goodsReceiptItem GoodsReceiptItem @relation(fields: [goodsReceiptItemId],  references: [id])
+  supplierReturn   SupplierReturn   @relation(fields: [supplierReturnId], references: [id], onDelete: Cascade)
+  goodsReceiptItem GoodsReceiptItem @relation(fields: [goodsReceiptItemId], references: [id])
 
   @@index([supplierReturnId])
 }
@@ -2104,46 +2322,147 @@ model SupplierReturnItem {
 // ── Contas a pagar — cabeçalho (RN-P06; Etapa 7 expande) ─────────────
 
 model AccountPayable {
-  id              String               @id @default(cuid())
+  id              String  @id @default(cuid())
   organizationId  String
   supplierId      String
   goodsReceiptId  String?
   purchaseOrderId String?
 
-  amount       Decimal @db.Decimal(10, 2)
-  paidAmount   Decimal @db.Decimal(10, 2) @default(0)
-  dueDate      DateTime
-  status       AccountPayableStatus @default(PENDING)
+  amount     Decimal              @db.Decimal(10, 2)
+  paidAmount Decimal              @default(0) @db.Decimal(10, 2)
+  dueDate    DateTime
+  status     AccountPayableStatus @default(PENDING)
 
   description       String
-  installmentNumber Int @default(1)
-  totalInstallments Int @default(1)
+  installmentNumber Int     @default(1)
+  totalInstallments Int     @default(1)
+  categoryId        String?
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId],  references: [id], onDelete: Cascade)
-  supplier      Supplier        @relation(fields: [supplierId],      references: [id])
-  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId],  references: [id], onDelete: SetNull)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier      Supplier         @relation(fields: [supplierId], references: [id])
+  goodsReceipt  GoodsReceipt?    @relation(fields: [goodsReceiptId], references: [id], onDelete: SetNull)
+  purchaseOrder PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  category      FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([organizationId, status])
   @@index([dueDate])
   @@index([supplierId])
+  @@index([categoryId])
+}
+
+// ── Contas a receber (Financeiro) ──────────────────────────────────────
+
+enum AccountReceivableStatus {
+  PENDING
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELED
+}
+
+model AccountReceivable {
+  id             String  @id @default(cuid())
+  organizationId String
+  customerId     String?
+  orderId        String?
+
+  amount         Decimal                 @db.Decimal(10, 2)
+  receivedAmount Decimal                 @default(0) @db.Decimal(10, 2)
+  dueDate        DateTime
+  status         AccountReceivableStatus @default(PENDING)
+
+  description       String
+  installmentNumber Int     @default(1)
+  totalInstallments Int     @default(1)
+  categoryId        String?
+
+  receivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order        Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  category     FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([dueDate])
+  @@index([customerId])
+  @@index([categoryId])
+}
+
+// ── Conciliação de cartão — liquidação D+N (Financeiro) ────────────────
+
+enum SettlementStatus {
+  PENDING
+  SETTLED
+  CANCELED
+}
+
+model PaymentSettlement {
+  id             String @id @default(cuid())
+  organizationId String
+  paymentId      String @unique
+
+  provider     String?
+  grossAmount  Decimal          @db.Decimal(10, 2)
+  feeAmount    Decimal          @db.Decimal(10, 2)
+  netAmount    Decimal          @db.Decimal(10, 2)
+  expectedDate DateTime
+  settledAt    DateTime?
+  status       SettlementStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([expectedDate])
+}
+
+// ── Categorias financeiras — DRE simplificado ──────────────────────────
+
+enum FinanceCategoryKind {
+  INCOME
+  EXPENSE
+}
+
+model FinanceCategory {
+  id             String              @id @default(cuid())
+  organizationId String
+  name           String
+  kind           FinanceCategoryKind
+  archived       Boolean             @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payables     AccountPayable[]
+  receivables  AccountReceivable[]
+  movements    CashMovement[]
+
+  @@unique([organizationId, name, kind])
+  @@index([organizationId])
 }
 
 // ── Cotação (opcional — RN-P11) ────────────────────────────────────────
 
 model Quotation {
-  id             String          @id @default(cuid())
-  organizationId String
-  description    String
-  status         QuotationStatus @default(OPEN)
+  id                   String          @id @default(cuid())
+  organizationId       String
+  description          String
+  status               QuotationStatus @default(OPEN)
   expectedDeliveryDate DateTime?
-  createdBy      String
-  closedAt       DateTime?
+  createdBy            String
+  closedAt             DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2165,16 +2484,16 @@ model QuotationItem {
   quantity    Decimal @db.Decimal(10, 3)
   notes       String?
 
-  quotation     Quotation               @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  product       Product                 @relation(fields: [productId],   references: [id])
-  variant       ProductVariant?         @relation(fields: [variantId],   references: [id], onDelete: SetNull)
+  quotation     Quotation                       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product       Product                         @relation(fields: [productId], references: [id])
+  variant       ProductVariant?                 @relation(fields: [variantId], references: [id], onDelete: SetNull)
   itemResponses QuotationSupplierItemResponse[]
 
   @@index([quotationId])
 }
 
 model QuotationSupplierResponse {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   quotationId String
   supplierId  String
 
@@ -2185,15 +2504,15 @@ model QuotationSupplierResponse {
   receivedAt   DateTime?
   selected     Boolean   @default(false)
 
-  quotation     Quotation                      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  supplier      Supplier                        @relation(fields: [supplierId],  references: [id])
+  quotation     Quotation                       @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  supplier      Supplier                        @relation(fields: [supplierId], references: [id])
   itemResponses QuotationSupplierItemResponse[]
 
   @@index([quotationId])
 }
 
 model QuotationSupplierItemResponse {
-  id                          String  @id @default(cuid())
+  id                          String @id @default(cuid())
   quotationSupplierResponseId String
   quotationItemId             String
 
@@ -2202,7 +2521,7 @@ model QuotationSupplierItemResponse {
   notes     String?
 
   response      QuotationSupplierResponse @relation(fields: [quotationSupplierResponseId], references: [id], onDelete: Cascade)
-  quotationItem QuotationItem             @relation(fields: [quotationItemId],             references: [id], onDelete: Cascade)
+  quotationItem QuotationItem             @relation(fields: [quotationItemId], references: [id], onDelete: Cascade)
 
   @@index([quotationSupplierResponseId])
 }
@@ -2219,7 +2538,7 @@ model PurchaseSuggestion {
   reasonSummary    Json?
 
   organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  location       Location                 @relation(fields: [locationId],     references: [id])
+  location       Location                 @relation(fields: [locationId], references: [id])
   items          PurchaseSuggestionItem[]
   purchaseOrders PurchaseOrder[]
 
@@ -2228,7 +2547,7 @@ model PurchaseSuggestion {
 }
 
 model PurchaseSuggestionItem {
-  id                   String @id @default(cuid())
+  id                   String  @id @default(cuid())
   purchaseSuggestionId String
   productId            String
   variantId            String?
@@ -2240,8 +2559,8 @@ model PurchaseSuggestionItem {
   suggestedSupplierId String?
 
   suggestion PurchaseSuggestion @relation(fields: [purchaseSuggestionId], references: [id], onDelete: Cascade)
-  product    Product             @relation(fields: [productId],            references: [id])
-  variant    ProductVariant?     @relation(fields: [variantId],            references: [id], onDelete: SetNull)
+  product    Product            @relation(fields: [productId], references: [id])
+  variant    ProductVariant?    @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([purchaseSuggestionId])
 }
@@ -2277,8 +2596,8 @@ model NfeImport {
 // ── Tags de produto — biblioteca por organização (RN-T01) ────────────────
 
 enum TagScope {
-  SUBCATEGORY  // tag contextual — caracteriza uma subcategoria (gelado, vegano, artesanal)
-  PRODUCT      // atributo de SKU — específico do produto (350ml, lata, long-neck)
+  SUBCATEGORY // tag contextual — caracteriza uma subcategoria (gelado, vegano, artesanal)
+  PRODUCT // atributo de SKU — específico do produto (350ml, lata, long-neck)
 }
 
 model Tag {
@@ -2294,7 +2613,7 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   products     ProductTag[]
   categories   CategoryTag[]
 
@@ -2309,7 +2628,7 @@ model ProductTag {
   assignedAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tagId],     references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([productId, tagId])
   @@index([productId])
@@ -2321,7 +2640,7 @@ model CategoryTag {
   tagId      String
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  tag      Tag      @relation(fields: [tagId],      references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([categoryId, tagId])
   @@index([categoryId])

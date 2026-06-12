@@ -50,7 +50,7 @@ export async function getProductsAction(
     ...categoryFilter,
     ...(opts.productType ? { productType: opts.productType as never } : {}),
     ...(opts.noFiscal ? { taxData: { none: {} } } : {}),
-    ...(opts.locationId ? { stockEntries: { some: { locationId: opts.locationId } } } : {}),
+    ...(opts.locationId ? { stockBalances: { some: { locationId: opts.locationId } } } : {}),
     ...(opts.search
       ? {
           OR: [
@@ -90,12 +90,13 @@ export async function getProductsAction(
           },
           orderBy: { createdAt: "asc" },
         },
-        stockEntries: {
+        stockBalances: {
           where: opts.locationId ? { locationId: opts.locationId } : undefined,
           select: {
             id: true,
-            quantity: true,
+            quantityOnHand: true,
             minQuantity: true,
+            locationId: true,
             location: { select: { id: true, name: true } },
           },
           orderBy: { updatedAt: "desc" },
@@ -204,7 +205,6 @@ export async function createProductAction(
       supplierId: d.supplierId || null,
       hasAgeRestriction: d.hasAgeRestriction,
       minAge: d.hasAgeRestriction ? (d.minAge ?? null) : null,
-      expiryDays: d.expiryDays ?? null,
       storageTemperature: d.storageTemperature || null,
     },
   });
@@ -330,7 +330,6 @@ export async function updateProductAction(
       supplierId: d.supplierId || null,
       hasAgeRestriction: d.hasAgeRestriction,
       minAge: d.hasAgeRestriction ? (d.minAge ?? null) : null,
-      expiryDays: d.expiryDays ?? null,
       storageTemperature: d.storageTemperature || null,
     },
   });
