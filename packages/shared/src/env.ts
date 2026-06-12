@@ -22,7 +22,18 @@ export function getEnv(): Env {
   if (cached) return cached;
   const parsed = envSchema.safeParse(process.env);
   if (!parsed.success) {
-    console.error("❌ Variáveis de ambiente inválidas:", parsed.error.flatten().fieldErrors);
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    // Durante o build (next build / coleta de page data) as vars de runtime
+    // podem não estar presentes — não derrubar o build por isso. Em runtime
+    // (sem essa fase) a validação continua estrita.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      console.warn(
+        "⚠️ Env incompleto durante o build (ok se existir em runtime):",
+        Object.keys(fieldErrors),
+      );
+      return process.env as unknown as Env;
+    }
+    console.error("❌ Variáveis de ambiente inválidas:", fieldErrors);
     throw new Error("Configuração de ambiente inválida. Veja .env.example.");
   }
   cached = parsed.data;
