@@ -1,4 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Raiz do monorepo (apps/web -> ../../).
+const monorepoRoot = path.join(__dirname, "..", "..");
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -12,6 +18,18 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@nohub/auth", "@nohub/db", "@nohub/shared"],
+  // Prisma client (+ Neon adapter) precisa ser resolvido do node_modules em
+  // runtime para que o query_compiler_bg.wasm fique ao lado dele.
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-neon", "@neondatabase/serverless"],
+  // Monorepo pnpm: o nft não traça o .wasm do .prisma/client aninhado no
+  // store. Forçamos a inclusão nas funções serverless.
+  outputFileTracingRoot: monorepoRoot,
+  outputFileTracingIncludes: {
+    "/api/**": [
+      "./node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**",
+      "./node_modules/.prisma/client/**",
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
