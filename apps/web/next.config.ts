@@ -24,10 +24,12 @@ const nextConfig: NextConfig = {
   // Monorepo pnpm: o nft não traça o .wasm do .prisma/client aninhado no
   // store. Forçamos a inclusão nas funções serverless.
   outputFileTracingRoot: monorepoRoot,
+  // Globs resolvidos relativos ao dir do app (apps/web) — subir 2 níveis até
+  // a raiz onde o pnpm store guarda o .prisma/client com o .wasm.
   outputFileTracingIncludes: {
     "/api/**": [
-      "./node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**",
-      "./node_modules/.prisma/client/**",
+      "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/*",
+      "../../node_modules/.prisma/client/*",
     ],
   },
   async headers() {
