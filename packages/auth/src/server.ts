@@ -7,9 +7,28 @@ import { link, sendEmail } from "./mailer";
 
 const env = getEnv();
 
+// Origens confiáveis para CSRF/redirect. Em Vercel, a URL do request pode ser
+// a do deployment (preview/branch) e não a BETTER_AUTH_URL — por isso incluímos
+// as URLs injetadas pela Vercel e um wildcard para previews do projeto.
+const trustedOrigins = Array.from(
+  new Set(
+    [
+      env.BETTER_AUTH_URL,
+      env.NEXT_PUBLIC_APP_URL,
+      process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+      process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`,
+      process.env.VERCEL_PROJECT_PRODUCTION_URL &&
+        `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+      // previews: nohub-market-git-<branch>-<scope>.vercel.app e hashes
+      "https://nohub-market-*.vercel.app",
+    ].filter(Boolean) as string[],
+  ),
+);
+
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
+  trustedOrigins,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
   emailAndPassword: {
