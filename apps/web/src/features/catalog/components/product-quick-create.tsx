@@ -1044,7 +1044,7 @@ export function ProductQuickCreate({
       }
 
       // Fiscal opcional — só grava se NCM (8 dígitos) preenchido
-      const productId = isEdit ? (product?.id ?? "") : res.data.id;
+      const productId = isEdit ? (product?.id ?? "") : (res.data?.id ?? "");
 
       const ncmDigits = tax.ncm.replace(/\D/g, "");
       if (ncmDigits.length === 8) {
