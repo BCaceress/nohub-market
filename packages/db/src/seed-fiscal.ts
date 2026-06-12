@@ -6,9 +6,8 @@
  * Ou junto ao seed principal via: pnpm --filter @nohub/db seed
  */
 
-import { type FiscalSegment, PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import type { FiscalSegment } from "@prisma/client";
+import { prisma } from "./index";
 
 interface TemplateRow {
   segment: FiscalSegment;

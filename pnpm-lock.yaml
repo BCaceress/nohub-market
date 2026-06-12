@@ -169,7 +169,7 @@ importers:
         specifier: ^6.19.3
         version: 6.19.3
       '@prisma/client':
-        specifier: ^6.2.1
+        specifier: ^6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
       '@nohub/config':
@@ -179,7 +179,7 @@ importers:
         specifier: ^22.10.5
         version: 22.19.19
       prisma:
-        specifier: ^6.2.1
+        specifier: ^6.19.3
         version: 6.19.3(typescript@5.9.3)
       tsx:
         specifier: ^4.19.2
