@@ -1,6 +1,23 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".env", ".env.local"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "DIRECT_DATABASE_URL",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "BRASILAPI_URL",
+    "GOOGLE_GEMINI_API_KEY",
+    "COSMOS_API_TOKEN",
+    "ANTHROPIC_API_KEY",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_APP_NAME",
+    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
+    "NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET",
+    "LEFTHOOK"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
